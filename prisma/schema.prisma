@@ -39,7 +39,13 @@ enum OvelseType {
 enum LagFormat {
   PAR
   TRIO
+  FIRE_MOT_FIRE
+  FEM_MOT_FEM
+  TO_LAG
+  TRE_LAG
+  FIRE_LAG
   FLERE_LAG
+  ANNET
 }
 
 enum OvelseStatus {
@@ -48,7 +54,8 @@ enum OvelseStatus {
   FULLFORT
 }
 
-/// En øvelse ("game") i lekene. Verten arrangerer øvelsen, men deltar ikke selv i den.
+/// En øvelse ("game") i lekene. Verten arrangerer øvelsen. Normalt deltar ikke
+/// verten selv, men en "felles lek" er en foreslått lek der alle er med.
 model Ovelse {
   id          String       @id @default(cuid())
   navn        String
@@ -56,7 +63,7 @@ model Ovelse {
   lokasjon    String?
   type        OvelseType
   lagFormat   LagFormat?
-  vertDeltar  Boolean      @default(false)
+  fellesLek   Boolean      @default(false)
   status      OvelseStatus @default(PLANLAGT)
   createdAt   DateTime     @default(now())
 

@@ -1,150 +1,94 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
+import { hentStilling } from "@/lib/stilling";
 import Card from "@/components/ui/Card";
-import Badge, { type BadgeVariant } from "@/components/ui/Badge";
+import { LinkButton } from "@/components/ui/Button";
 import RankBadge from "@/components/ui/RankBadge";
-import { MapPin } from "lucide-react";
+import { ArrowRight, Trophy, Swords, User } from "lucide-react";
 
-type Stilling = {
-  userId: string;
-  navn: string;
-  totalPoeng: number;
-  antallOvelser: number;
-};
+function StatCard({ label, verdi }: { label: string; verdi: string }) {
+  return (
+    <Card padding="p-4 sm:p-5">
+      <p className="text-[11px] tracking-widest text-fg-faint uppercase">
+        {label}
+      </p>
+      <p className="mt-1 font-display text-2xl text-fg sm:text-3xl">{verdi}</p>
+    </Card>
+  );
+}
 
-const statusVariant: Record<string, BadgeVariant> = {
-  FULLFORT: "fullfort",
-  PAAGAAR: "pagaar",
-  PLANLAGT: "planlagt",
-};
-
-const statusLabel: Record<string, string> = {
-  FULLFORT: "Fullført",
-  PAAGAAR: "Pågår",
-  PLANLAGT: "Planlagt",
-};
-
-export default async function DashboardSide() {
+export default async function HjemSide() {
   const session = await auth();
   if (!session?.user) redirect("/bli-med");
 
   const sesong = await sikreAktivSesong();
+  const stilling = await hentStilling(sesong.id);
 
-  const brukere = await prisma.user.findMany({
-    include: {
-      individuelleResultater: {
-        where: { ovelse: { sesongId: sesong.id } },
-      },
-      lagmedlemskap: {
-        include: {
-          lag: { include: { resultat: true, ovelse: true } },
-        },
-      },
-    },
-    orderBy: { navn: "asc" },
-  });
+  const minIndex = stilling.findIndex((s) => s.userId === session.user!.id);
+  const min = minIndex >= 0 ? stilling[minIndex] : null;
+  const topp = stilling.slice(0, 3);
 
-  const stilling: Stilling[] = brukere
-    .map((bruker) => {
-      const individOvelser = new Set(
-        bruker.individuelleResultater.map((r) => r.ovelseId)
-      );
-      const poengIndividuelt = bruker.individuelleResultater.reduce(
-        (sum, r) => sum + r.poeng,
-        0
-      );
-
-      const lagOvelser = new Set<string>();
-      let poengLag = 0;
-      for (const medlemskap of bruker.lagmedlemskap) {
-        const { lag } = medlemskap;
-        if (lag.ovelse.sesongId !== sesong.id) continue;
-        if (lag.resultat) {
-          poengLag += lag.resultat.poeng;
-          lagOvelser.add(lag.ovelseId);
-        }
-      }
-
-      return {
-        userId: bruker.id,
-        navn: bruker.navn,
-        totalPoeng: poengIndividuelt + poengLag,
-        antallOvelser: new Set([...individOvelser, ...lagOvelser]).size,
-      };
-    })
-    .sort((a, b) => b.totalPoeng - a.totalPoeng);
-
-  const toppPoeng = Math.max(1, ...stilling.map((s) => s.totalPoeng));
-
-  const ovelser = await prisma.ovelse.findMany({
-    where: { sesongId: sesong.id },
-    include: {
-      vert: true,
-      individuelleResultater: { include: { user: true }, orderBy: { poeng: "desc" } },
-      lag: { include: { resultat: true, medlemmer: { include: { user: true } } } },
-    },
-    orderBy: { createdAt: "desc" },
+  const dineOvelser = await prisma.ovelse.count({
+    where: { sesongId: sesong.id, vertId: session.user.id },
   });
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8 sm:py-12">
+    <div className="mx-auto max-w-4xl px-4 pt-28 pb-12">
       <p className="animate-fade-up text-xs tracking-[0.3em] text-accent-2 uppercase">
         {sesong.navn}
       </p>
       <h1 className="animate-fade-up mt-1 font-display text-4xl text-fg">
-        Dashbord
+        Hei, {session.user.name}!
       </h1>
+      <p className="animate-fade-up mt-2 text-sm text-fg-dim">
+        Velkommen tilbake til lekene.
+      </p>
 
-      <section className="mt-8">
+      <div className="mt-6 grid grid-cols-3 gap-3 sm:gap-4">
+        <StatCard
+          label="Plassering"
+          verdi={min && min.totalPoeng > 0 ? `#${minIndex + 1}` : "–"}
+        />
+        <StatCard label="Dine poeng" verdi={String(min?.totalPoeng ?? 0)} />
+        <StatCard label="Dine øvelser" verdi={String(dineOvelser)} />
+      </div>
+
+      <section className="mt-10">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-medium tracking-widest text-fg-dim uppercase">
-            Sammenlagt stilling
+            Toppen av stillingen
           </h2>
-          <span className="text-xs text-fg-faint">
-            {stilling.length} deltakere
-          </span>
+          <Link
+            href="/stilling"
+            className="inline-flex items-center gap-1 text-sm text-fg-dim transition-colors hover:text-fg"
+          >
+            Se alle <ArrowRight size={14} />
+          </Link>
         </div>
-
-        <Card padding="p-0" className="animate-fade-up overflow-hidden">
-          {stilling.length === 0 ? (
+        <Card padding="p-0" className="overflow-hidden">
+          {topp.length === 0 ? (
             <p className="px-5 py-8 text-center text-sm text-fg-dim">
-              Ingen resultater er registrert ennå.
+              Ingen resultater ennå.
             </p>
           ) : (
             <ul>
-              {stilling.map((rad, i) => (
+              {topp.map((rad, i) => (
                 <li
                   key={rad.userId}
                   className={`flex items-center gap-3 px-4 py-3.5 sm:px-5 ${
-                    i !== stilling.length - 1 ? "border-b border-line" : ""
+                    i !== topp.length - 1 ? "border-b border-line" : ""
                   } ${i === 0 && rad.totalPoeng > 0 ? "bg-gold/[0.07]" : ""}`}
                 >
                   <RankBadge rank={i + 1} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <span className="truncate font-medium text-fg">
-                        {rad.navn}
-                      </span>
-                      <span className="shrink-0 font-display text-lg tabular-nums text-fg">
-                        {rad.totalPoeng}
-                      </span>
-                    </div>
-                    <div className="mt-1.5 flex items-center gap-2">
-                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
-                        <div
-                          className="bg-gradient-accent h-full rounded-full transition-all"
-                          style={{
-                            width: `${Math.max(4, (rad.totalPoeng / toppPoeng) * 100)}%`,
-                          }}
-                        />
-                      </div>
-                      <span className="shrink-0 text-[11px] text-fg-faint">
-                        {rad.antallOvelser} øvelser
-                      </span>
-                    </div>
-                  </div>
+                  <span className="flex-1 truncate font-medium text-fg">
+                    {rad.navn}
+                  </span>
+                  <span className="font-display text-lg tabular-nums text-fg">
+                    {rad.totalPoeng}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -152,81 +96,16 @@ export default async function DashboardSide() {
         </Card>
       </section>
 
-      <section className="mt-10">
-        <h2 className="mb-3 text-sm font-medium tracking-widest text-fg-dim uppercase">
-          Øvelser
-        </h2>
-        {ovelser.length === 0 ? (
-          <p className="text-sm text-fg-dim">Ingen øvelser er opprettet ennå.</p>
-        ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {ovelser.map((ovelse, idx) => (
-              <Card
-                key={ovelse.id}
-                hover
-                className="animate-fade-up"
-                style={{ animationDelay: `${Math.min(idx, 6) * 60}ms` }}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="font-display text-lg text-fg">{ovelse.navn}</h3>
-                  <Badge
-                    variant={statusVariant[ovelse.status]}
-                    pulse={ovelse.status === "PAAGAAR"}
-                  >
-                    {statusLabel[ovelse.status]}
-                  </Badge>
-                </div>
-                <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-fg-faint">
-                  <span>Vert: {ovelse.vert.navn}</span>
-                  {ovelse.lokasjon && (
-                    <span className="inline-flex items-center gap-1">
-                      <MapPin size={12} /> {ovelse.lokasjon}
-                    </span>
-                  )}
-                </p>
-
-                {ovelse.type === "INDIVIDUELL" ? (
-                  <ul className="mt-3 flex flex-col gap-1.5 text-sm text-fg-dim">
-                    {ovelse.individuelleResultater.map((r) => (
-                      <li key={r.id} className="flex justify-between gap-2">
-                        <span className="truncate">
-                          {r.plassering ? `${r.plassering}. ` : ""}
-                          {r.user.navn}
-                        </span>
-                        <span className="shrink-0 tabular-nums text-fg">
-                          {r.poeng} p
-                        </span>
-                      </li>
-                    ))}
-                    {ovelse.individuelleResultater.length === 0 && (
-                      <li className="text-fg-faint">Ingen resultater ennå</li>
-                    )}
-                  </ul>
-                ) : (
-                  <ul className="mt-3 flex flex-col gap-1.5 text-sm text-fg-dim">
-                    {ovelse.lag.map((lag) => (
-                      <li key={lag.id} className="flex justify-between gap-2">
-                        <span className="truncate">
-                          {lag.resultat?.plassering
-                            ? `${lag.resultat.plassering}. `
-                            : ""}
-                          {lag.navn} (
-                          {lag.medlemmer.map((m) => m.user.navn).join(", ")})
-                        </span>
-                        <span className="shrink-0 tabular-nums text-fg">
-                          {lag.resultat ? `${lag.resultat.poeng} p` : "–"}
-                        </span>
-                      </li>
-                    ))}
-                    {ovelse.lag.length === 0 && (
-                      <li className="text-fg-faint">Ingen lag ennå</li>
-                    )}
-                  </ul>
-                )}
-              </Card>
-            ))}
-          </div>
-        )}
+      <section className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <LinkButton href="/stilling" variant="secondary" className="justify-start">
+          <Trophy size={18} /> Stilling
+        </LinkButton>
+        <LinkButton href="/ovelser" variant="secondary" className="justify-start">
+          <Swords size={18} /> Øvelser
+        </LinkButton>
+        <LinkButton href="/profil" variant="secondary" className="justify-start">
+          <User size={18} /> Profil
+        </LinkButton>
       </section>
     </div>
   );

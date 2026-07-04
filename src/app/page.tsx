@@ -8,7 +8,7 @@ export default async function Hjemmeside() {
   const session = await auth();
 
   return (
-    <section className="relative flex min-h-[calc(100dvh-57px)] items-center justify-center overflow-hidden">
+    <section className="relative flex min-h-dvh items-center justify-center overflow-hidden">
       {/* PrismaticBurst-bakgrunn */}
       <div className="absolute inset-0 z-0">
         <PrismaticBurst
@@ -26,17 +26,7 @@ export default async function Hjemmeside() {
       <div className="pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(ellipse_at_center,rgba(6,6,8,0.12)_0%,rgba(6,6,8,0.55)_72%,#060608_100%)]" />
 
       <div className="relative z-10 mx-auto max-w-3xl px-6 py-16 text-center">
-        <p
-          className="animate-fade-up text-xs font-medium tracking-[0.35em] text-fg-dim uppercase"
-          style={{ animationDelay: "0ms" }}
-        >
-          Vennegjengens egne leker
-        </p>
-
-        <h1
-          className="animate-fade-up mt-5 font-display leading-[0.95]"
-          style={{ animationDelay: "90ms" }}
-        >
+        <h1 className="animate-fade-up font-display leading-[0.95]">
           <InteractiveTitle
             text="TrivselsLekene"
             className="block text-[13vw] font-medium text-fg sm:text-6xl md:text-7xl"
@@ -46,17 +36,9 @@ export default async function Hjemmeside() {
           </span>
         </h1>
 
-        <p
-          className="animate-fade-up mx-auto mt-6 max-w-xl text-base text-fg-dim sm:text-lg"
-          style={{ animationDelay: "180ms" }}
-        >
-          Alle er vert for én lek og deltar i alle de andre. Bli med, sett opp
-          din egen lek, og følg med på stillingen gjennom hele lekene.
-        </p>
-
         <div
-          className="animate-fade-up mt-9 flex justify-center"
-          style={{ animationDelay: "260ms" }}
+          className="animate-fade-up mt-10 flex justify-center"
+          style={{ animationDelay: "160ms" }}
         >
           {session?.user ? (
             <LinkButton href="/dashboard" className="animate-float px-7 py-3 text-base">

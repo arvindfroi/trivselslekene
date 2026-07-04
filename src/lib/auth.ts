@@ -5,6 +5,7 @@ import { finnEllerOpprettBruker } from "@/lib/brukere";
 const ETT_AAR = 60 * 60 * 24 * 365;
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  trustHost: true,
   session: { strategy: "jwt", maxAge: ETT_AAR },
   pages: {
     signIn: "/bli-med",

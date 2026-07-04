@@ -1,6 +1,8 @@
 "use server";
 
 import { AuthError } from "next-auth";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import type { LagFormat, OvelseType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { signIn } from "@/lib/auth";
@@ -11,33 +13,26 @@ import {
 } from "@/lib/brukere";
 import { sikreAktivSesong } from "@/lib/sesong";
 
-export type NavnResultat =
-  | { feil: string }
-  | { status: "ny"; navn: string }
-  | undefined;
+const NAVN_COOKIE = "onboarding_navn";
 
 /**
  * Steg 1 i onboardingen. Finnes navnet fra før: logg inn og send til dashbordet.
- * Er navnet nytt: gi klienten beskjed slik at veiviseren kan fortsette.
+ * Er navnet nytt: lagre navnet i en cookie og last veiviseren videre. Alt går
+ * via redirect (pålitelig), så vi slipper å lese en returverdi på klienten.
  */
-export async function sjekkNavn(
-  _forrige: NavnResultat,
-  formData: FormData
-): Promise<NavnResultat> {
+export async function startOnboarding(formData: FormData) {
   const navn = normaliserNavn(String(formData.get("navn") ?? ""));
-  if (navn.length < 2) {
-    return { feil: "Skriv inn navnet ditt (minst 2 tegn)." };
-  }
+  if (navn.length < 2) redirect("/bli-med");
 
   const finnes = await finnBrukerVedNavn(navn);
-
   if (finnes) {
     await signIn("credentials", { navn, redirectTo: "/dashboard" });
-    // signIn kaster en redirect ved suksess – koden under nås ikke.
-    return undefined;
+    return;
   }
 
-  return { status: "ny", navn };
+  const jar = await cookies();
+  jar.set(NAVN_COOKIE, navn, { maxAge: 3600, path: "/", sameSite: "lax" });
+  redirect("/bli-med");
 }
 
 export type OnboardingData = {
@@ -45,7 +40,7 @@ export type OnboardingData = {
   lekNavn: string;
   type: OvelseType;
   lagFormat: LagFormat | null;
-  vertDeltar: boolean;
+  fellesLek: boolean;
   lokasjon: string;
   beskrivelse: string;
 };
@@ -62,13 +57,14 @@ export async function fullforOnboarding(data: OnboardingData) {
   if (!user) return { feil: "Kunne ikke opprette bruker." };
 
   const sesong = await sikreAktivSesong();
+  (await cookies()).delete(NAVN_COOKIE);
 
   await prisma.ovelse.create({
     data: {
       navn: lekNavn,
       type: data.type,
       lagFormat: data.type === "LAG" ? data.lagFormat : null,
-      vertDeltar: data.vertDeltar,
+      fellesLek: data.fellesLek,
       lokasjon: data.lokasjon.trim() || null,
       beskrivelse: data.beskrivelse.trim() || null,
       sesongId: sesong.id,

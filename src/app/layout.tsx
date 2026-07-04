@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Roboto_Flex } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
-import Navbar from "@/components/Navbar";
+import SiteNav from "@/components/SiteNav";
 
 const robotoFlex = Roboto_Flex({
   variable: "--font-roboto-flex",
@@ -39,7 +39,7 @@ export default function RootLayout({
       className={`${robotoFlex.variable} ${amstelvar.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-bg text-fg">
-        <Navbar />
+        <SiteNav />
         <main className="flex-1">{children}</main>
         <footer className="border-t border-line px-4 py-6 text-center text-[11px] tracking-widest text-fg-faint uppercase">
           Trivselslekene — laget for vennegjengen

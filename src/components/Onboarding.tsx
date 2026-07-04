@@ -1,51 +1,40 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useFormStatus } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, Check } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Users } from "lucide-react";
 import type { LagFormat, OvelseType } from "@prisma/client";
-import { fullforOnboarding, sjekkNavn } from "@/lib/actions/auth";
+import { fullforOnboarding, startOnboarding } from "@/lib/actions/auth";
+import { lagFormatTekst, lagFormatValg } from "@/lib/ovelseLabels";
 import Button from "@/components/ui/Button";
 import { Input, Textarea } from "@/components/ui/Field";
 
 type Data = {
-  navn: string;
   lekNavn: string;
   type: OvelseType;
   lagFormat: LagFormat;
-  vertDeltar: boolean;
+  fellesLek: boolean;
   lokasjon: string;
   beskrivelse: string;
 };
 
 const start: Data = {
-  navn: "",
   lekNavn: "",
   type: "INDIVIDUELL",
   lagFormat: "PAR",
-  vertDeltar: false,
+  fellesLek: false,
   lokasjon: "",
   beskrivelse: "",
 };
 
-function byggSteg(data: Data): string[] {
-  return [
-    "navn",
-    "lekNavn",
-    "type",
-    ...(data.type === "LAG" ? ["lagFormat"] : []),
-    "vertDeltar",
-    "lokasjon",
-    "beskrivelse",
-    "oppsummering",
-  ];
-}
-
-const lagFormatTekst: Record<LagFormat, string> = {
-  PAR: "Par (2 og 2)",
-  TRIO: "Trekamp (3 og 3)",
-  FLERE_LAG: "Flere lag mot hverandre",
-};
+const POST_NAVN = [
+  "lekNavn",
+  "spillemaate",
+  "lokasjon",
+  "beskrivelse",
+  "oppsummering",
+] as const;
 
 function ChoiceCard({
   valgt,
@@ -77,68 +66,73 @@ function ChoiceCard({
   );
 }
 
-export default function Onboarding() {
+function FormatChip({
+  valgt,
+  onClick,
+  tittel,
+  hint,
+}: {
+  valgt: boolean;
+  onClick: () => void;
+  tittel: string;
+  hint: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-xl border p-3 text-left transition-all ${
+        valgt
+          ? "border-accent-2 bg-accent-2/10"
+          : "border-line bg-white/[0.03] hover:border-line-strong hover:bg-white/[0.06]"
+      }`}
+    >
+      <span className="block font-medium text-fg">{tittel}</span>
+      <span className="mt-0.5 block text-xs text-fg-faint">{hint}</span>
+    </button>
+  );
+}
+
+export default function Onboarding({ startNavn = "" }: { startNavn?: string }) {
+  const bekreftetNavn = startNavn;
+  const erNy = startNavn.length > 0;
+
   const [data, setData] = useState<Data>(start);
   const [steg, setSteg] = useState(0);
   const [pending, startTransition] = useTransition();
-  const [navnPending, startNavn] = useTransition();
   const [feil, setFeil] = useState<string | null>(null);
-  const [navnFeil, setNavnFeil] = useState<string | null>(null);
 
-  const steps = byggSteg(data);
-  const key = steps[Math.min(steg, steps.length - 1)];
-  const total = steps.length;
+  const total = 1 + POST_NAVN.length;
+  const key = erNy ? POST_NAVN[Math.min(steg, POST_NAVN.length - 1)] : "navn";
+  const filledSegments = erNy ? steg + 2 : 1;
 
   const oppdater = (delta: Partial<Data>) => setData((d) => ({ ...d, ...delta }));
   const neste = () => setSteg((s) => s + 1);
   const tilbake = () => setSteg((s) => Math.max(0, s - 1));
 
-  // Steg 1: finnes navnet logges du inn (server-redirect), ellers går vi videre.
-  const submitNavn = (formData: FormData) => {
-    setNavnFeil(null);
-    startNavn(async () => {
-      const res = await sjekkNavn(undefined, formData);
-      if (res && "feil" in res) {
-        setNavnFeil(res.feil);
-        return;
-      }
-      if (res && "status" in res && res.status === "ny") {
-        setData((d) => ({ ...d, navn: res.navn }));
-        setSteg(1);
-      }
-    });
-  };
-
   const fullfor = () => {
     setFeil(null);
     startTransition(async () => {
-      const res = await fullforOnboarding(data);
+      const res = await fullforOnboarding({ navn: bekreftetNavn, ...data });
       if (res && "feil" in res) setFeil(res.feil);
     });
   };
 
   return (
-    <div className="mx-auto flex min-h-[calc(100dvh-57px)] max-w-md flex-col justify-center px-5 py-10">
-      {/* Framdrift */}
+    <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-5 py-10">
       <div className="mb-8 flex items-center gap-2">
-        {steps.map((_, i) => (
+        {Array.from({ length: total }).map((_, i) => (
           <span
             key={i}
             className={`h-1 flex-1 rounded-full transition-colors ${
-              i <= steg ? "bg-gradient-accent" : "bg-white/10"
+              i < filledSegments ? "bg-gradient-accent" : "bg-white/10"
             }`}
           />
         ))}
       </div>
 
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={key}
-          initial={{ opacity: 0, x: 24 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -24 }}
-          transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-        >
+      <div key={key} className="animate-fade-up">
+        <div>
           {key === "navn" && (
             <div>
               <p className="text-xs tracking-[0.3em] text-fg-faint uppercase">
@@ -151,36 +145,25 @@ export default function Onboarding() {
                 Ingen e-post eller passord — bare navnet ditt. Skriver du et navn
                 du har brukt før, logger du rett inn igjen.
               </p>
-              <form action={submitNavn} className="mt-6">
+              <form action={startOnboarding} className="mt-6">
                 <Input
                   name="navn"
                   autoFocus
                   required
                   minLength={2}
-                  defaultValue={data.navn}
                   placeholder="F.eks. Ola Nordmann"
                   className="text-lg"
                 />
-                {navnFeil && (
-                  <p className="mt-2 text-sm text-red-300">{navnFeil}</p>
-                )}
-                <Button
-                  type="submit"
-                  disabled={navnPending}
-                  className="mt-5 w-full"
-                >
-                  {navnPending ? "Sjekker…" : "Fortsett"}
-                  <ArrowRight size={18} />
-                </Button>
+                <NavnKnapp />
               </form>
             </div>
           )}
 
           {key === "lekNavn" && (
             <StepShell
-              steg={steg}
+              steg={filledSegments}
               total={total}
-              hei={data.navn}
+              hei={bekreftetNavn}
               tittel="Hva heter leken din?"
               tekst="Alle er vert for én lek. Hva vil du kalle din?"
             >
@@ -195,87 +178,105 @@ export default function Onboarding() {
                 }}
               />
               <NavRad
-                tilbake={tilbake}
                 neste={neste}
                 nesteAktiv={data.lekNavn.trim().length > 0}
               />
             </StepShell>
           )}
 
-          {key === "type" && (
+          {key === "spillemaate" && (
             <StepShell
-              steg={steg}
+              steg={filledSegments}
               total={total}
-              tittel="Individuell eller lag?"
-              tekst="Konkurrerer hver deltaker for seg selv, eller i lag?"
+              tittel="Hvordan spilles leken?"
+              tekst="Velg oppsett — og om det er en felles lek."
             >
-              <div className="flex flex-col gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <ChoiceCard
                   valgt={data.type === "INDIVIDUELL"}
                   onClick={() => oppdater({ type: "INDIVIDUELL" })}
                   tittel="Individuell"
-                  tekst="Hver deltaker konkurrerer alene."
+                  tekst="Alle for seg selv"
                 />
                 <ChoiceCard
                   valgt={data.type === "LAG"}
                   onClick={() => oppdater({ type: "LAG" })}
                   tittel="Lag"
-                  tekst="Deltakerne konkurrerer i lag mot hverandre."
+                  tekst="Konkurrer i lag"
                 />
               </div>
-              <NavRad tilbake={tilbake} neste={neste} nesteAktiv />
-            </StepShell>
-          )}
 
-          {key === "lagFormat" && (
-            <StepShell
-              steg={steg}
-              total={total}
-              tittel="Hvordan er lagene fordelt?"
-              tekst="Velg formatet som passer leken din."
-            >
-              <div className="flex flex-col gap-3">
-                {(Object.keys(lagFormatTekst) as LagFormat[]).map((f) => (
-                  <ChoiceCard
-                    key={f}
-                    valgt={data.lagFormat === f}
-                    onClick={() => oppdater({ lagFormat: f })}
-                    tittel={lagFormatTekst[f]}
+              <AnimatePresence initial={false}>
+                {data.type === "LAG" && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                    className="overflow-hidden"
+                  >
+                    <p className="mb-2 text-[11px] font-medium tracking-widest text-fg-dim uppercase">
+                      Hvordan er lagene satt opp?
+                    </p>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                      {lagFormatValg.map((v) => (
+                        <FormatChip
+                          key={v.verdi}
+                          valgt={data.lagFormat === v.verdi}
+                          onClick={() => oppdater({ lagFormat: v.verdi })}
+                          tittel={v.tittel}
+                          hint={v.hint}
+                        />
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <button
+                type="button"
+                onClick={() => oppdater({ fellesLek: !data.fellesLek })}
+                className={`flex items-center gap-3 rounded-2xl border p-4 text-left transition-all ${
+                  data.fellesLek
+                    ? "border-accent-3 bg-accent-3/10"
+                    : "border-line bg-white/[0.03] hover:border-line-strong"
+                }`}
+              >
+                <span
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+                    data.fellesLek
+                      ? "bg-accent-3/20 text-accent-3"
+                      : "bg-white/[0.06] text-fg-faint"
+                  }`}
+                >
+                  <Users size={18} />
+                </span>
+                <span className="flex-1">
+                  <span className="block font-medium text-fg">Felles lek</span>
+                  <span className="block text-sm text-fg-dim">
+                    Alle er med, også du. Passer leker uten fast vert.
+                  </span>
+                </span>
+                <span
+                  className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
+                    data.fellesLek ? "bg-accent-3" : "bg-white/15"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${
+                      data.fellesLek ? "left-[22px]" : "left-0.5"
+                    }`}
                   />
-                ))}
-              </div>
-              <NavRad tilbake={tilbake} neste={neste} nesteAktiv />
-            </StepShell>
-          )}
+                </span>
+              </button>
 
-          {key === "vertDeltar" && (
-            <StepShell
-              steg={steg}
-              total={total}
-              tittel="Skal du delta selv?"
-              tekst="Vanligvis er verten dommer i sin egen lek og deltar ikke — men du bestemmer."
-            >
-              <div className="flex flex-col gap-3">
-                <ChoiceCard
-                  valgt={!data.vertDeltar}
-                  onClick={() => oppdater({ vertDeltar: false })}
-                  tittel="Nei, jeg er bare vert"
-                  tekst="Du arrangerer leken, men konkurrerer ikke i den."
-                />
-                <ChoiceCard
-                  valgt={data.vertDeltar}
-                  onClick={() => oppdater({ vertDeltar: true })}
-                  tittel="Ja, jeg deltar også"
-                  tekst="Du er både vert og deltaker i denne leken."
-                />
-              </div>
               <NavRad tilbake={tilbake} neste={neste} nesteAktiv />
             </StepShell>
           )}
 
           {key === "lokasjon" && (
             <StepShell
-              steg={steg}
+              steg={filledSegments}
               total={total}
               tittel="Hvor foregår leken?"
               tekst="Valgfritt — men greit for de andre å vite."
@@ -301,7 +302,7 @@ export default function Onboarding() {
 
           {key === "beskrivelse" && (
             <StepShell
-              steg={steg}
+              steg={filledSegments}
               total={total}
               tittel="Noe mer vi bør vite?"
               tekst="Regler, utstyr, eller andre viktige detaljer. Valgfritt."
@@ -331,10 +332,10 @@ export default function Onboarding() {
                 Ser dette riktig ut?
               </h1>
               <dl className="mt-6 flex flex-col divide-y divide-line rounded-2xl border border-line bg-white/[0.03]">
-                <Rad merke="Ditt navn" verdi={data.navn} />
+                <Rad merke="Ditt navn" verdi={bekreftetNavn} />
                 <Rad merke="Lek" verdi={data.lekNavn} />
                 <Rad
-                  merke="Type"
+                  merke="Oppsett"
                   verdi={
                     data.type === "LAG"
                       ? `Lag — ${lagFormatTekst[data.lagFormat]}`
@@ -342,8 +343,8 @@ export default function Onboarding() {
                   }
                 />
                 <Rad
-                  merke="Du deltar"
-                  verdi={data.vertDeltar ? "Ja" : "Nei, kun vert"}
+                  merke="Felles lek"
+                  verdi={data.fellesLek ? "Ja, alle er med" : "Nei"}
                 />
                 {data.lokasjon.trim() && (
                   <Rad merke="Lokasjon" verdi={data.lokasjon} />
@@ -367,9 +368,19 @@ export default function Onboarding() {
               </div>
             </div>
           )}
-        </motion.div>
-      </AnimatePresence>
+        </div>
+      </div>
     </div>
+  );
+}
+
+function NavnKnapp() {
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" disabled={pending} className="mt-5 w-full">
+      {pending ? "Fortsetter…" : "Fortsett"}
+      <ArrowRight size={18} />
+    </Button>
   );
 }
 
@@ -391,7 +402,7 @@ function StepShell({
   return (
     <div>
       <p className="text-xs tracking-[0.3em] text-fg-faint uppercase">
-        Steg {steg + 1} av {total}
+        Steg {steg} av {total}
         {hei ? ` · Hei, ${hei}!` : ""}
       </p>
       <h1 className="mt-2 font-display text-3xl text-fg">{tittel}</h1>
@@ -405,28 +416,28 @@ function NavRad({
   tilbake,
   neste,
   nesteAktiv,
-  nesteTekst = "Neste",
   hoppOver = false,
 }: {
-  tilbake: () => void;
+  tilbake?: () => void;
   neste: () => void;
   nesteAktiv: boolean;
-  nesteTekst?: string;
   hoppOver?: boolean;
 }) {
   return (
     <div className="mt-2 flex items-center gap-3">
-      <Button variant="outline" onClick={tilbake} className="px-4">
-        <ArrowLeft size={18} />
-        Tilbake
-      </Button>
+      {tilbake && (
+        <Button variant="outline" onClick={tilbake} className="px-4">
+          <ArrowLeft size={18} />
+          Tilbake
+        </Button>
+      )}
       {hoppOver && !nesteAktiv ? (
         <Button variant="secondary" onClick={neste} className="flex-1">
           Hopp over
         </Button>
       ) : (
         <Button onClick={neste} disabled={!nesteAktiv} className="flex-1">
-          {nesteTekst}
+          Neste
           <ArrowRight size={18} />
         </Button>
       )}

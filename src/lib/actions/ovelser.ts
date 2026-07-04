@@ -23,7 +23,7 @@ export async function opprettOvelse(formData: FormData) {
   const lokasjon = String(formData.get("lokasjon") ?? "").trim();
   const type = formData.get("type") as OvelseType;
   const lagFormat = formData.get("lagFormat") as LagFormat | null;
-  const vertDeltar = formData.get("vertDeltar") === "on";
+  const fellesLek = formData.get("fellesLek") === "on";
 
   if (!navn) return;
 
@@ -36,14 +36,33 @@ export async function opprettOvelse(formData: FormData) {
       lokasjon: lokasjon || null,
       type,
       lagFormat: type === "LAG" ? lagFormat : null,
-      vertDeltar,
+      fellesLek,
       sesongId: sesong.id,
       vertId: bruker.id,
     },
   });
 
   revalidatePath("/ovelser");
+  revalidatePath("/profil");
   redirect(`/ovelser/${ovelse.id}`);
+}
+
+export async function slettOvelse(ovelseId: string) {
+  const bruker = await krevInnloggetBruker();
+  const ovelse = await prisma.ovelse.findUnique({
+    where: { id: ovelseId },
+    select: { vertId: true },
+  });
+  // Kun verten kan slette sin egen øvelse.
+  if (!ovelse || ovelse.vertId !== bruker.id) {
+    redirect("/profil");
+  }
+  await prisma.ovelse.delete({ where: { id: ovelseId } });
+  revalidatePath("/ovelser");
+  revalidatePath("/profil");
+  revalidatePath("/dashboard");
+  revalidatePath("/stilling");
+  redirect("/profil");
 }
 
 export async function settOvelseStatus(ovelseId: string, status: OvelseStatus) {

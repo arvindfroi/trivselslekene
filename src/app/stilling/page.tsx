@@ -1,0 +1,108 @@
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { sikreAktivSesong } from "@/lib/sesong";
+import { hentStilling } from "@/lib/stilling";
+import Card from "@/components/ui/Card";
+import RankBadge from "@/components/ui/RankBadge";
+
+function StatCard({ label, verdi }: { label: string; verdi: string }) {
+  return (
+    <Card padding="p-4 sm:p-5">
+      <p className="text-[11px] tracking-widest text-fg-faint uppercase">
+        {label}
+      </p>
+      <p className="mt-1 font-display text-2xl text-fg sm:text-3xl">{verdi}</p>
+    </Card>
+  );
+}
+
+export default async function StillingSide() {
+  const session = await auth();
+  if (!session?.user) redirect("/bli-med");
+
+  const sesong = await sikreAktivSesong();
+  const stilling = await hentStilling(sesong.id);
+  const toppPoeng = Math.max(1, ...stilling.map((s) => s.totalPoeng));
+
+  const [antallOvelser, antallFullfort] = await Promise.all([
+    prisma.ovelse.count({ where: { sesongId: sesong.id } }),
+    prisma.ovelse.count({ where: { sesongId: sesong.id, status: "FULLFORT" } }),
+  ]);
+  const leder = stilling.find((s) => s.totalPoeng > 0);
+
+  return (
+    <div className="mx-auto max-w-4xl px-4 pt-28 pb-12">
+      <p className="text-xs tracking-[0.3em] text-accent-2 uppercase">
+        {sesong.navn}
+      </p>
+      <h1 className="mt-1 font-display text-4xl text-fg">Stilling</h1>
+      <p className="mt-2 text-sm text-fg-dim">
+        Sammenlagt stilling og statistikk for lekene.
+      </p>
+
+      <div className="mt-6 grid grid-cols-3 gap-3 sm:gap-4">
+        <StatCard label="Deltakere" verdi={String(stilling.length)} />
+        <StatCard
+          label="Øvelser"
+          verdi={`${antallFullfort}/${antallOvelser}`}
+        />
+        <StatCard label="Leder" verdi={leder ? leder.navn.split(" ")[0] : "–"} />
+      </div>
+
+      <section className="mt-8">
+        <h2 className="mb-3 text-sm font-medium tracking-widest text-fg-dim uppercase">
+          Sammenlagt
+        </h2>
+        <Card padding="p-0" className="overflow-hidden">
+          {stilling.length === 0 ? (
+            <p className="px-5 py-8 text-center text-sm text-fg-dim">
+              Ingen resultater er registrert ennå.
+            </p>
+          ) : (
+            <ul>
+              {stilling.map((rad, i) => (
+                <li
+                  key={rad.userId}
+                  className={`flex items-center gap-3 px-4 py-3.5 sm:px-5 ${
+                    i !== stilling.length - 1 ? "border-b border-line" : ""
+                  } ${i === 0 && rad.totalPoeng > 0 ? "bg-gold/[0.07]" : ""} ${
+                    rad.userId === session.user!.id ? "bg-accent-2/[0.06]" : ""
+                  }`}
+                >
+                  <RankBadge rank={i + 1} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="truncate font-medium text-fg">
+                        {rad.navn}
+                        {rad.userId === session.user!.id && (
+                          <span className="ml-2 text-xs text-accent-2">deg</span>
+                        )}
+                      </span>
+                      <span className="shrink-0 font-display text-lg tabular-nums text-fg">
+                        {rad.totalPoeng}
+                      </span>
+                    </div>
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
+                        <div
+                          className="bg-gradient-accent h-full rounded-full transition-all"
+                          style={{
+                            width: `${Math.max(4, (rad.totalPoeng / toppPoeng) * 100)}%`,
+                          }}
+                        />
+                      </div>
+                      <span className="shrink-0 text-[11px] text-fg-faint">
+                        {rad.antallOvelser} øvelser
+                      </span>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      </section>
+    </div>
+  );
+}

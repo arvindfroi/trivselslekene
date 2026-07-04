@@ -8,13 +8,15 @@ import {
   leggTilLagmedlem,
   opprettLag,
   settOvelseStatus,
+  slettOvelse,
 } from "@/lib/actions/ovelser";
 import type { OvelseStatus } from "@prisma/client";
+import { lagFormatTekst } from "@/lib/ovelseLabels";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Badge, { type BadgeVariant } from "@/components/ui/Badge";
 import { Input, Label, Select } from "@/components/ui/Field";
-import { MapPin, X } from "lucide-react";
+import { MapPin, Users, X, Trash2 } from "lucide-react";
 
 const statusVariant: Record<OvelseStatus, BadgeVariant> = {
   FULLFORT: "fullfort",
@@ -51,7 +53,7 @@ export default async function OvelseSide({
 
   const ovelseId = ovelse.id;
   const alleBrukere = await prisma.user.findMany({ orderBy: { navn: "asc" } });
-  const deltakere = ovelse.vertDeltar
+  const deltakere = ovelse.fellesLek
     ? alleBrukere
     : alleBrukere.filter((b) => b.id !== ovelse.vertId);
   const erVert = session.user.id === ovelse.vertId;
@@ -79,10 +81,10 @@ export default async function OvelseSide({
   };
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8 sm:py-12">
+    <div className="mx-auto max-w-4xl px-4 pt-28 pb-12">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="flex flex-wrap items-center gap-x-2 text-xs tracking-[0.2em] text-accent-2 uppercase">
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs tracking-[0.2em] text-accent-2 uppercase">
             <span>
               {ovelse.sesong.navn} · Vert: {ovelse.vert.navn}
             </span>
@@ -91,8 +93,20 @@ export default async function OvelseSide({
                 <MapPin size={12} /> {ovelse.lokasjon}
               </span>
             )}
+            {ovelse.fellesLek && (
+              <span className="inline-flex items-center gap-1 text-accent-3 normal-case tracking-normal">
+                <Users size={12} /> Felles lek
+              </span>
+            )}
           </p>
           <h1 className="mt-1 font-display text-3xl text-fg">{ovelse.navn}</h1>
+          <p className="mt-1 text-sm text-fg-dim">
+            {ovelse.type === "LAG"
+              ? `Lagøvelse${
+                  ovelse.lagFormat ? ` · ${lagFormatTekst[ovelse.lagFormat]}` : ""
+                }`
+              : "Individuell øvelse"}
+          </p>
           {ovelse.beskrivelse && (
             <p className="mt-2 max-w-xl text-sm text-fg-dim">
               {ovelse.beskrivelse}
@@ -109,30 +123,37 @@ export default async function OvelseSide({
       </div>
 
       {erVert ? (
-        <form
-          action={endreStatus}
-          className="mt-5 inline-flex flex-wrap gap-0 overflow-hidden rounded-full border border-line-strong"
-        >
-          {(["PLANLAGT", "PAAGAAR", "FULLFORT"] as OvelseStatus[]).map(
-            (s, i) => (
-              <button
-                key={s}
-                type="submit"
-                name="status"
-                value={s}
-                className={`px-4 py-2 text-xs font-medium tracking-wide uppercase transition-colors ${
-                  i > 0 ? "border-l border-line" : ""
-                } ${
-                  ovelse.status === s
-                    ? "bg-gradient-accent text-white"
-                    : "text-fg-dim hover:bg-white/[0.06] hover:text-fg"
-                }`}
-              >
-                {statusTekst[s]}
-              </button>
-            )
-          )}
-        </form>
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <form
+            action={endreStatus}
+            className="inline-flex flex-wrap gap-0 overflow-hidden rounded-full border border-line-strong"
+          >
+            {(["PLANLAGT", "PAAGAAR", "FULLFORT"] as OvelseStatus[]).map(
+              (s, i) => (
+                <button
+                  key={s}
+                  type="submit"
+                  name="status"
+                  value={s}
+                  className={`px-4 py-2 text-xs font-medium tracking-wide uppercase transition-colors ${
+                    i > 0 ? "border-l border-line" : ""
+                  } ${
+                    ovelse.status === s
+                      ? "bg-gradient-accent text-white"
+                      : "text-fg-dim hover:bg-white/[0.06] hover:text-fg"
+                  }`}
+                >
+                  {statusTekst[s]}
+                </button>
+              )
+            )}
+          </form>
+          <form action={slettOvelse.bind(null, ovelseId)}>
+            <Button type="submit" variant="danger" className="px-3 py-2 text-xs">
+              <Trash2 size={14} /> Slett øvelse
+            </Button>
+          </form>
+        </div>
       ) : (
         <p className="mt-5 rounded-xl border border-line bg-white/[0.03] px-4 py-2.5 text-sm text-fg-dim">
           Kun verten ({ovelse.vert.navn}) kan registrere resultater og endre
