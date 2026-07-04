@@ -7,7 +7,7 @@ import type {
 } from "react";
 
 export const inputClass =
-  "w-full border-2 border-ink bg-paper px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-soft/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 focus-visible:ring-offset-paper";
+  "w-full rounded-xl border border-line bg-white/[0.04] px-4 py-3 text-fg placeholder:text-fg-faint transition-colors focus-visible:outline-none focus-visible:border-accent-2 focus-visible:ring-2 focus-visible:ring-accent-2/40";
 
 export function Label({
   className = "",
@@ -15,7 +15,7 @@ export function Label({
 }: LabelHTMLAttributes<HTMLLabelElement>) {
   return (
     <label
-      className={`mb-1.5 block font-display text-[11px] tracking-widest text-ink-soft uppercase ${className}`}
+      className={`mb-1.5 block font-sans text-[11px] font-medium tracking-widest text-fg-dim uppercase ${className}`}
       {...rest}
     />
   );

@@ -10,7 +10,7 @@ import type { LagFormat, OvelseStatus, OvelseType } from "@prisma/client";
 async function krevInnloggetBruker() {
   const session = await auth();
   if (!session?.user?.id) {
-    redirect("/logg-inn");
+    redirect("/bli-med");
   }
   return session.user;
 }
@@ -20,8 +20,10 @@ export async function opprettOvelse(formData: FormData) {
 
   const navn = String(formData.get("navn") ?? "").trim();
   const beskrivelse = String(formData.get("beskrivelse") ?? "").trim();
+  const lokasjon = String(formData.get("lokasjon") ?? "").trim();
   const type = formData.get("type") as OvelseType;
   const lagFormat = formData.get("lagFormat") as LagFormat | null;
+  const vertDeltar = formData.get("vertDeltar") === "on";
 
   if (!navn) return;
 
@@ -31,8 +33,10 @@ export async function opprettOvelse(formData: FormData) {
     data: {
       navn,
       beskrivelse: beskrivelse || null,
+      lokasjon: lokasjon || null,
       type,
       lagFormat: type === "LAG" ? lagFormat : null,
+      vertDeltar,
       sesongId: sesong.id,
       vertId: bruker.id,
     },

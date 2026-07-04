@@ -16,7 +16,7 @@ export default function Card({
   return (
     <div
       style={style}
-      className={`card-poster ${hover ? "card-poster-hover" : ""} ${padding} ${className}`}
+      className={`surface rounded-2xl ${hover ? "surface-hover" : ""} ${padding} ${className}`}
     >
       {children}
     </div>

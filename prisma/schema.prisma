@@ -10,9 +10,9 @@ datasource db {
 /// En bruker / deltaker i Trivselslekene
 model User {
   id           String   @id @default(cuid())
-  navn         String
-  epost        String   @unique
-  passordHash  String
+  navn         String   @unique
+  epost        String?  @unique
+  passordHash  String?
   createdAt    DateTime @default(now())
 
   vertFor          Ovelse[]          @relation("Vert")
@@ -53,8 +53,10 @@ model Ovelse {
   id          String       @id @default(cuid())
   navn        String
   beskrivelse String?
+  lokasjon    String?
   type        OvelseType
   lagFormat   LagFormat?
+  vertDeltar  Boolean      @default(false)
   status      OvelseStatus @default(PLANLAGT)
   createdAt   DateTime     @default(now())
 

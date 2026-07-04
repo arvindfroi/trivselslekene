@@ -1,119 +1,120 @@
 @import "tailwindcss";
 
 :root {
-  --ink: #181a1f;
-  --ink-soft: #3a3d46;
-  --paper: #fbf6ea;
-  --paper-soft: #f2ead6;
-  --gold: #f0b429;
-  --gold-dark: #b9790f;
-  --coral: #e6503a;
-  --coral-dark: #ab3320;
-  --forest: #35714f;
-  --forest-dark: #244f38;
-  --line: rgba(24, 26, 31, 0.16);
+  --bg: #060608;
+  --bg-elev: #101015;
+  --bg-elev-2: #17171e;
+  --fg: #f5f5f7;
+  --fg-dim: #a2a2ae;
+  --fg-faint: #6a6a77;
+  --line: rgba(255, 255, 255, 0.1);
+  --line-strong: rgba(255, 255, 255, 0.2);
+  --accent: #a855f7;
+  --accent-2: #ec4899;
+  --accent-3: #22d3ee;
+  --gold: #fbbf24;
+  --silver: #cbd5e1;
+  --bronze: #d99a6c;
 }
 
 @theme inline {
-  --color-ink: var(--ink);
-  --color-ink-soft: var(--ink-soft);
-  --color-paper: var(--paper);
-  --color-paper-soft: var(--paper-soft);
-  --color-gold: var(--gold);
-  --color-gold-dark: var(--gold-dark);
-  --color-coral: var(--coral);
-  --color-coral-dark: var(--coral-dark);
-  --color-forest: var(--forest);
-  --color-forest-dark: var(--forest-dark);
+  --color-bg: var(--bg);
+  --color-bg-elev: var(--bg-elev);
+  --color-bg-elev-2: var(--bg-elev-2);
+  --color-fg: var(--fg);
+  --color-fg-dim: var(--fg-dim);
+  --color-fg-faint: var(--fg-faint);
   --color-line: var(--line);
-  --font-display: var(--font-bungee);
-  --font-sans: var(--font-archivo);
+  --color-line-strong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
+  --color-accent-3: var(--accent-3);
+  --font-display: var(--font-amstelvar), "Iowan Old Style", "Times New Roman", serif;
+  --font-sans: var(--font-roboto-flex), ui-sans-serif, system-ui, sans-serif;
 }
 
 html {
   scroll-behavior: smooth;
+  background-color: var(--bg);
 }
 
 body {
-  background-color: var(--paper);
-  color: var(--ink);
-  font-family: var(--font-sans);
-  position: relative;
+  background-color: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-roboto-flex), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Subtle grain overlay for atmosphere */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0.5;
-  mix-blend-mode: multiply;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.03 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+/* The signature brand gradient, echoing the PrismaticBurst colors */
+.text-gradient {
+  background-image: linear-gradient(
+    110deg,
+    var(--accent) 0%,
+    var(--accent-2) 45%,
+    var(--accent-3) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
-#app-root {
-  position: relative;
-  z-index: 1;
-}
-
-/* Halftone dot texture, used behind hero / section headers */
-.bg-halftone {
-  background-image: radial-gradient(var(--line) 1.2px, transparent 1.2px);
-  background-size: 16px 16px;
-}
-
-/* Diagonal stripe accent bar */
-.bg-stripes {
-  background-image: repeating-linear-gradient(
-    -45deg,
-    var(--gold) 0,
-    var(--gold) 8px,
-    var(--ink) 8px,
-    var(--ink) 16px
+.bg-gradient-accent {
+  background-image: linear-gradient(
+    110deg,
+    var(--accent) 0%,
+    var(--accent-2) 50%,
+    var(--accent-3) 100%
   );
 }
 
-/* Poster-style card: thick ink border with an offset "screen-print" shadow */
-.card-poster {
-  background-color: var(--paper);
-  border: 2px solid var(--ink);
-  box-shadow: 5px 5px 0 0 var(--ink);
+/* Frosted surface used for cards and panels over the dark base */
+.surface {
+  background-color: color-mix(in srgb, var(--bg-elev) 82%, transparent);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(8px);
+}
+
+.surface-hover {
   transition:
-    transform 0.18s ease,
-    box-shadow 0.18s ease;
+    border-color 0.2s ease,
+    transform 0.2s ease,
+    background-color 0.2s ease;
+}
+.surface-hover:hover {
+  border-color: var(--line-strong);
+  transform: translateY(-2px);
+  background-color: color-mix(in srgb, var(--bg-elev-2) 85%, transparent);
 }
 
-.card-poster-hover:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: 7px 7px 0 0 var(--ink);
+/* Interactive landing title — each letter lifts and shifts colour on hover */
+.tl-letter {
+  display: inline-block;
+  transition:
+    transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1),
+    color 0.28s ease,
+    font-variation-settings 0.28s ease,
+    text-shadow 0.28s ease;
+  will-change: transform;
 }
-
-.card-poster-sm {
-  box-shadow: 3px 3px 0 0 var(--ink);
-}
-
-/* Scoreboard numeral treatment */
-.font-scoreboard {
-  font-family: var(--font-display);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.02em;
+.tl-letter:hover {
+  transform: translateY(-0.14em) scale(1.05);
+  color: var(--accent-2);
+  font-variation-settings: "wght" 900, "opsz" 144;
+  text-shadow: 0 0 28px color-mix(in srgb, var(--accent-2) 55%, transparent);
 }
 
 @keyframes fade-up {
   from {
     opacity: 0;
-    transform: translateY(14px);
+    transform: translateY(16px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
   }
 }
-
 .animate-fade-up {
-  animation: fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 @keyframes pulse-dot {
@@ -123,16 +124,35 @@ body::before {
     transform: scale(1);
   }
   50% {
-    opacity: 0.55;
-    transform: scale(0.85);
+    opacity: 0.5;
+    transform: scale(0.8);
   }
 }
-
 .animate-pulse-dot {
   animation: pulse-dot 1.4s ease-in-out infinite;
 }
 
+@keyframes float-soft {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+.animate-float {
+  animation: float-soft 3.4s ease-in-out infinite;
+}
+
 ::selection {
-  background: var(--gold);
-  color: var(--ink);
+  background: var(--accent-2);
+  color: #fff;
+}
+
+/* Inputs get a clean dark treatment with a gradient focus ring */
+input,
+select,
+textarea {
+  color-scheme: dark;
 }

@@ -14,7 +14,7 @@ import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Badge, { type BadgeVariant } from "@/components/ui/Badge";
 import { Input, Label, Select } from "@/components/ui/Field";
-import { X } from "lucide-react";
+import { MapPin, X } from "lucide-react";
 
 const statusVariant: Record<OvelseStatus, BadgeVariant> = {
   FULLFORT: "fullfort",
@@ -30,7 +30,7 @@ export default async function OvelseSide({
   const { id } = await params;
 
   const session = await auth();
-  if (!session?.user) redirect("/logg-inn");
+  if (!session?.user) redirect("/bli-med");
 
   const ovelse = await prisma.ovelse.findUnique({
     where: { id },
@@ -51,7 +51,9 @@ export default async function OvelseSide({
 
   const ovelseId = ovelse.id;
   const alleBrukere = await prisma.user.findMany({ orderBy: { navn: "asc" } });
-  const deltakere = alleBrukere.filter((b) => b.id !== ovelse.vertId);
+  const deltakere = ovelse.vertDeltar
+    ? alleBrukere
+    : alleBrukere.filter((b) => b.id !== ovelse.vertId);
   const erVert = session.user.id === ovelse.vertId;
 
   async function endreStatus(formData: FormData) {
@@ -80,14 +82,19 @@ export default async function OvelseSide({
     <div className="mx-auto max-w-4xl px-4 py-8 sm:py-12">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="font-display text-[11px] tracking-widest text-coral-dark uppercase">
-            {ovelse.sesong.navn} · Vert: {ovelse.vert.navn}
+          <p className="flex flex-wrap items-center gap-x-2 text-xs tracking-[0.2em] text-accent-2 uppercase">
+            <span>
+              {ovelse.sesong.navn} · Vert: {ovelse.vert.navn}
+            </span>
+            {ovelse.lokasjon && (
+              <span className="inline-flex items-center gap-1 text-fg-faint normal-case tracking-normal">
+                <MapPin size={12} /> {ovelse.lokasjon}
+              </span>
+            )}
           </p>
-          <h1 className="mt-1 font-display text-2xl text-ink sm:text-3xl">
-            {ovelse.navn}
-          </h1>
+          <h1 className="mt-1 font-display text-3xl text-fg">{ovelse.navn}</h1>
           {ovelse.beskrivelse && (
-            <p className="mt-2 max-w-xl text-sm text-ink-soft">
+            <p className="mt-2 max-w-xl text-sm text-fg-dim">
               {ovelse.beskrivelse}
             </p>
           )}
@@ -104,7 +111,7 @@ export default async function OvelseSide({
       {erVert ? (
         <form
           action={endreStatus}
-          className="mt-5 inline-flex flex-wrap gap-0 border-2 border-ink"
+          className="mt-5 inline-flex flex-wrap gap-0 overflow-hidden rounded-full border border-line-strong"
         >
           {(["PLANLAGT", "PAAGAAR", "FULLFORT"] as OvelseStatus[]).map(
             (s, i) => (
@@ -113,12 +120,12 @@ export default async function OvelseSide({
                 type="submit"
                 name="status"
                 value={s}
-                className={`px-3.5 py-2 font-display text-[11px] tracking-widest uppercase transition-colors ${
-                  i > 0 ? "border-l-2 border-ink" : ""
+                className={`px-4 py-2 text-xs font-medium tracking-wide uppercase transition-colors ${
+                  i > 0 ? "border-l border-line" : ""
                 } ${
                   ovelse.status === s
-                    ? "bg-ink text-paper"
-                    : "bg-paper text-ink hover:bg-paper-soft"
+                    ? "bg-gradient-accent text-white"
+                    : "text-fg-dim hover:bg-white/[0.06] hover:text-fg"
                 }`}
               >
                 {statusTekst[s]}
@@ -127,7 +134,7 @@ export default async function OvelseSide({
           )}
         </form>
       ) : (
-        <p className="mt-5 border-2 border-ink/20 bg-paper-soft px-4 py-2.5 text-sm text-ink-soft">
+        <p className="mt-5 rounded-xl border border-line bg-white/[0.03] px-4 py-2.5 text-sm text-fg-dim">
           Kun verten ({ovelse.vert.navn}) kan registrere resultater og endre
           status for denne øvelsen.
         </p>
@@ -135,12 +142,12 @@ export default async function OvelseSide({
 
       {ovelse.type === "INDIVIDUELL" ? (
         <Card className="mt-8" padding="p-5 sm:p-6">
-          <h2 className="mb-4 font-display text-sm tracking-widest text-ink uppercase">
+          <h2 className="mb-4 text-sm font-medium tracking-widest text-fg-dim uppercase">
             Resultater
           </h2>
 
           {ovelse.individuelleResultater.length === 0 ? (
-            <p className="py-4 text-center text-sm text-ink-soft">
+            <p className="py-4 text-center text-sm text-fg-dim">
               Ingen resultater registrert ennå
             </p>
           ) : (
@@ -150,17 +157,17 @@ export default async function OvelseSide({
                   key={r.id}
                   className={`flex items-center justify-between gap-3 py-2.5 ${
                     i !== ovelse.individuelleResultater.length - 1
-                      ? "border-b border-ink/10"
+                      ? "border-b border-line"
                       : ""
                   }`}
                 >
-                  <span className="text-sm">
-                    <span className="font-scoreboard mr-2 text-ink-soft">
+                  <span className="text-sm text-fg">
+                    <span className="mr-2 tabular-nums text-fg-faint">
                       {r.plassering ? `${r.plassering}.` : "–"}
                     </span>
                     {r.user.navn}
                   </span>
-                  <span className="font-scoreboard text-sm">{r.poeng} p</span>
+                  <span className="text-sm tabular-nums text-fg">{r.poeng} p</span>
                 </li>
               ))}
             </ul>
@@ -169,7 +176,7 @@ export default async function OvelseSide({
           {erVert && (
             <form
               action={lagreIndividueltAction}
-              className="mt-5 flex flex-wrap items-end gap-3 border-t-2 border-ink/10 pt-5"
+              className="mt-5 flex flex-wrap items-end gap-3 border-t border-line pt-5"
             >
               <div className="min-w-[9rem] flex-1">
                 <Label htmlFor="userId">Deltaker</Label>
@@ -203,7 +210,7 @@ export default async function OvelseSide({
         <div className="mt-8 flex flex-col gap-5">
           {erVert && (
             <Card padding="p-5 sm:p-6">
-              <h2 className="mb-4 font-display text-sm tracking-widest text-ink uppercase">
+              <h2 className="mb-4 text-sm font-medium tracking-widest text-fg-dim uppercase">
                 Opprett lag
               </h2>
               <form action={opprettLagAction} className="flex gap-3">
@@ -234,9 +241,9 @@ export default async function OvelseSide({
             return (
               <Card key={lag.id} padding="p-5 sm:p-6">
                 <div className="flex items-center justify-between gap-2">
-                  <h3 className="font-display text-sm text-ink">{lag.navn}</h3>
+                  <h3 className="font-display text-lg text-fg">{lag.navn}</h3>
                   {lag.resultat && (
-                    <span className="font-scoreboard text-sm text-ink-soft">
+                    <span className="text-sm tabular-nums text-fg-dim">
                       {lag.resultat.plassering
                         ? `${lag.resultat.plassering}. plass · `
                         : ""}
@@ -249,7 +256,7 @@ export default async function OvelseSide({
                   {lag.medlemmer.map((m) => (
                     <li
                       key={m.id}
-                      className="flex items-center gap-1.5 border-2 border-ink/20 bg-paper-soft px-3 py-1 text-sm"
+                      className="flex items-center gap-1.5 rounded-full border border-line bg-white/[0.05] px-3 py-1 text-sm text-fg"
                     >
                       {m.user.navn}
                       {erVert && (
@@ -257,7 +264,7 @@ export default async function OvelseSide({
                           <input type="hidden" name="lagmedlemId" value={m.id} />
                           <button
                             type="submit"
-                            className="text-ink-soft transition-colors hover:text-coral-dark"
+                            className="text-fg-faint transition-colors hover:text-red-300"
                             aria-label={`Fjern ${m.user.navn} fra laget`}
                           >
                             <X size={14} strokeWidth={2.5} />
@@ -267,14 +274,12 @@ export default async function OvelseSide({
                     </li>
                   ))}
                   {lag.medlemmer.length === 0 && (
-                    <li className="text-sm text-ink-soft/70">
-                      Ingen medlemmer ennå
-                    </li>
+                    <li className="text-sm text-fg-faint">Ingen medlemmer ennå</li>
                   )}
                 </ul>
 
                 {erVert && (
-                  <div className="mt-4 flex flex-col gap-3 border-t-2 border-ink/10 pt-4 sm:flex-row sm:items-end sm:justify-between">
+                  <div className="mt-4 flex flex-col gap-3 border-t border-line pt-4 sm:flex-row sm:items-end sm:justify-between">
                     <form action={leggTilMedlemAction} className="flex items-end gap-2">
                       <div>
                         <Label htmlFor={`userId-${lag.id}`}>Legg til medlem</Label>
@@ -322,7 +327,7 @@ export default async function OvelseSide({
           })}
 
           {ovelse.lag.length === 0 && (
-            <p className="text-sm text-ink-soft">Ingen lag er opprettet ennå.</p>
+            <p className="text-sm text-fg-dim">Ingen lag er opprettet ennå.</p>
           )}
         </div>
       )}

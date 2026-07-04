@@ -1,31 +1,29 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import bcrypt from "bcryptjs";
-import { prisma } from "@/lib/prisma";
+import { finnEllerOpprettBruker } from "@/lib/brukere";
+
+const ETT_AAR = 60 * 60 * 24 * 365;
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  session: { strategy: "jwt" },
+  session: { strategy: "jwt", maxAge: ETT_AAR },
   pages: {
-    signIn: "/logg-inn",
+    signIn: "/bli-med",
   },
   providers: [
     Credentials({
       credentials: {
-        epost: {},
-        passord: {},
+        navn: {},
       },
+      // Ingen passord: navnet identifiserer deg. Finnes navnet fra før logger
+      // du inn på den kontoen, ellers opprettes den. Sessionen huskes i et år.
       authorize: async (credentials) => {
-        const epost = credentials?.epost as string | undefined;
-        const passord = credentials?.passord as string | undefined;
-        if (!epost || !passord) return null;
+        const navn = credentials?.navn as string | undefined;
+        if (!navn) return null;
 
-        const user = await prisma.user.findUnique({ where: { epost } });
+        const user = await finnEllerOpprettBruker(navn);
         if (!user) return null;
 
-        const passordOk = await bcrypt.compare(passord, user.passordHash);
-        if (!passordOk) return null;
-
-        return { id: user.id, name: user.navn, email: user.epost };
+        return { id: user.id, name: user.navn };
       },
     }),
   ],

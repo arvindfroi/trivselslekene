@@ -1,28 +1,31 @@
 import type { Metadata, Viewport } from "next";
-import { Bungee, Archivo } from "next/font/google";
+import { Roboto_Flex } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 
-const bungee = Bungee({
-  variable: "--font-bungee",
+const robotoFlex = Roboto_Flex({
+  variable: "--font-roboto-flex",
   subsets: ["latin"],
-  weight: "400",
 });
 
-const archivo = Archivo({
-  variable: "--font-archivo",
-  subsets: ["latin"],
+const amstelvar = localFont({
+  src: "../fonts/Amstelvar-latin.woff2",
+  variable: "--font-amstelvar",
+  weight: "100 900",
+  display: "swap",
+  fallback: ["Iowan Old Style", "Times New Roman", "serif"],
 });
 
 export const metadata: Metadata = {
-  title: "Trivselslekene",
+  title: "Trivselslekene 2026",
   description: "Organiser, registrer og følg med på Trivselslekene",
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#fbf6ea",
+  themeColor: "#060608",
 };
 
 export default function RootLayout({
@@ -33,16 +36,14 @@ export default function RootLayout({
   return (
     <html
       lang="nb"
-      className={`${bungee.variable} ${archivo.variable} h-full antialiased`}
+      className={`${robotoFlex.variable} ${amstelvar.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col bg-paper text-ink">
-        <div id="app-root" className="flex min-h-full w-full flex-col">
-          <Navbar />
-          <main className="flex-1">{children}</main>
-          <footer className="border-t-2 border-ink bg-ink px-4 py-6 text-center font-display text-[11px] tracking-widest text-paper/70 uppercase">
-            Trivselslekene — laget for vennegjengen
-          </footer>
-        </div>
+      <body className="flex min-h-full flex-col bg-bg text-fg">
+        <Navbar />
+        <main className="flex-1">{children}</main>
+        <footer className="border-t border-line px-4 py-6 text-center text-[11px] tracking-widest text-fg-faint uppercase">
+          Trivselslekene — laget for vennegjengen
+        </footer>
       </body>
     </html>
   );

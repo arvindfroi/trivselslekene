@@ -8,7 +8,7 @@ import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Badge, { type BadgeVariant } from "@/components/ui/Badge";
 import { Input, Label, Select, Textarea } from "@/components/ui/Field";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, MapPin } from "lucide-react";
 
 const statusVariant: Record<string, BadgeVariant> = {
   FULLFORT: "fullfort",
@@ -24,7 +24,7 @@ const statusLabel: Record<string, string> = {
 
 export default async function OvelserSide() {
   const session = await auth();
-  if (!session?.user) redirect("/logg-inn");
+  if (!session?.user) redirect("/bli-med");
 
   const sesong = await sikreAktivSesong();
 
@@ -36,20 +36,18 @@ export default async function OvelserSide() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:py-12">
-      <p className="font-display text-[11px] tracking-widest text-coral-dark uppercase">
+      <p className="text-xs tracking-[0.3em] text-accent-2 uppercase">
         {sesong.navn}
       </p>
-      <h1 className="mt-1 font-display text-3xl text-ink sm:text-4xl">
-        Øvelser
-      </h1>
-      <p className="mt-2 max-w-xl text-sm text-ink-soft">
-        Verten for en øvelse deltar ikke selv i den øvelsen, men er med i alle
-        de andre.
+      <h1 className="mt-1 font-display text-4xl text-fg">Øvelser</h1>
+      <p className="mt-2 max-w-xl text-sm text-fg-dim">
+        Verten for en øvelse deltar vanligvis ikke selv, men er med i alle de
+        andre.
       </p>
 
       <Card className="mt-8" padding="p-5 sm:p-6">
-        <h2 className="mb-4 font-display text-sm tracking-widest text-ink uppercase">
-          Opprett ny øvelse
+        <h2 className="mb-4 text-sm font-medium tracking-widest text-fg-dim uppercase">
+          Legg til en ny øvelse
         </h2>
         <form action={opprettOvelse} className="flex flex-col gap-4">
           <div>
@@ -63,27 +61,41 @@ export default async function OvelserSide() {
           </div>
 
           <div>
+            <Label htmlFor="lokasjon">Lokasjon (valgfritt)</Label>
+            <Input
+              id="lokasjon"
+              name="lokasjon"
+              placeholder="F.eks. i hagen, på stranda"
+            />
+          </div>
+
+          <div>
             <Label htmlFor="beskrivelse">Beskrivelse (valgfritt)</Label>
             <Textarea id="beskrivelse" name="beskrivelse" rows={2} />
           </div>
 
           <fieldset>
-            <legend className="mb-1.5 font-display text-[11px] tracking-widest text-ink-soft uppercase">
+            <legend className="mb-1.5 block text-[11px] font-medium tracking-widest text-fg-dim uppercase">
               Type øvelse
             </legend>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <label className="has-checked:border-ink has-checked:bg-gold/20 flex cursor-pointer items-center gap-2.5 border-2 border-ink/25 bg-paper px-3.5 py-2.5 text-sm transition-colors">
+              <label className="has-checked:border-accent-2 has-checked:bg-accent-2/10 flex cursor-pointer items-center gap-2.5 rounded-xl border border-line bg-white/[0.03] px-3.5 py-2.5 text-sm text-fg transition-colors">
                 <input
                   type="radio"
                   name="type"
                   value="INDIVIDUELL"
                   defaultChecked
-                  className="accent-ink"
+                  className="accent-accent-2"
                 />
                 Individuell
               </label>
-              <label className="has-checked:border-ink has-checked:bg-gold/20 flex cursor-pointer items-center gap-2.5 border-2 border-ink/25 bg-paper px-3.5 py-2.5 text-sm transition-colors">
-                <input type="radio" name="type" value="LAG" className="accent-ink" />
+              <label className="has-checked:border-accent-2 has-checked:bg-accent-2/10 flex cursor-pointer items-center gap-2.5 rounded-xl border border-line bg-white/[0.03] px-3.5 py-2.5 text-sm text-fg transition-colors">
+                <input
+                  type="radio"
+                  name="type"
+                  value="LAG"
+                  className="accent-accent-2"
+                />
                 Lagøvelse
               </label>
             </div>
@@ -98,6 +110,15 @@ export default async function OvelserSide() {
             </Select>
           </div>
 
+          <label className="flex cursor-pointer items-center gap-3 text-sm text-fg">
+            <input
+              type="checkbox"
+              name="vertDeltar"
+              className="h-4 w-4 accent-accent-2"
+            />
+            Jeg deltar også selv i denne øvelsen
+          </label>
+
           <Button type="submit" className="mt-1 self-start">
             Opprett øvelse
           </Button>
@@ -105,13 +126,11 @@ export default async function OvelserSide() {
       </Card>
 
       <section className="mt-10">
-        <h2 className="mb-3 font-display text-sm tracking-widest text-ink uppercase">
+        <h2 className="mb-3 text-sm font-medium tracking-widest text-fg-dim uppercase">
           Alle øvelser
         </h2>
         {ovelser.length === 0 ? (
-          <p className="text-sm text-ink-soft">
-            Ingen øvelser er opprettet ennå.
-          </p>
+          <p className="text-sm text-fg-dim">Ingen øvelser er opprettet ennå.</p>
         ) : (
           <ul className="flex flex-col gap-3">
             {ovelser.map((ovelse) => (
@@ -123,12 +142,19 @@ export default async function OvelserSide() {
                     className="flex items-center justify-between gap-3"
                   >
                     <div className="min-w-0">
-                      <p className="truncate font-display text-sm text-ink">
+                      <p className="truncate font-display text-lg text-fg">
                         {ovelse.navn}
                       </p>
-                      <p className="mt-1 truncate text-xs text-ink-soft">
-                        Vert: {ovelse.vert.navn} ·{" "}
-                        {ovelse.type === "LAG" ? "Lagøvelse" : "Individuell"}
+                      <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-fg-faint">
+                        <span>
+                          Vert: {ovelse.vert.navn} ·{" "}
+                          {ovelse.type === "LAG" ? "Lagøvelse" : "Individuell"}
+                        </span>
+                        {ovelse.lokasjon && (
+                          <span className="inline-flex items-center gap-1">
+                            <MapPin size={12} /> {ovelse.lokasjon}
+                          </span>
+                        )}
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-3">
@@ -141,7 +167,7 @@ export default async function OvelserSide() {
                       </Badge>
                       <ChevronRight
                         size={18}
-                        className="text-ink-soft"
+                        className="text-fg-faint"
                         strokeWidth={2.5}
                       />
                     </div>
