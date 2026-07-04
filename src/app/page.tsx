@@ -12,18 +12,18 @@ export default async function Hjemmeside() {
       {/* PrismaticBurst-bakgrunn */}
       <div className="absolute inset-0 z-0">
         <PrismaticBurst
-          intensity={2.1}
-          speed={0.5}
-          distort={1.6}
+          intensity={3.2}
+          speed={0.55}
+          distort={2}
           animationType="rotate3d"
-          colors={["#4c1d95", "#a855f7", "#ec4899", "#22d3ee"]}
+          colors={["#6d28d9", "#a855f7", "#ec4899", "#22d3ee"]}
           rayCount={0}
-          mixBlendMode="lighten"
+          mixBlendMode="screen"
         />
       </div>
 
       {/* Mørk vignett så teksten er lesbar over bursten */}
-      <div className="pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(ellipse_at_center,rgba(6,6,8,0.35)_0%,rgba(6,6,8,0.75)_70%,#060608_100%)]" />
+      <div className="pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(ellipse_at_center,rgba(6,6,8,0.12)_0%,rgba(6,6,8,0.55)_72%,#060608_100%)]" />
 
       <div className="relative z-10 mx-auto max-w-3xl px-6 py-16 text-center">
         <p
