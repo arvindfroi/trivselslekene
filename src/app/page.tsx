@@ -12,13 +12,13 @@ export default async function Hjemmeside() {
       {/* PrismaticBurst-bakgrunn */}
       <div className="absolute inset-0 z-0">
         <PrismaticBurst
-          intensity={3.2}
+          intensity={4.4}
           speed={0.55}
           distort={2}
           animationType="rotate3d"
           colors={["#6d28d9", "#a855f7", "#ec4899", "#22d3ee"]}
           rayCount={0}
-          mixBlendMode="screen"
+          mixBlendMode="none"
         />
       </div>
 
