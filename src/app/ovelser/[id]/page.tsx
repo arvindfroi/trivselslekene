@@ -10,6 +10,17 @@ import {
   settOvelseStatus,
 } from "@/lib/actions/ovelser";
 import type { OvelseStatus } from "@prisma/client";
+import Card from "@/components/ui/Card";
+import Button from "@/components/ui/Button";
+import Badge, { type BadgeVariant } from "@/components/ui/Badge";
+import { Input, Label, Select } from "@/components/ui/Field";
+import { X } from "lucide-react";
+
+const statusVariant: Record<OvelseStatus, BadgeVariant> = {
+  FULLFORT: "fullfort",
+  PAAGAAR: "pagaar",
+  PLANLAGT: "planlagt",
+};
 
 export default async function OvelseSide({
   params,
@@ -66,156 +77,146 @@ export default async function OvelseSide({
   };
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8">
-      <div className="flex items-start justify-between">
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:py-12">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">{ovelse.navn}</h1>
-          <p className="text-sm text-gray-600">
-            Vert: {ovelse.vert.navn} · {ovelse.sesong.navn}
+          <p className="font-display text-[11px] tracking-widest text-coral-dark uppercase">
+            {ovelse.sesong.navn} · Vert: {ovelse.vert.navn}
           </p>
+          <h1 className="mt-1 font-display text-2xl text-ink sm:text-3xl">
+            {ovelse.navn}
+          </h1>
           {ovelse.beskrivelse && (
-            <p className="mt-2 max-w-xl text-sm text-gray-700">
+            <p className="mt-2 max-w-xl text-sm text-ink-soft">
               {ovelse.beskrivelse}
             </p>
           )}
         </div>
-        <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium uppercase text-gray-600">
+        <Badge
+          variant={statusVariant[ovelse.status]}
+          pulse={ovelse.status === "PAAGAAR"}
+          className="shrink-0"
+        >
           {statusTekst[ovelse.status]}
-        </span>
+        </Badge>
       </div>
 
-      {erVert && (
-        <form action={endreStatus} className="mt-4 flex items-center gap-2 text-sm">
-          <span className="text-gray-500">Status:</span>
-          {(["PLANLAGT", "PAAGAAR", "FULLFORT"] as OvelseStatus[]).map((s) => (
-            <button
-              key={s}
-              type="submit"
-              name="status"
-              value={s}
-              className={`rounded-md border px-3 py-1 ${
-                ovelse.status === s
-                  ? "border-blue-600 bg-blue-600 text-white"
-                  : "border-gray-300 hover:bg-gray-50"
-              }`}
-            >
-              {statusTekst[s]}
-            </button>
-          ))}
+      {erVert ? (
+        <form
+          action={endreStatus}
+          className="mt-5 inline-flex flex-wrap gap-0 border-2 border-ink"
+        >
+          {(["PLANLAGT", "PAAGAAR", "FULLFORT"] as OvelseStatus[]).map(
+            (s, i) => (
+              <button
+                key={s}
+                type="submit"
+                name="status"
+                value={s}
+                className={`px-3.5 py-2 font-display text-[11px] tracking-widest uppercase transition-colors ${
+                  i > 0 ? "border-l-2 border-ink" : ""
+                } ${
+                  ovelse.status === s
+                    ? "bg-ink text-paper"
+                    : "bg-paper text-ink hover:bg-paper-soft"
+                }`}
+              >
+                {statusTekst[s]}
+              </button>
+            )
+          )}
         </form>
-      )}
-
-      {!erVert && (
-        <p className="mt-4 rounded-md bg-yellow-50 px-3 py-2 text-sm text-yellow-800">
+      ) : (
+        <p className="mt-5 border-2 border-ink/20 bg-paper-soft px-4 py-2.5 text-sm text-ink-soft">
           Kun verten ({ovelse.vert.navn}) kan registrere resultater og endre
           status for denne øvelsen.
         </p>
       )}
 
       {ovelse.type === "INDIVIDUELL" ? (
-        <section className="mt-6 rounded-lg border border-gray-200 bg-white p-4">
-          <h2 className="mb-3 font-semibold">Resultater</h2>
+        <Card className="mt-8" padding="p-5 sm:p-6">
+          <h2 className="mb-4 font-display text-sm tracking-widest text-ink uppercase">
+            Resultater
+          </h2>
 
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 text-left text-gray-500">
-                <th className="py-2">Plassering</th>
-                <th className="py-2">Deltaker</th>
-                <th className="py-2 text-right">Poeng</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ovelse.individuelleResultater.map((r) => (
-                <tr key={r.id} className="border-b border-gray-100 last:border-0">
-                  <td className="py-2">{r.plassering ?? "–"}</td>
-                  <td className="py-2">{r.user.navn}</td>
-                  <td className="py-2 text-right">{r.poeng}</td>
-                </tr>
+          {ovelse.individuelleResultater.length === 0 ? (
+            <p className="py-4 text-center text-sm text-ink-soft">
+              Ingen resultater registrert ennå
+            </p>
+          ) : (
+            <ul className="flex flex-col">
+              {ovelse.individuelleResultater.map((r, i) => (
+                <li
+                  key={r.id}
+                  className={`flex items-center justify-between gap-3 py-2.5 ${
+                    i !== ovelse.individuelleResultater.length - 1
+                      ? "border-b border-ink/10"
+                      : ""
+                  }`}
+                >
+                  <span className="text-sm">
+                    <span className="font-scoreboard mr-2 text-ink-soft">
+                      {r.plassering ? `${r.plassering}.` : "–"}
+                    </span>
+                    {r.user.navn}
+                  </span>
+                  <span className="font-scoreboard text-sm">{r.poeng} p</span>
+                </li>
               ))}
-              {ovelse.individuelleResultater.length === 0 && (
-                <tr>
-                  <td colSpan={3} className="py-4 text-center text-gray-400">
-                    Ingen resultater registrert ennå
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+            </ul>
+          )}
 
           {erVert && (
             <form
               action={lagreIndividueltAction}
-              className="mt-4 flex flex-wrap items-end gap-2 border-t border-gray-100 pt-4"
+              className="mt-5 flex flex-wrap items-end gap-3 border-t-2 border-ink/10 pt-5"
             >
-              <div>
-                <label className="mb-1 block text-xs font-medium">Deltaker</label>
-                <select
-                  name="userId"
-                  required
-                  className="rounded-md border border-gray-300 px-2 py-1 text-sm"
-                >
+              <div className="min-w-[9rem] flex-1">
+                <Label htmlFor="userId">Deltaker</Label>
+                <Select id="userId" name="userId" required>
                   {deltakere.map((d) => (
                     <option key={d.id} value={d.id}>
                       {d.navn}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium">Plassering</label>
-                <input
-                  type="number"
-                  name="plassering"
-                  min={1}
-                  className="w-20 rounded-md border border-gray-300 px-2 py-1 text-sm"
-                />
+              <div className="w-24">
+                <Label htmlFor="plassering">Plassering</Label>
+                <Input id="plassering" type="number" name="plassering" min={1} />
               </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium">Poeng</label>
-                <input
+              <div className="w-28">
+                <Label htmlFor="poeng">Poeng</Label>
+                <Input
+                  id="poeng"
                   type="number"
                   name="poeng"
                   step="0.5"
                   required
-                  className="w-24 rounded-md border border-gray-300 px-2 py-1 text-sm"
                 />
               </div>
-              <button
-                type="submit"
-                className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
-              >
-                Lagre resultat
-              </button>
+              <Button type="submit">Lagre</Button>
             </form>
           )}
-        </section>
+        </Card>
       ) : (
-        <section className="mt-6 flex flex-col gap-4">
+        <div className="mt-8 flex flex-col gap-5">
           {erVert && (
-            <div className="rounded-lg border border-gray-200 bg-white p-4">
-              <h2 className="mb-3 font-semibold">Opprett lag</h2>
-              <form action={opprettLagAction} className="flex gap-2">
-                <input
-                  name="navn"
-                  required
-                  placeholder="Lagnavn"
-                  className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
-                />
-                <button
-                  type="submit"
-                  className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-                >
-                  Legg til lag
-                </button>
+            <Card padding="p-5 sm:p-6">
+              <h2 className="mb-4 font-display text-sm tracking-widest text-ink uppercase">
+                Opprett lag
+              </h2>
+              <form action={opprettLagAction} className="flex gap-3">
+                <Input name="navn" required placeholder="Lagnavn" className="flex-1" />
+                <Button type="submit">Legg til lag</Button>
               </form>
-            </div>
+            </Card>
           )}
 
           {ovelse.lag.map((lag) => {
-            const lagId = lag.id;
             async function leggTilMedlemAction(formData: FormData) {
               "use server";
-              await leggTilLagmedlem(ovelseId, lagId, formData);
+              await leggTilLagmedlem(ovelseId, lag.id, formData);
             }
             async function fjernMedlemAction(formData: FormData) {
               "use server";
@@ -224,29 +225,31 @@ export default async function OvelseSide({
             }
             async function lagreResultatAction(formData: FormData) {
               "use server";
-              await lagreResultatLag(ovelseId, lagId, formData);
+              await lagreResultatLag(ovelseId, lag.id, formData);
             }
 
             const medlemIder = new Set(lag.medlemmer.map((m) => m.userId));
             const tilgjengelige = deltakere.filter((d) => !medlemIder.has(d.id));
 
             return (
-              <div key={lag.id} className="rounded-lg border border-gray-200 bg-white p-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-medium">{lag.navn}</h3>
+              <Card key={lag.id} padding="p-5 sm:p-6">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="font-display text-sm text-ink">{lag.navn}</h3>
                   {lag.resultat && (
-                    <span className="text-sm text-gray-600">
-                      {lag.resultat.plassering ? `${lag.resultat.plassering}. plass · ` : ""}
-                      {lag.resultat.poeng} poeng
+                    <span className="font-scoreboard text-sm text-ink-soft">
+                      {lag.resultat.plassering
+                        ? `${lag.resultat.plassering}. plass · `
+                        : ""}
+                      {lag.resultat.poeng} p
                     </span>
                   )}
                 </div>
 
-                <ul className="mt-2 flex flex-wrap gap-2 text-sm">
+                <ul className="mt-3 flex flex-wrap gap-2">
                   {lag.medlemmer.map((m) => (
                     <li
                       key={m.id}
-                      className="flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1"
+                      className="flex items-center gap-1.5 border-2 border-ink/20 bg-paper-soft px-3 py-1 text-sm"
                     >
                       {m.user.navn}
                       {erVert && (
@@ -254,88 +257,74 @@ export default async function OvelseSide({
                           <input type="hidden" name="lagmedlemId" value={m.id} />
                           <button
                             type="submit"
-                            className="ml-1 text-gray-400 hover:text-red-600"
+                            className="text-ink-soft transition-colors hover:text-coral-dark"
                             aria-label={`Fjern ${m.user.navn} fra laget`}
                           >
-                            ×
+                            <X size={14} strokeWidth={2.5} />
                           </button>
                         </form>
                       )}
                     </li>
                   ))}
                   {lag.medlemmer.length === 0 && (
-                    <li className="text-gray-400">Ingen medlemmer ennå</li>
+                    <li className="text-sm text-ink-soft/70">
+                      Ingen medlemmer ennå
+                    </li>
                   )}
                 </ul>
 
                 {erVert && (
-                  <div className="mt-3 flex flex-col gap-3 border-t border-gray-100 pt-3 sm:flex-row sm:items-end sm:justify-between">
+                  <div className="mt-4 flex flex-col gap-3 border-t-2 border-ink/10 pt-4 sm:flex-row sm:items-end sm:justify-between">
                     <form action={leggTilMedlemAction} className="flex items-end gap-2">
                       <div>
-                        <label className="mb-1 block text-xs font-medium">
-                          Legg til medlem
-                        </label>
-                        <select
-                          name="userId"
-                          required
-                          className="rounded-md border border-gray-300 px-2 py-1 text-sm"
-                        >
+                        <Label htmlFor={`userId-${lag.id}`}>Legg til medlem</Label>
+                        <Select id={`userId-${lag.id}`} name="userId" required>
                           {tilgjengelige.map((d) => (
                             <option key={d.id} value={d.id}>
                               {d.navn}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                       </div>
-                      <button
-                        type="submit"
-                        className="rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50"
-                      >
+                      <Button type="submit" variant="outline">
                         Legg til
-                      </button>
+                      </Button>
                     </form>
 
                     <form action={lagreResultatAction} className="flex items-end gap-2">
-                      <div>
-                        <label className="mb-1 block text-xs font-medium">
-                          Plassering
-                        </label>
-                        <input
+                      <div className="w-20">
+                        <Label htmlFor={`plassering-${lag.id}`}>Plass.</Label>
+                        <Input
+                          id={`plassering-${lag.id}`}
                           type="number"
                           name="plassering"
                           min={1}
                           defaultValue={lag.resultat?.plassering ?? undefined}
-                          className="w-20 rounded-md border border-gray-300 px-2 py-1 text-sm"
                         />
                       </div>
-                      <div>
-                        <label className="mb-1 block text-xs font-medium">Poeng</label>
-                        <input
+                      <div className="w-24">
+                        <Label htmlFor={`poeng-${lag.id}`}>Poeng</Label>
+                        <Input
+                          id={`poeng-${lag.id}`}
                           type="number"
                           name="poeng"
                           step="0.5"
                           required
                           defaultValue={lag.resultat?.poeng ?? undefined}
-                          className="w-24 rounded-md border border-gray-300 px-2 py-1 text-sm"
                         />
                       </div>
-                      <button
-                        type="submit"
-                        className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
-                      >
-                        Lagre resultat
-                      </button>
+                      <Button type="submit">Lagre</Button>
                     </form>
                   </div>
                 )}
-              </div>
+              </Card>
             );
           })}
 
           {ovelse.lag.length === 0 && (
-            <p className="text-sm text-gray-500">Ingen lag er opprettet ennå.</p>
+            <p className="text-sm text-ink-soft">Ingen lag er opprettet ennå.</p>
           )}
-        </section>
+        </div>
       )}
     </div>
   );

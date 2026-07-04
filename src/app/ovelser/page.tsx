@@ -4,6 +4,23 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
 import { opprettOvelse } from "@/lib/actions/ovelser";
+import Card from "@/components/ui/Card";
+import Button from "@/components/ui/Button";
+import Badge, { type BadgeVariant } from "@/components/ui/Badge";
+import { Input, Label, Select, Textarea } from "@/components/ui/Field";
+import { ChevronRight } from "lucide-react";
+
+const statusVariant: Record<string, BadgeVariant> = {
+  FULLFORT: "fullfort",
+  PAAGAAR: "pagaar",
+  PLANLAGT: "planlagt",
+};
+
+const statusLabel: Record<string, string> = {
+  FULLFORT: "Fullført",
+  PAAGAAR: "Pågår",
+  PLANLAGT: "Planlagt",
+};
 
 export default async function OvelserSide() {
   const session = await auth();
@@ -18,114 +35,117 @@ export default async function OvelserSide() {
   });
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8">
-      <h1 className="text-2xl font-bold">Øvelser – {sesong.navn}</h1>
-      <p className="mt-1 text-sm text-gray-600">
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:py-12">
+      <p className="font-display text-[11px] tracking-widest text-coral-dark uppercase">
+        {sesong.navn}
+      </p>
+      <h1 className="mt-1 font-display text-3xl text-ink sm:text-4xl">
+        Øvelser
+      </h1>
+      <p className="mt-2 max-w-xl text-sm text-ink-soft">
         Verten for en øvelse deltar ikke selv i den øvelsen, men er med i alle
         de andre.
       </p>
 
-      <section className="mt-6 rounded-lg border border-gray-200 bg-white p-4">
-        <h2 className="mb-3 font-semibold">Opprett ny øvelse</h2>
-        <form action={opprettOvelse} className="flex flex-col gap-3">
+      <Card className="mt-8" padding="p-5 sm:p-6">
+        <h2 className="mb-4 font-display text-sm tracking-widest text-ink uppercase">
+          Opprett ny øvelse
+        </h2>
+        <form action={opprettOvelse} className="flex flex-col gap-4">
           <div>
-            <label htmlFor="navn" className="mb-1 block text-sm font-medium">
-              Navn på øvelsen
-            </label>
-            <input
+            <Label htmlFor="navn">Navn på øvelsen</Label>
+            <Input
               id="navn"
               name="navn"
               required
-              className="w-full rounded-md border border-gray-300 px-3 py-2"
               placeholder="F.eks. Stikkball, Bridge-turnering, Sekkeløp"
             />
           </div>
 
           <div>
-            <label
-              htmlFor="beskrivelse"
-              className="mb-1 block text-sm font-medium"
-            >
-              Beskrivelse (valgfritt)
-            </label>
-            <textarea
-              id="beskrivelse"
-              name="beskrivelse"
-              rows={2}
-              className="w-full rounded-md border border-gray-300 px-3 py-2"
-            />
+            <Label htmlFor="beskrivelse">Beskrivelse (valgfritt)</Label>
+            <Textarea id="beskrivelse" name="beskrivelse" rows={2} />
           </div>
 
           <fieldset>
-            <legend className="mb-1 block text-sm font-medium">Type øvelse</legend>
-            <div className="flex flex-col gap-2 text-sm">
-              <label className="flex items-center gap-2">
+            <legend className="mb-1.5 font-display text-[11px] tracking-widest text-ink-soft uppercase">
+              Type øvelse
+            </legend>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <label className="has-checked:border-ink has-checked:bg-gold/20 flex cursor-pointer items-center gap-2.5 border-2 border-ink/25 bg-paper px-3.5 py-2.5 text-sm transition-colors">
                 <input
                   type="radio"
                   name="type"
                   value="INDIVIDUELL"
                   defaultChecked
+                  className="accent-ink"
                 />
-                Individuell – hver deltaker konkurrerer for seg selv
+                Individuell
               </label>
-              <label className="flex items-center gap-2">
-                <input type="radio" name="type" value="LAG" />
-                Lagøvelse – deltakerne konkurrerer i lag
+              <label className="has-checked:border-ink has-checked:bg-gold/20 flex cursor-pointer items-center gap-2.5 border-2 border-ink/25 bg-paper px-3.5 py-2.5 text-sm transition-colors">
+                <input type="radio" name="type" value="LAG" className="accent-ink" />
+                Lagøvelse
               </label>
             </div>
           </fieldset>
 
           <div>
-            <label htmlFor="lagFormat" className="mb-1 block text-sm font-medium">
-              Lagformat (kun for lagøvelser)
-            </label>
-            <select
-              id="lagFormat"
-              name="lagFormat"
-              className="w-full rounded-md border border-gray-300 px-3 py-2"
-              defaultValue="PAR"
-            >
+            <Label htmlFor="lagFormat">Lagformat (kun for lagøvelser)</Label>
+            <Select id="lagFormat" name="lagFormat" defaultValue="PAR">
               <option value="PAR">Par (2 og 2)</option>
               <option value="TRIO">Trekamp (3 og 3)</option>
               <option value="FLERE_LAG">Flere lag mot hverandre</option>
-            </select>
+            </Select>
           </div>
 
-          <button
-            type="submit"
-            className="mt-2 self-start rounded-md bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700"
-          >
+          <Button type="submit" className="mt-1 self-start">
             Opprett øvelse
-          </button>
+          </Button>
         </form>
-      </section>
+      </Card>
 
-      <section className="mt-8">
-        <h2 className="mb-3 font-semibold">Alle øvelser</h2>
+      <section className="mt-10">
+        <h2 className="mb-3 font-display text-sm tracking-widest text-ink uppercase">
+          Alle øvelser
+        </h2>
         {ovelser.length === 0 ? (
-          <p className="text-sm text-gray-500">Ingen øvelser er opprettet ennå.</p>
+          <p className="text-sm text-ink-soft">
+            Ingen øvelser er opprettet ennå.
+          </p>
         ) : (
-          <ul className="flex flex-col gap-2">
+          <ul className="flex flex-col gap-3">
             {ovelser.map((ovelse) => (
               <li key={ovelse.id}>
-                <Link
-                  href={`/ovelser/${ovelse.id}`}
-                  className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-3 hover:border-blue-400"
-                >
-                  <div>
-                    <p className="font-medium">{ovelse.navn}</p>
-                    <p className="text-xs text-gray-500">
-                      Vert: {ovelse.vert.navn} ·{" "}
-                      {ovelse.type === "LAG" ? "Lagøvelse" : "Individuell"}
-                    </p>
-                  </div>
-                  <span className="text-xs uppercase text-gray-500">
-                    {ovelse.status === "FULLFORT"
-                      ? "Fullført"
-                      : ovelse.status === "PAAGAAR"
-                        ? "Pågår"
-                        : "Planlagt"}
-                  </span>
+                <Link href={`/ovelser/${ovelse.id}`}>
+                  <Card
+                    hover
+                    padding="p-4 sm:p-5"
+                    className="flex items-center justify-between gap-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate font-display text-sm text-ink">
+                        {ovelse.navn}
+                      </p>
+                      <p className="mt-1 truncate text-xs text-ink-soft">
+                        Vert: {ovelse.vert.navn} ·{" "}
+                        {ovelse.type === "LAG" ? "Lagøvelse" : "Individuell"}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3">
+                      <Badge
+                        variant={statusVariant[ovelse.status]}
+                        pulse={ovelse.status === "PAAGAAR"}
+                        className="hidden sm:inline-flex"
+                      >
+                        {statusLabel[ovelse.status]}
+                      </Badge>
+                      <ChevronRight
+                        size={18}
+                        className="text-ink-soft"
+                        strokeWidth={2.5}
+                      />
+                    </div>
+                  </Card>
                 </Link>
               </li>
             ))}
