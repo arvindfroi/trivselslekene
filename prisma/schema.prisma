@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// En bruker / deltaker i Trivselslekene
+model User {
+  id           String   @id @default(cuid())
+  navn         String
+  epost        String   @unique
+  passordHash  String
+  createdAt    DateTime @default(now())
+
+  vertFor          Ovelse[]          @relation("Vert")
+  individuelleResultater ResultatIndividuell[]
+  lagmedlemskap    LagMedlem[]
+}
+
+/// Et årgang av Trivselslekene, f.eks. "Trivselslekene 2026"
+model Sesong {
+  id        String   @id @default(cuid())
+  aar       Int      @unique
+  navn      String
+  aktiv     Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  ovelser Ovelse[]
+}
+
+enum OvelseType {
+  INDIVIDUELL
+  LAG
+}
+
+enum LagFormat {
+  PAR
+  TRIO
+  FLERE_LAG
+}
+
+enum OvelseStatus {
+  PLANLAGT
+  PAAGAAR
+  FULLFORT
+}
+
+/// En øvelse ("game") i lekene. Verten arrangerer øvelsen, men deltar ikke selv i den.
+model Ovelse {
+  id          String       @id @default(cuid())
+  navn        String
+  beskrivelse String?
+  type        OvelseType
+  lagFormat   LagFormat?
+  status      OvelseStatus @default(PLANLAGT)
+  createdAt   DateTime     @default(now())
+
+  sesongId String
+  sesong   Sesong @relation(fields: [sesongId], references: [id], onDelete: Cascade)
+
+  vertId String
+  vert   User   @relation("Vert", fields: [vertId], references: [id])
+
+  lag                    Lag[]
+  individuelleResultater ResultatIndividuell[]
+  lagResultater          ResultatLag[]
+}
+
+/// Et lag i en lag-øvelse (par, trio eller flere-lag-format som bridge/fotball)
+model Lag {
+  id       String @id @default(cuid())
+  navn     String
+  ovelseId String
+  ovelse   Ovelse @relation(fields: [ovelseId], references: [id], onDelete: Cascade)
+
+  medlemmer LagMedlem[]
+  resultat  ResultatLag?
+}
+
+model LagMedlem {
+  id     String @id @default(cuid())
+  lagId  String
+  lag    Lag    @relation(fields: [lagId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@unique([lagId, userId])
+}
+
+/// Resultat for en enkeltperson i en individuell øvelse
+model ResultatIndividuell {
+  id        String  @id @default(cuid())
+  ovelseId  String
+  ovelse    Ovelse  @relation(fields: [ovelseId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User    @relation(fields: [userId], references: [id])
+  plassering Int?
+  poeng     Float
+  notat     String?
+
+  @@unique([ovelseId, userId])
+}
+
+/// Resultat for et lag i en lag-øvelse. Poeng krediteres alle lagmedlemmer.
+model ResultatLag {
+  id        String @id @default(cuid())
+  ovelseId  String
+  ovelse    Ovelse @relation(fields: [ovelseId], references: [id], onDelete: Cascade)
+  lagId     String @unique
+  lag       Lag    @relation(fields: [lagId], references: [id], onDelete: Cascade)
+  plassering Int?
+  poeng     Float
+  notat     String?
+
+  @@unique([ovelseId, lagId])
+}
