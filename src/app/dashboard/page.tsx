@@ -7,6 +7,7 @@ import { hentStilling } from "@/lib/stilling";
 import Card from "@/components/ui/Card";
 import { LinkButton } from "@/components/ui/Button";
 import RankBadge from "@/components/ui/RankBadge";
+import AuroraBackground from "@/components/AuroraBackground";
 import { ArrowRight, Trophy, Swords, User } from "lucide-react";
 
 function StatCard({ label, verdi }: { label: string; verdi: string }) {
@@ -36,7 +37,9 @@ export default async function HjemSide() {
   });
 
   return (
-    <div className="mx-auto max-w-4xl px-4 pt-28 pb-12">
+    <div className="relative isolate min-h-dvh">
+      <AuroraBackground className="fixed inset-0 z-0" reveal={1} />
+      <div className="relative z-10 mx-auto max-w-4xl px-4 pt-28 pb-12">
       <p className="animate-fade-up text-xs tracking-[0.3em] text-accent-2 uppercase">
         {sesong.navn}
       </p>
@@ -107,6 +110,7 @@ export default async function HjemSide() {
           <User size={18} /> Profil
         </LinkButton>
       </section>
+      </div>
     </div>
   );
 }
