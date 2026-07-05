@@ -44,11 +44,6 @@ const containerVariants = {
   },
 };
 
-const logoVariants = {
-  expanded: { opacity: 1, x: 0, rotate: 0, transition: { type: "spring" as const, damping: 15 } },
-  collapsed: { opacity: 0, x: -20, rotate: -180, transition: { duration: 0.25 } },
-};
-
 const itemVariants = {
   expanded: { opacity: 1, x: 0, scale: 1, transition: { type: "spring" as const, damping: 15 } },
   collapsed: { opacity: 0, x: -14, scale: 0.95, transition: { duration: 0.18 } },
@@ -111,17 +106,8 @@ export default function FloatingNav({ loggedIn }: { loggedIn: boolean }) {
         )}
       >
         <motion.div
-          variants={logoVariants}
-          className="flex shrink-0 items-center pr-1 pl-2"
-        >
-          <span className="bg-gradient-accent flex h-8 w-8 items-center justify-center rounded-lg font-display text-sm font-bold text-white">
-            T
-          </span>
-        </motion.div>
-
-        <motion.div
           className={cn(
-            "flex items-center gap-0.5 pr-2",
+            "flex items-center gap-0.5 px-2",
             !isExpanded && "pointer-events-none"
           )}
         >

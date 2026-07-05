@@ -9,7 +9,7 @@ import { fullforOnboarding, startOnboarding } from "@/lib/actions/auth";
 import { lagFormatTekst, lagFormatValg } from "@/lib/ovelseLabels";
 import Button from "@/components/ui/Button";
 import { Input, Textarea } from "@/components/ui/Field";
-import AuroraBackground from "@/components/AuroraBackground";
+import AnimatedGradientBackground from "@/components/AnimatedGradientBackground";
 
 type Data = {
   lekNavn: string;
@@ -130,12 +130,21 @@ export default function Onboarding({ startNavn = "" }: { startNavn?: string }) {
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
     >
-      {/* Aurora langs kantene — lilla fra start, grønn vokser frem med stegene */}
-      <AuroraBackground
+      {/* Radial aurora som blir mer til stede utover i stegene, og puster/blurrer på hover */}
+      <motion.div
         className="pointer-events-none fixed inset-0 z-0"
-        reveal={progress}
-        boost={hover}
-      />
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 0.5 + 0.5 * progress }}
+        transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+      >
+        <AnimatedGradientBackground
+          Breathing
+          breathingRange={hover ? 12 : 5}
+          animationSpeed={hover ? 0.05 : 0.02}
+          containerClassName="[transition:filter_0.6s_ease]"
+          containerStyle={{ filter: hover ? "blur(45px)" : "blur(0px)" }}
+        />
+      </motion.div>
 
       <div className="relative z-10 mx-auto flex min-h-dvh max-w-md flex-col justify-center px-5 py-10">
         <div className="mb-8 flex items-center gap-2">

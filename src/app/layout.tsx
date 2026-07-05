@@ -41,9 +41,6 @@ export default function RootLayout({
       <body className="flex min-h-full flex-col bg-bg text-fg">
         <SiteNav />
         <main className="flex-1">{children}</main>
-        <footer className="border-t border-line px-4 py-6 text-center text-[11px] tracking-widest text-fg-faint uppercase">
-          Trivselslekene — laget for vennegjengen
-        </footer>
       </body>
     </html>
   );

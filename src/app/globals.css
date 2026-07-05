@@ -73,23 +73,6 @@ body {
   );
 }
 
-/* Radial aurora: svart senter, lilla ring innover, grønn ytterst mot kanten. */
-.aurora-ring {
-  position: absolute;
-  inset: 0;
-  mix-blend-mode: screen;
-  animation: aurora-breathe 18s ease-in-out infinite;
-  will-change: transform;
-}
-@keyframes aurora-breathe {
-  0%,
-  100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.06);
-  }
-}
 
 /* Frosted surface used for cards and panels over the dark base */
 .surface {
