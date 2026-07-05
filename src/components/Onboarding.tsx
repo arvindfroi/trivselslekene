@@ -95,18 +95,21 @@ function FormatChip({
 }
 
 export default function Onboarding({ startNavn = "" }: { startNavn?: string }) {
-  const bekreftetNavn = startNavn;
   const erNy = startNavn.length > 0;
 
   const [data, setData] = useState<Data>(start);
-  const [steg, setSteg] = useState(0);
+  const [navn, setNavn] = useState(startNavn);
+  // Navn-steget er alltid steg 0. Nye brukere starter der; kommer man tilbake
+  // med et navn (erNy) starter man på lek-steget, men kan gå tilbake til navn.
+  const [steg, setSteg] = useState(erNy ? 1 : 0);
   const [pending, startTransition] = useTransition();
   const [feil, setFeil] = useState<string | null>(null);
   const [hover, setHover] = useState(false);
 
-  const total = 1 + POST_NAVN.length;
-  const key = erNy ? POST_NAVN[Math.min(steg, POST_NAVN.length - 1)] : "navn";
-  const filledSegments = erNy ? steg + 2 : 1;
+  const STEG_KEYS = ["navn", ...POST_NAVN];
+  const total = STEG_KEYS.length;
+  const key = STEG_KEYS[Math.min(steg, total - 1)];
+  const filledSegments = steg + 1;
 
   // Auroraen langs kantene starter lilla og blir sakte til lilla + grønn
   // etter hvert som man kommer gjennom stegene. Midten forblir svart.
@@ -119,7 +122,7 @@ export default function Onboarding({ startNavn = "" }: { startNavn?: string }) {
   const fullfor = () => {
     setFeil(null);
     startTransition(async () => {
-      const res = await fullforOnboarding({ navn: bekreftetNavn, ...data });
+      const res = await fullforOnboarding({ navn, ...data });
       if (res && "feil" in res) setFeil(res.feil);
     });
   };
@@ -183,17 +186,42 @@ export default function Onboarding({ startNavn = "" }: { startNavn?: string }) {
                 Ingen e-post eller passord — bare navnet ditt. Skriver du et navn
                 du har brukt før, logger du rett inn igjen.
               </p>
-              <form action={startOnboarding} className="mt-6">
-                <Input
-                  name="navn"
-                  autoFocus
-                  required
-                  minLength={2}
-                  placeholder="F.eks. Ola Nordmann"
-                  className="text-lg"
-                />
-                <NavnKnapp />
-              </form>
+              {erNy ? (
+                // Inne i onboardingen: rediger navnet uten omlasting, så du
+                // beholder resten av det du har fylt ut.
+                <div className="mt-6">
+                  <Input
+                    autoFocus
+                    value={navn}
+                    onChange={(e) => setNavn(e.target.value)}
+                    placeholder="F.eks. Ola Nordmann"
+                    className="text-lg"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && navn.trim().length >= 2) neste();
+                    }}
+                  />
+                  <Button
+                    onClick={neste}
+                    disabled={navn.trim().length < 2}
+                    className="mt-5 w-full"
+                  >
+                    Neste
+                    <ArrowRight size={18} />
+                  </Button>
+                </div>
+              ) : (
+                <form action={startOnboarding} className="mt-6">
+                  <Input
+                    name="navn"
+                    autoFocus
+                    required
+                    minLength={2}
+                    placeholder="F.eks. Ola Nordmann"
+                    className="text-lg"
+                  />
+                  <NavnKnapp />
+                </form>
+              )}
             </div>
           )}
 
@@ -201,7 +229,7 @@ export default function Onboarding({ startNavn = "" }: { startNavn?: string }) {
             <StepShell
               steg={filledSegments}
               total={total}
-              hei={bekreftetNavn}
+              hei={navn}
               tittel="Hva heter leken din?"
               tekst="Alle er vert for én lek. Hva vil du kalle din?"
             >
@@ -216,6 +244,7 @@ export default function Onboarding({ startNavn = "" }: { startNavn?: string }) {
                 }}
               />
               <NavRad
+                tilbake={tilbake}
                 neste={neste}
                 nesteAktiv={data.lekNavn.trim().length > 0}
               />
@@ -370,7 +399,7 @@ export default function Onboarding({ startNavn = "" }: { startNavn?: string }) {
                 Ser dette riktig ut?
               </h1>
               <dl className="mt-6 flex flex-col divide-y divide-line rounded-2xl border border-line bg-white/[0.03]">
-                <Rad merke="Ditt navn" verdi={bekreftetNavn} />
+                <Rad merke="Ditt navn" verdi={navn} />
                 <Rad merke="Lek" verdi={data.lekNavn} />
                 <Rad
                   merke="Oppsett"
