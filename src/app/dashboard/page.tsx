@@ -26,15 +26,16 @@ export default async function HjemSide() {
   if (!session?.user) redirect("/bli-med");
 
   const sesong = await sikreAktivSesong();
-  const stilling = await hentStilling(sesong.id);
+  const [stilling, dineOvelser] = await Promise.all([
+    hentStilling(sesong.id),
+    prisma.ovelse.count({
+      where: { sesongId: sesong.id, vertId: session.user.id },
+    }),
+  ]);
 
   const minIndex = stilling.findIndex((s) => s.userId === session.user!.id);
   const min = minIndex >= 0 ? stilling[minIndex] : null;
   const topp = stilling.slice(0, 3);
-
-  const dineOvelser = await prisma.ovelse.count({
-    where: { sesongId: sesong.id, vertId: session.user.id },
-  });
 
   return (
     <div className="relative isolate min-h-dvh">
