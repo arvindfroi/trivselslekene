@@ -9,6 +9,7 @@ import { fullforOnboarding, startOnboarding } from "@/lib/actions/auth";
 import { lagFormatTekst, lagFormatValg } from "@/lib/ovelseLabels";
 import Button from "@/components/ui/Button";
 import { Input, Textarea } from "@/components/ui/Field";
+import AnimatedGradientBackground from "@/components/AnimatedGradientBackground";
 
 type Data = {
   lekNavn: string;
@@ -101,10 +102,16 @@ export default function Onboarding({ startNavn = "" }: { startNavn?: string }) {
   const [steg, setSteg] = useState(0);
   const [pending, startTransition] = useTransition();
   const [feil, setFeil] = useState<string | null>(null);
+  const [hover, setHover] = useState(false);
 
   const total = 1 + POST_NAVN.length;
   const key = erNy ? POST_NAVN[Math.min(steg, POST_NAVN.length - 1)] : "navn";
   const filledSegments = erNy ? steg + 2 : 1;
+
+  // Gradienten avdekkes gradvis gjennom spørsmålene og er fullt til stede på
+  // siste steg. Når musen svever over, puster og blurrer den mer.
+  const progress = total > 1 ? (filledSegments - 1) / (total - 1) : 0;
+  const bgOpacity = 0.2 + 0.8 * progress;
 
   const oppdater = (delta: Partial<Data>) => setData((d) => ({ ...d, ...delta }));
   const neste = () => setSteg((s) => s + 1);
@@ -119,8 +126,31 @@ export default function Onboarding({ startNavn = "" }: { startNavn?: string }) {
   };
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-5 py-10">
-      <div className="mb-8 flex items-center gap-2">
+    <div
+      className="relative isolate min-h-dvh w-full overflow-hidden"
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      {/* Aurora-bakgrunn som avdekkes gradvis gjennom onboardingen */}
+      <motion.div
+        className="pointer-events-none fixed inset-0 z-0"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: bgOpacity }}
+        transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+      >
+        <AnimatedGradientBackground
+          Breathing
+          breathingRange={hover ? 16 : 6}
+          animationSpeed={hover ? 0.06 : 0.02}
+          containerClassName="[transition:filter_0.7s_ease]"
+          containerStyle={{ filter: hover ? "blur(90px)" : "blur(55px)" }}
+        />
+      </motion.div>
+      {/* Myk mørk halo bak innholdet så teksten er lesbar over auroraen */}
+      <div className="pointer-events-none fixed inset-0 z-[1] bg-[radial-gradient(ellipse_46%_38%_at_50%_49%,rgba(6,6,8,0.42)_0%,transparent_70%)]" />
+
+      <div className="relative z-10 mx-auto flex min-h-dvh max-w-md flex-col justify-center px-5 py-10">
+        <div className="mb-8 flex items-center gap-2">
         {Array.from({ length: total }).map((_, i) => (
           <span
             key={i}
@@ -368,6 +398,7 @@ export default function Onboarding({ startNavn = "" }: { startNavn?: string }) {
               </div>
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>

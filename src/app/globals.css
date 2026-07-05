@@ -9,9 +9,10 @@
   --fg-faint: #6a6a77;
   --line: rgba(255, 255, 255, 0.1);
   --line-strong: rgba(255, 255, 255, 0.2);
-  --accent: #a855f7;
-  --accent-2: #ec4899;
-  --accent-3: #22d3ee;
+  /* Signaturgradient: grønn → lyseblå → vibrant lilla, på svart */
+  --accent: #2be5a0;
+  --accent-2: #38bdf8;
+  --accent-3: #a855f7;
   --gold: #fbbf24;
   --silver: #cbd5e1;
   --bronze: #d99a6c;
