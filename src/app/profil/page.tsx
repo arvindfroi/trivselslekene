@@ -3,22 +3,39 @@ import { auth, signOut } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
 import { opprettOvelse, slettOvelse } from "@/lib/actions/ovelser";
-import { lagFormatValg, statusTekst, statusVariant } from "@/lib/ovelseLabels";
+import {
+  kvalitetValg,
+  lagFormatValg,
+  statusTekst,
+  statusVariant,
+} from "@/lib/ovelseLabels";
 import Card from "@/components/ui/Card";
 import Button, { LinkButton } from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import { Input, Label, Select, Textarea } from "@/components/ui/Field";
+import ProfilRediger from "@/components/ProfilRediger";
 import { MapPin, Users, Settings2, Trash2, Plus } from "lucide-react";
 
-export default async function ProfilSide() {
+export default async function ProfilSide({
+  searchParams,
+}: {
+  searchParams: Promise<{ navnfeil?: string }>;
+}) {
   const session = await auth();
   if (!session?.user) redirect("/bli-med");
 
+  const { navnfeil } = await searchParams;
   const sesong = await sikreAktivSesong();
-  const mine = await prisma.ovelse.findMany({
-    where: { sesongId: sesong.id, vertId: session.user.id },
-    orderBy: { createdAt: "desc" },
-  });
+  const [bruker, mine] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { navn: true, bildeUrl: true },
+    }),
+    prisma.ovelse.findMany({
+      where: { sesongId: sesong.id, vertId: session.user.id },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
 
   async function loggUt() {
     "use server";
@@ -44,7 +61,15 @@ export default async function ProfilSide() {
         </form>
       </div>
 
-      <Card className="mt-8" padding="p-5 sm:p-6">
+      <div className="mt-8">
+        <ProfilRediger
+          navn={bruker?.navn ?? session.user.name ?? ""}
+          bildeUrl={bruker?.bildeUrl ?? null}
+          navnFeil={navnfeil}
+        />
+      </div>
+
+      <Card className="mt-6" padding="p-5 sm:p-6">
         <h2 className="mb-4 flex items-center gap-2 text-sm font-medium tracking-widest text-fg-dim uppercase">
           <Plus size={16} /> Legg til en ny øvelse
         </h2>
@@ -109,6 +134,30 @@ export default async function ProfilSide() {
                 />
                 Lagøvelse
               </label>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend className="mb-1.5 block text-[11px] font-medium tracking-widest text-fg-dim uppercase">
+              Hvilke egenskaper tester leken? (valgfritt)
+            </legend>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {kvalitetValg.map((k) => (
+                <label
+                  key={k.verdi}
+                  className="has-checked:border-accent-2 has-checked:bg-accent-2/10 flex cursor-pointer items-center gap-2 rounded-xl border border-line bg-white/[0.03] px-3 py-2 text-sm text-fg transition-colors"
+                >
+                  <input
+                    type="checkbox"
+                    name="kvaliteter"
+                    value={k.verdi}
+                    className="h-4 w-4 accent-accent-2"
+                  />
+                  <span>
+                    {k.emoji} {k.tittel}
+                  </span>
+                </label>
+              ))}
             </div>
           </fieldset>
 

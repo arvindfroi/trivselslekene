@@ -5,7 +5,8 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
-import type { LagFormat, OvelseStatus, OvelseType } from "@prisma/client";
+import type { Kvalitet, LagFormat, OvelseStatus, OvelseType } from "@prisma/client";
+import { ALLE_KVALITETER } from "@/lib/ovelseLabels";
 
 async function krevInnloggetBruker() {
   const session = await auth();
@@ -24,6 +25,10 @@ export async function opprettOvelse(formData: FormData) {
   const type = formData.get("type") as OvelseType;
   const lagFormat = formData.get("lagFormat") as LagFormat | null;
   const fellesLek = formData.get("fellesLek") === "on";
+  const kvaliteter = formData
+    .getAll("kvaliteter")
+    .map(String)
+    .filter((k): k is Kvalitet => (ALLE_KVALITETER as string[]).includes(k));
 
   if (!navn) return;
 
@@ -36,6 +41,7 @@ export async function opprettOvelse(formData: FormData) {
       lokasjon: lokasjon || null,
       type,
       lagFormat: type === "LAG" ? lagFormat : null,
+      kvaliteter,
       fellesLek,
       sesongId: sesong.id,
       vertId: bruker.id,

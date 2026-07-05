@@ -13,6 +13,7 @@ model User {
   navn         String   @unique
   epost        String?  @unique
   passordHash  String?
+  bildeUrl     String?
   createdAt    DateTime @default(now())
 
   vertFor          Ovelse[]          @relation("Vert")
@@ -54,6 +55,20 @@ enum OvelseStatus {
   FULLFORT
 }
 
+/// Egenskaper en lek tester. En lek kan ha én eller flere.
+enum Kvalitet {
+  STYRKE
+  UTHOLDENHET
+  PRESISJON
+  FLAKS
+  LAGSPILL
+  TAKTIKK
+  HURTIGHET
+  KREATIVITET
+  KUNNSKAP
+  NERVER
+}
+
 /// En øvelse ("game") i lekene. Verten arrangerer øvelsen. Normalt deltar ikke
 /// verten selv, men en "felles lek" er en foreslått lek der alle er med.
 model Ovelse {
@@ -63,6 +78,7 @@ model Ovelse {
   lokasjon    String?
   type        OvelseType
   lagFormat   LagFormat?
+  kvaliteter  Kvalitet[]
   fellesLek   Boolean      @default(false)
   status      OvelseStatus @default(PLANLAGT)
   createdAt   DateTime     @default(now())

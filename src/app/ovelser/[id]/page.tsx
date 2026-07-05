@@ -11,7 +11,11 @@ import {
   slettOvelse,
 } from "@/lib/actions/ovelser";
 import type { OvelseStatus } from "@prisma/client";
-import { lagFormatTekst } from "@/lib/ovelseLabels";
+import {
+  kvalitetEmoji,
+  kvalitetTekst,
+  lagFormatTekst,
+} from "@/lib/ovelseLabels";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Badge, { type BadgeVariant } from "@/components/ui/Badge";
@@ -111,6 +115,18 @@ export default async function OvelseSide({
             <p className="mt-2 max-w-xl text-sm text-fg-dim">
               {ovelse.beskrivelse}
             </p>
+          )}
+          {ovelse.kvaliteter.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {ovelse.kvaliteter.map((k) => (
+                <span
+                  key={k}
+                  className="inline-flex items-center gap-1 rounded-full border border-line bg-white/[0.03] px-2.5 py-1 text-xs text-fg-dim"
+                >
+                  {kvalitetEmoji[k]} {kvalitetTekst[k]}
+                </span>
+              ))}
+            </div>
           )}
         </div>
         <Badge

@@ -1,4 +1,4 @@
-import type { LagFormat, OvelseStatus } from "@prisma/client";
+import type { Kvalitet, LagFormat, OvelseStatus } from "@prisma/client";
 
 export const lagFormatTekst: Record<LagFormat, string> = {
   PAR: "2 mot 2 (par)",
@@ -28,6 +28,54 @@ export const lagFormatValg: {
   { verdi: "FLERE_LAG", tittel: "Flere lag", hint: "Fem eller flere lag" },
   { verdi: "ANNET", tittel: "Annet", hint: "Et annet lagoppsett" },
 ];
+
+export const kvalitetTekst: Record<Kvalitet, string> = {
+  STYRKE: "Styrke",
+  UTHOLDENHET: "Utholdenhet",
+  PRESISJON: "Presisjon",
+  FLAKS: "Flaks",
+  LAGSPILL: "Lagspill",
+  TAKTIKK: "Taktikk",
+  HURTIGHET: "Hurtighet",
+  KREATIVITET: "Kreativitet",
+  KUNNSKAP: "Kunnskap",
+  NERVER: "Nerver",
+};
+
+/** Emoji brukt for hver egenskap i kort og velgere. */
+export const kvalitetEmoji: Record<Kvalitet, string> = {
+  STYRKE: "💪",
+  UTHOLDENHET: "🫁",
+  PRESISJON: "🎯",
+  FLAKS: "🍀",
+  LAGSPILL: "🤝",
+  TAKTIKK: "🧠",
+  HURTIGHET: "⚡",
+  KREATIVITET: "🎨",
+  KUNNSKAP: "📚",
+  NERVER: "🧊",
+};
+
+/** Rekkefølgen egenskapene vises i. */
+export const ALLE_KVALITETER: Kvalitet[] = [
+  "STYRKE",
+  "UTHOLDENHET",
+  "PRESISJON",
+  "HURTIGHET",
+  "FLAKS",
+  "LAGSPILL",
+  "TAKTIKK",
+  "KREATIVITET",
+  "KUNNSKAP",
+  "NERVER",
+];
+
+export const kvalitetValg: { verdi: Kvalitet; tittel: string; emoji: string }[] =
+  ALLE_KVALITETER.map((k) => ({
+    verdi: k,
+    tittel: kvalitetTekst[k],
+    emoji: kvalitetEmoji[k],
+  }));
 
 export const statusTekst: Record<OvelseStatus, string> = {
   PLANLAGT: "Planlagt",

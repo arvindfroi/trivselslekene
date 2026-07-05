@@ -2,9 +2,11 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
-import { hentStilling } from "@/lib/stilling";
+import { hentKvalitetsledere, hentStilling } from "@/lib/stilling";
+import { kvalitetEmoji, kvalitetTekst } from "@/lib/ovelseLabels";
 import Card from "@/components/ui/Card";
 import RankBadge from "@/components/ui/RankBadge";
+import Avatar from "@/components/Avatar";
 
 function StatCard({ label, verdi }: { label: string; verdi: string }) {
   return (
@@ -22,13 +24,16 @@ export default async function StillingSide() {
   if (!session?.user) redirect("/bli-med");
 
   const sesong = await sikreAktivSesong();
-  const stilling = await hentStilling(sesong.id);
+  const [stilling, kvalitetsledere, antallOvelser, antallFullfort] =
+    await Promise.all([
+      hentStilling(sesong.id),
+      hentKvalitetsledere(sesong.id),
+      prisma.ovelse.count({ where: { sesongId: sesong.id } }),
+      prisma.ovelse.count({
+        where: { sesongId: sesong.id, status: "FULLFORT" },
+      }),
+    ]);
   const toppPoeng = Math.max(1, ...stilling.map((s) => s.totalPoeng));
-
-  const [antallOvelser, antallFullfort] = await Promise.all([
-    prisma.ovelse.count({ where: { sesongId: sesong.id } }),
-    prisma.ovelse.count({ where: { sesongId: sesong.id, status: "FULLFORT" } }),
-  ]);
   const leder = stilling.find((s) => s.totalPoeng > 0);
 
   return (
@@ -71,6 +76,7 @@ export default async function StillingSide() {
                   }`}
                 >
                   <RankBadge rank={i + 1} />
+                  <Avatar navn={rad.navn} bildeUrl={rad.bildeUrl} size={34} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline justify-between gap-2">
                       <span className="truncate font-medium text-fg">
@@ -102,6 +108,41 @@ export default async function StillingSide() {
             </ul>
           )}
         </Card>
+      </section>
+
+      <section className="mt-10">
+        <h2 className="mb-3 text-sm font-medium tracking-widest text-fg-dim uppercase">
+          Beste innen hver egenskap
+        </h2>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {kvalitetsledere.map(({ kvalitet, leder: best }) => (
+            <Card
+              key={kvalitet}
+              padding="p-4"
+              className="flex items-center gap-3"
+            >
+              <span className="text-2xl">{kvalitetEmoji[kvalitet]}</span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] tracking-widest text-fg-faint uppercase">
+                  {kvalitetTekst[kvalitet]}
+                </p>
+                {best ? (
+                  <div className="mt-1 flex items-center gap-2">
+                    <Avatar navn={best.navn} bildeUrl={best.bildeUrl} size={24} />
+                    <span className="truncate text-sm font-medium text-fg">
+                      {best.navn}
+                    </span>
+                    <span className="ml-auto shrink-0 font-display tabular-nums text-fg">
+                      {best.poeng}
+                    </span>
+                  </div>
+                ) : (
+                  <p className="mt-1 text-sm text-fg-faint">Ingen ennå</p>
+                )}
+              </div>
+            </Card>
+          ))}
+        </div>
       </section>
     </div>
   );

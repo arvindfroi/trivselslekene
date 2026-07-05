@@ -3,7 +3,12 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
-import { statusTekst, statusVariant } from "@/lib/ovelseLabels";
+import {
+  kvalitetEmoji,
+  kvalitetTekst,
+  statusTekst,
+  statusVariant,
+} from "@/lib/ovelseLabels";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import { LinkButton } from "@/components/ui/Button";
@@ -82,6 +87,19 @@ export default async function OvelserSide() {
                     </span>
                   )}
                 </p>
+
+                {ovelse.kvaliteter.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {ovelse.kvaliteter.map((k) => (
+                      <span
+                        key={k}
+                        className="inline-flex items-center gap-1 rounded-full border border-line bg-white/[0.03] px-2 py-0.5 text-[11px] text-fg-dim"
+                      >
+                        {kvalitetEmoji[k]} {kvalitetTekst[k]}
+                      </span>
+                    ))}
+                  </div>
+                )}
 
                 {ovelse.type === "INDIVIDUELL" ? (
                   <ul className="mt-3 flex flex-col gap-1.5 text-sm text-fg-dim">

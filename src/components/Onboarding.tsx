@@ -4,9 +4,14 @@ import { useState, useTransition } from "react";
 import { useFormStatus } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, Check, Users } from "lucide-react";
-import type { LagFormat, OvelseType } from "@prisma/client";
+import type { Kvalitet, LagFormat, OvelseType } from "@prisma/client";
 import { fullforOnboarding, startOnboarding } from "@/lib/actions/auth";
-import { lagFormatTekst, lagFormatValg } from "@/lib/ovelseLabels";
+import {
+  kvalitetTekst,
+  kvalitetValg,
+  lagFormatTekst,
+  lagFormatValg,
+} from "@/lib/ovelseLabels";
 import Button from "@/components/ui/Button";
 import { Input, Textarea } from "@/components/ui/Field";
 import AnimatedGradientBackground from "@/components/AnimatedGradientBackground";
@@ -15,6 +20,7 @@ type Data = {
   lekNavn: string;
   type: OvelseType;
   lagFormat: LagFormat;
+  kvaliteter: Kvalitet[];
   fellesLek: boolean;
   lokasjon: string;
   beskrivelse: string;
@@ -24,6 +30,7 @@ const start: Data = {
   lekNavn: "",
   type: "INDIVIDUELL",
   lagFormat: "PAR",
+  kvaliteter: [],
   fellesLek: false,
   lokasjon: "",
   beskrivelse: "",
@@ -32,6 +39,7 @@ const start: Data = {
 const POST_NAVN = [
   "lekNavn",
   "spillemaate",
+  "kvaliteter",
   "lokasjon",
   "beskrivelse",
   "oppsummering",
@@ -341,6 +349,48 @@ export default function Onboarding({ startNavn = "" }: { startNavn?: string }) {
             </StepShell>
           )}
 
+          {key === "kvaliteter" && (
+            <StepShell
+              steg={filledSegments}
+              total={total}
+              tittel="Hva tester leken?"
+              tekst="Velg egenskapene leken din setter på prøve — én eller flere."
+            >
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {kvalitetValg.map((k) => {
+                  const valgt = data.kvaliteter.includes(k.verdi);
+                  return (
+                    <button
+                      key={k.verdi}
+                      type="button"
+                      onClick={() =>
+                        oppdater({
+                          kvaliteter: valgt
+                            ? data.kvaliteter.filter((x) => x !== k.verdi)
+                            : [...data.kvaliteter, k.verdi],
+                        })
+                      }
+                      className={`flex items-center gap-2 rounded-xl border p-3 text-left text-sm transition-all ${
+                        valgt
+                          ? "border-accent-2 bg-accent-2/10 text-fg"
+                          : "border-line bg-white/[0.03] text-fg-dim hover:border-line-strong hover:text-fg"
+                      }`}
+                    >
+                      <span className="text-base">{k.emoji}</span>
+                      <span className="font-medium">{k.tittel}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <NavRad
+                tilbake={tilbake}
+                neste={neste}
+                nesteAktiv={data.kvaliteter.length > 0}
+                hoppOver
+              />
+            </StepShell>
+          )}
+
           {key === "lokasjon" && (
             <StepShell
               steg={filledSegments}
@@ -409,6 +459,14 @@ export default function Onboarding({ startNavn = "" }: { startNavn?: string }) {
                       : "Individuell"
                   }
                 />
+                {data.kvaliteter.length > 0 && (
+                  <Rad
+                    merke="Egenskaper"
+                    verdi={data.kvaliteter
+                      .map((k) => kvalitetTekst[k])
+                      .join(", ")}
+                  />
+                )}
                 <Rad
                   merke="Felles lek"
                   verdi={data.fellesLek ? "Ja, alle er med" : "Nei"}

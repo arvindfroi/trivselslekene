@@ -7,6 +7,7 @@ import { hentStilling } from "@/lib/stilling";
 import Card from "@/components/ui/Card";
 import { LinkButton } from "@/components/ui/Button";
 import RankBadge from "@/components/ui/RankBadge";
+import Avatar from "@/components/Avatar";
 import AnimatedGradientBackground from "@/components/AnimatedGradientBackground";
 import { ArrowRight, Trophy, Swords, User } from "lucide-react";
 
@@ -89,6 +90,7 @@ export default async function HjemSide() {
                   } ${i === 0 && rad.totalPoeng > 0 ? "bg-gold/[0.07]" : ""}`}
                 >
                   <RankBadge rank={i + 1} />
+                  <Avatar navn={rad.navn} bildeUrl={rad.bildeUrl} size={32} />
                   <span className="flex-1 truncate font-medium text-fg">
                     {rad.navn}
                   </span>

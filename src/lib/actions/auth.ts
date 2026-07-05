@@ -3,7 +3,7 @@
 import { AuthError } from "next-auth";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import type { LagFormat, OvelseType } from "@prisma/client";
+import type { Kvalitet, LagFormat, OvelseType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { signIn } from "@/lib/auth";
 import {
@@ -40,6 +40,7 @@ export type OnboardingData = {
   lekNavn: string;
   type: OvelseType;
   lagFormat: LagFormat | null;
+  kvaliteter: Kvalitet[];
   fellesLek: boolean;
   lokasjon: string;
   beskrivelse: string;
@@ -64,6 +65,7 @@ export async function fullforOnboarding(data: OnboardingData) {
       navn: lekNavn,
       type: data.type,
       lagFormat: data.type === "LAG" ? data.lagFormat : null,
+      kvaliteter: data.kvaliteter ?? [],
       fellesLek: data.fellesLek,
       lokasjon: data.lokasjon.trim() || null,
       beskrivelse: data.beskrivelse.trim() || null,
