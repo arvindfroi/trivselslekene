@@ -135,6 +135,84 @@ export async function hentKvalitetsledere(
   });
 }
 
+export type SpillerDetalj = {
+  kvaliteter: { kvalitet: Kvalitet; poeng: number }[];
+  kamper: number;
+  seire: number;
+  snitt: number;
+  rekord: number;
+};
+
+/** Per-spiller-oppsummering brukt når en rad i stillingen ekspanderes. */
+export async function hentSpillerdetaljer(
+  sesongId: string
+): Promise<Record<string, SpillerDetalj>> {
+  const brukere = await prisma.user.findMany({
+    include: {
+      individuelleResultater: {
+        where: { ovelse: { sesongId } },
+        include: { ovelse: { select: { id: true, kvaliteter: true } } },
+      },
+      lagmedlemskap: {
+        include: {
+          lag: {
+            include: {
+              resultat: true,
+              ovelse: { select: { id: true, sesongId: true, kvaliteter: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const ut: Record<string, SpillerDetalj> = {};
+
+  for (const b of brukere) {
+    const perKval = new Map<Kvalitet, number>();
+    const spill = new Set<string>();
+    let seire = 0;
+    let sum = 0;
+    let rekord = 0;
+
+    const reg = (
+      ovelseId: string,
+      kvaliteter: Kvalitet[],
+      plassering: number | null,
+      p: number
+    ) => {
+      spill.add(ovelseId);
+      sum += p;
+      if (p > rekord) rekord = p;
+      if (plassering === 1) seire += 1;
+      for (const k of kvaliteter) perKval.set(k, (perKval.get(k) ?? 0) + p);
+    };
+
+    for (const r of b.individuelleResultater) {
+      reg(r.ovelse.id, r.ovelse.kvaliteter, r.plassering, r.poeng);
+    }
+    for (const m of b.lagmedlemskap) {
+      const { lag } = m;
+      if (lag.ovelse.sesongId !== sesongId || !lag.resultat) continue;
+      reg(lag.ovelse.id, lag.ovelse.kvaliteter, lag.resultat.plassering, lag.resultat.poeng);
+    }
+
+    const kamper = spill.size;
+    ut[b.id] = {
+      kvaliteter: [...perKval.entries()]
+        .filter(([, p]) => p > 0)
+        .sort((a, b) => b[1] - a[1])
+        .map(([kvalitet, poeng]) => ({ kvalitet, poeng })),
+      kamper,
+      seire,
+      snitt: kamper ? sum / kamper : 0,
+      rekord,
+    };
+  }
+
+  return ut;
+}
+
 export type Utmerkelse = {
   key: string;
   leder: {

@@ -4,13 +4,14 @@ import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
 import {
   hentKvalitetsledere,
+  hentSpillerdetaljer,
   hentStilling,
   hentUtmerkelser,
 } from "@/lib/stilling";
 import { kvalitetIkon, kvalitetTekst } from "@/lib/ovelseLabels";
 import Card from "@/components/ui/Card";
-import RankBadge from "@/components/ui/RankBadge";
 import Avatar from "@/components/Avatar";
+import StillingListe from "@/components/StillingListe";
 import {
   Crown,
   Flame,
@@ -55,12 +56,14 @@ export default async function StillingSide() {
   const sesong = await sikreAktivSesong();
   const [
     stilling,
+    detaljer,
     kvalitetsledere,
     utmerkelser,
     antallOvelser,
     antallFullfort,
   ] = await Promise.all([
     hentStilling(sesong.id),
+    hentSpillerdetaljer(sesong.id),
     hentKvalitetsledere(sesong.id),
     hentUtmerkelser(sesong.id),
     prisma.ovelse.count({ where: { sesongId: sesong.id } }),
@@ -100,47 +103,12 @@ export default async function StillingSide() {
               Ingen resultater er registrert ennå.
             </p>
           ) : (
-            <ul>
-              {stilling.map((rad, i) => (
-                <li
-                  key={rad.userId}
-                  className={`flex items-center gap-3 px-4 py-3.5 sm:px-5 ${
-                    i !== stilling.length - 1 ? "border-b border-line" : ""
-                  } ${i === 0 && rad.totalPoeng > 0 ? "bg-gold/[0.07]" : ""} ${
-                    rad.userId === session.user!.id ? "bg-accent-2/[0.06]" : ""
-                  }`}
-                >
-                  <RankBadge rank={i + 1} />
-                  <Avatar navn={rad.navn} bildeUrl={rad.bildeUrl} size={34} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <span className="truncate font-medium text-fg">
-                        {rad.navn}
-                        {rad.userId === session.user!.id && (
-                          <span className="ml-2 text-xs text-accent-2">deg</span>
-                        )}
-                      </span>
-                      <span className="shrink-0 font-display text-lg tabular-nums text-fg">
-                        {rad.totalPoeng}
-                      </span>
-                    </div>
-                    <div className="mt-1.5 flex items-center gap-2">
-                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
-                        <div
-                          className="bg-gradient-accent h-full rounded-full transition-all"
-                          style={{
-                            width: `${Math.max(4, (rad.totalPoeng / toppPoeng) * 100)}%`,
-                          }}
-                        />
-                      </div>
-                      <span className="shrink-0 text-[11px] text-fg-faint">
-                        {rad.antallOvelser} øvelser
-                      </span>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <StillingListe
+              rader={stilling}
+              detaljer={detaljer}
+              meId={session.user.id}
+              toppPoeng={toppPoeng}
+            />
           )}
         </Card>
       </section>
