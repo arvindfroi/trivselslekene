@@ -376,7 +376,7 @@ export default function Onboarding({ startNavn = "" }: { startNavn?: string }) {
                           : "border-line bg-white/[0.03] text-fg-dim hover:border-line-strong hover:text-fg"
                       }`}
                     >
-                      <span className="text-base">{k.emoji}</span>
+                      <k.Ikon size={16} className="shrink-0" />
                       <span className="font-medium">{k.tittel}</span>
                     </button>
                   );

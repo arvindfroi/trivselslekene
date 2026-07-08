@@ -2,11 +2,40 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
-import { hentKvalitetsledere, hentStilling } from "@/lib/stilling";
-import { kvalitetEmoji, kvalitetTekst } from "@/lib/ovelseLabels";
+import {
+  hentKvalitetsledere,
+  hentStilling,
+  hentUtmerkelser,
+} from "@/lib/stilling";
+import { kvalitetIkon, kvalitetTekst } from "@/lib/ovelseLabels";
 import Card from "@/components/ui/Card";
 import RankBadge from "@/components/ui/RankBadge";
 import Avatar from "@/components/Avatar";
+import {
+  Crown,
+  Flame,
+  Medal,
+  Shapes,
+  Swords,
+  TrendingUp,
+  Trophy,
+  type LucideIcon,
+} from "lucide-react";
+
+const UTMERKELSER: {
+  key: string;
+  tittel: string;
+  tekst: string;
+  Ikon: LucideIcon;
+}[] = [
+  { key: "seire", tittel: "Vinnermaskin", tekst: "Flest førsteplasser", Ikon: Trophy },
+  { key: "pall", tittel: "Pallhabitué", tekst: "Flest pallplasser", Ikon: Medal },
+  { key: "kamper", tittel: "Ironman", tekst: "Flest kamper spilt", Ikon: Swords },
+  { key: "snitt", tittel: "Snittkongen", tekst: "Best poengsnitt", Ikon: TrendingUp },
+  { key: "rekord", tittel: "Rekordholder", tekst: "Høyeste enkeltresultat", Ikon: Flame },
+  { key: "allsidig", tittel: "Multitalentet", tekst: "Flest ulike egenskaper", Ikon: Shapes },
+  { key: "vert", tittel: "Sjefsarrangør", tekst: "Arrangert flest leker", Ikon: Crown },
+];
 
 function StatCard({ label, verdi }: { label: string; verdi: string }) {
   return (
@@ -24,15 +53,21 @@ export default async function StillingSide() {
   if (!session?.user) redirect("/bli-med");
 
   const sesong = await sikreAktivSesong();
-  const [stilling, kvalitetsledere, antallOvelser, antallFullfort] =
-    await Promise.all([
-      hentStilling(sesong.id),
-      hentKvalitetsledere(sesong.id),
-      prisma.ovelse.count({ where: { sesongId: sesong.id } }),
-      prisma.ovelse.count({
-        where: { sesongId: sesong.id, status: "FULLFORT" },
-      }),
-    ]);
+  const [
+    stilling,
+    kvalitetsledere,
+    utmerkelser,
+    antallOvelser,
+    antallFullfort,
+  ] = await Promise.all([
+    hentStilling(sesong.id),
+    hentKvalitetsledere(sesong.id),
+    hentUtmerkelser(sesong.id),
+    prisma.ovelse.count({ where: { sesongId: sesong.id } }),
+    prisma.ovelse.count({
+      where: { sesongId: sesong.id, status: "FULLFORT" },
+    }),
+  ]);
   const toppPoeng = Math.max(1, ...stilling.map((s) => s.totalPoeng));
   const leder = stilling.find((s) => s.totalPoeng > 0);
 
@@ -121,7 +156,14 @@ export default async function StillingSide() {
               padding="p-4"
               className="flex items-center gap-3"
             >
-              <span className="text-2xl">{kvalitetEmoji[kvalitet]}</span>
+              {(() => {
+                const Ikon = kvalitetIkon[kvalitet];
+                return (
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.04] text-accent-2">
+                    <Ikon size={18} />
+                  </span>
+                );
+              })()}
               <div className="min-w-0 flex-1">
                 <p className="text-[11px] tracking-widest text-fg-faint uppercase">
                   {kvalitetTekst[kvalitet]}
@@ -142,6 +184,44 @@ export default async function StillingSide() {
               </div>
             </Card>
           ))}
+        </div>
+      </section>
+
+      <section className="mt-10">
+        <h2 className="mb-3 text-sm font-medium tracking-widest text-fg-dim uppercase">
+          Rekorder og utmerkelser
+        </h2>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {UTMERKELSER.map((u) => {
+            const l = utmerkelser.find((x) => x.key === u.key)?.leder ?? null;
+            const Ikon = u.Ikon;
+            return (
+              <Card
+                key={u.key}
+                padding="p-4"
+                className="flex items-center gap-3"
+              >
+                <span className="bg-gradient-accent flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white">
+                  <Ikon size={20} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-fg">{u.tittel}</p>
+                  <p className="text-[11px] text-fg-faint">{u.tekst}</p>
+                  {l ? (
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <Avatar navn={l.navn} bildeUrl={l.bildeUrl} size={22} />
+                      <span className="truncate text-sm text-fg">{l.navn}</span>
+                      <span className="ml-auto shrink-0 text-xs text-fg-dim">
+                        {l.verdi}
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="mt-1.5 text-sm text-fg-faint">Ingen ennå</p>
+                  )}
+                </div>
+              </Card>
+            );
+          })}
         </div>
       </section>
     </div>

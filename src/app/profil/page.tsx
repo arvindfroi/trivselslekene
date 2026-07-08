@@ -153,9 +153,8 @@ export default async function ProfilSide({
                     value={k.verdi}
                     className="h-4 w-4 accent-accent-2"
                   />
-                  <span>
-                    {k.emoji} {k.tittel}
-                  </span>
+                  <k.Ikon size={15} className="shrink-0 text-accent-2" />
+                  <span>{k.tittel}</span>
                 </label>
               ))}
             </div>

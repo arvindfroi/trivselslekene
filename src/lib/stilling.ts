@@ -134,3 +134,135 @@ export async function hentKvalitetsledere(
     return { kvalitet, leder: beste };
   });
 }
+
+export type Utmerkelse = {
+  key: string;
+  leder: {
+    userId: string;
+    navn: string;
+    bildeUrl: string | null;
+    verdi: string;
+  } | null;
+};
+
+/**
+ * "Rekorder og utmerkelser" à la Mario Party / sport-apper — statistikk som
+ * ikke er knyttet til lekenes egenskaper, men til hvordan folk presterer.
+ */
+export async function hentUtmerkelser(sesongId: string): Promise<Utmerkelse[]> {
+  const [brukere, ovelser] = await Promise.all([
+    prisma.user.findMany({
+      include: {
+        individuelleResultater: {
+          where: { ovelse: { sesongId } },
+          include: { ovelse: { select: { id: true, kvaliteter: true } } },
+        },
+        lagmedlemskap: {
+          include: {
+            lag: {
+              include: {
+                resultat: true,
+                ovelse: { select: { id: true, sesongId: true, kvaliteter: true } },
+              },
+            },
+          },
+        },
+      },
+    }),
+    prisma.ovelse.findMany({
+      where: { sesongId },
+      select: { vertId: true },
+    }),
+  ]);
+
+  const vertAntall = new Map<string, number>();
+  for (const o of ovelser) {
+    vertAntall.set(o.vertId, (vertAntall.get(o.vertId) ?? 0) + 1);
+  }
+
+  const rader = brukere.map((b) => {
+    const spill = new Set<string>();
+    const egenskaper = new Set<Kvalitet>();
+    let seire = 0;
+    let pall = 0;
+    let sum = 0;
+    let rekord = 0;
+
+    const reg = (
+      ovelseId: string,
+      kvaliteter: Kvalitet[],
+      plassering: number | null,
+      p: number
+    ) => {
+      spill.add(ovelseId);
+      sum += p;
+      if (p > rekord) rekord = p;
+      if (plassering === 1) seire += 1;
+      if (plassering !== null && plassering <= 3) pall += 1;
+      for (const k of kvaliteter) egenskaper.add(k);
+    };
+
+    for (const r of b.individuelleResultater) {
+      reg(r.ovelse.id, r.ovelse.kvaliteter, r.plassering, r.poeng);
+    }
+    for (const m of b.lagmedlemskap) {
+      const { lag } = m;
+      if (lag.ovelse.sesongId !== sesongId || !lag.resultat) continue;
+      reg(
+        lag.ovelse.id,
+        lag.ovelse.kvaliteter,
+        lag.resultat.plassering,
+        lag.resultat.poeng
+      );
+    }
+
+    const kamper = spill.size;
+    return {
+      userId: b.id,
+      navn: b.navn,
+      bildeUrl: b.bildeUrl,
+      kamper,
+      seire,
+      pall,
+      snitt: kamper >= 2 ? sum / kamper : 0,
+      rekord,
+      egenskaper: egenskaper.size,
+      verter: vertAntall.get(b.id) ?? 0,
+    };
+  });
+
+  const utmerkelse = (
+    key: string,
+    verdiAv: (r: (typeof rader)[number]) => number,
+    minst: number,
+    format: (v: number) => string
+  ): Utmerkelse => {
+    let beste: { r: (typeof rader)[number]; v: number } | null = null;
+    for (const r of rader) {
+      const v = verdiAv(r);
+      if (v < minst) continue;
+      if (!beste || v > beste.v) beste = { r, v };
+    }
+    return {
+      key,
+      leder: beste
+        ? {
+            userId: beste.r.userId,
+            navn: beste.r.navn,
+            bildeUrl: beste.r.bildeUrl,
+            verdi: format(beste.v),
+          }
+        : null,
+    };
+  };
+
+  return [
+    utmerkelse("seire", (r) => r.seire, 1, (v) => `${v} seire`),
+    utmerkelse("pall", (r) => r.pall, 1, (v) => `${v} pallplasser`),
+    utmerkelse("kamper", (r) => r.kamper, 1, (v) => `${v} kamper`),
+    utmerkelse("snitt", (r) => r.snitt, 0.01, (v) => `${v.toFixed(1)} i snitt`),
+    utmerkelse("rekord", (r) => r.rekord, 1, (v) => `${v} poeng`),
+    utmerkelse("allsidig", (r) => r.egenskaper, 1, (v) => `${v} egenskaper`),
+    utmerkelse("vert", (r) => r.verter, 1, (v) => `${v} leker`),
+  ];
+}

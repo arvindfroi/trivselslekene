@@ -1,4 +1,17 @@
 import type { Kvalitet, LagFormat, OvelseStatus } from "@prisma/client";
+import {
+  BookOpen,
+  Brain,
+  Clover,
+  Dumbbell,
+  HeartPulse,
+  Palette,
+  Snowflake,
+  Target,
+  Users,
+  Zap,
+  type LucideIcon,
+} from "lucide-react";
 
 export const lagFormatTekst: Record<LagFormat, string> = {
   PAR: "2 mot 2 (par)",
@@ -42,18 +55,18 @@ export const kvalitetTekst: Record<Kvalitet, string> = {
   NERVER: "Nerver",
 };
 
-/** Emoji brukt for hver egenskap i kort og velgere. */
-export const kvalitetEmoji: Record<Kvalitet, string> = {
-  STYRKE: "💪",
-  UTHOLDENHET: "🫁",
-  PRESISJON: "🎯",
-  FLAKS: "🍀",
-  LAGSPILL: "🤝",
-  TAKTIKK: "🧠",
-  HURTIGHET: "⚡",
-  KREATIVITET: "🎨",
-  KUNNSKAP: "📚",
-  NERVER: "🧊",
+/** Ikon (lucide) brukt for hver egenskap i kort og velgere. */
+export const kvalitetIkon: Record<Kvalitet, LucideIcon> = {
+  STYRKE: Dumbbell,
+  UTHOLDENHET: HeartPulse,
+  PRESISJON: Target,
+  FLAKS: Clover,
+  LAGSPILL: Users,
+  TAKTIKK: Brain,
+  HURTIGHET: Zap,
+  KREATIVITET: Palette,
+  KUNNSKAP: BookOpen,
+  NERVER: Snowflake,
 };
 
 /** Rekkefølgen egenskapene vises i. */
@@ -70,12 +83,15 @@ export const ALLE_KVALITETER: Kvalitet[] = [
   "NERVER",
 ];
 
-export const kvalitetValg: { verdi: Kvalitet; tittel: string; emoji: string }[] =
-  ALLE_KVALITETER.map((k) => ({
-    verdi: k,
-    tittel: kvalitetTekst[k],
-    emoji: kvalitetEmoji[k],
-  }));
+export const kvalitetValg: {
+  verdi: Kvalitet;
+  tittel: string;
+  Ikon: LucideIcon;
+}[] = ALLE_KVALITETER.map((k) => ({
+  verdi: k,
+  tittel: kvalitetTekst[k],
+  Ikon: kvalitetIkon[k],
+}));
 
 export const statusTekst: Record<OvelseStatus, string> = {
   PLANLAGT: "Planlagt",
