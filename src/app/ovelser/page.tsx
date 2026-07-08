@@ -4,10 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
 import Card from "@/components/ui/Card";
 import { LinkButton } from "@/components/ui/Button";
-import KanbanBrett, {
+import BentoBrett, {
   type SpillKort,
   type SpillerKort,
-} from "@/components/KanbanBrett";
+} from "@/components/BentoBrett";
 import { Plus } from "lucide-react";
 
 export default async function OvelserSide() {
@@ -80,8 +80,8 @@ export default async function OvelserSide() {
           </p>
           <h1 className="mt-1 font-display text-4xl text-fg">Øvelser</h1>
           <p className="mt-2 max-w-xl text-sm text-fg-dim">
-            Tavle over alle lekene. Trykk på et kort eller en spiller for å se
-            egenskapene som er i spill.
+            Alle lekene i ett rutenett. Trykk på en flis eller en spiller for å
+            se egenskapene som er i spill.
           </p>
         </div>
         <LinkButton href="/profil" className="hidden shrink-0 px-4 sm:inline-flex">
@@ -100,7 +100,7 @@ export default async function OvelserSide() {
         </Card>
       ) : (
         <div className="mt-8">
-          <KanbanBrett spill={spill} spillere={spillere} />
+          <BentoBrett spill={spill} spillere={spillere} />
         </div>
       )}
     </div>

@@ -4,8 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight, X } from "lucide-react";
 import type { Kvalitet, OvelseStatus, OvelseType } from "@prisma/client";
-import { statusTekst } from "@/lib/ovelseLabels";
+import { statusTekst, statusVariant } from "@/lib/ovelseLabels";
 import Avatar from "@/components/Avatar";
+import Badge from "@/components/ui/Badge";
 import KvalitetChip from "@/components/KvalitetChip";
 import { cn } from "@/lib/utils";
 
@@ -27,10 +28,14 @@ export type SpillerKort = {
   kvaliteter: Kvalitet[];
 };
 
-const KOLONNER: { status: OvelseStatus; farge: string }[] = [
-  { status: "PLANLAGT", farge: "bg-fg-faint" },
-  { status: "PAAGAAR", farge: "bg-accent-2" },
-  { status: "FULLFORT", farge: "bg-accent" },
+// Bento-mønster: varierte flis-størrelser som gjentas nedover rutenettet.
+const SPENN = [
+  "sm:col-span-2 sm:row-span-2",
+  "sm:col-span-2",
+  "",
+  "sm:row-span-2",
+  "",
+  "sm:col-span-2",
 ];
 
 type Valg =
@@ -38,7 +43,7 @@ type Valg =
   | { type: "spiller"; id: string }
   | null;
 
-export default function KanbanBrett({
+export default function BentoBrett({
   spill,
   spillere,
 }: {
@@ -52,7 +57,6 @@ export default function KanbanBrett({
   const valgtSpiller =
     valg?.type === "spiller" ? spillere.find((s) => s.id === valg.id) : null;
 
-  // Hvilke øvelser en valgt spiller er med i (uthever kortene).
   const spillerSpillIder =
     valg?.type === "spiller"
       ? new Set(
@@ -101,7 +105,7 @@ export default function KanbanBrett({
         </div>
       )}
 
-      {/* Detaljpanel — relevante kategorier for valgt kort eller spiller */}
+      {/* Detaljpanel — relevante egenskaper for valgt flis eller spiller */}
       {(valgtSpill || valgtSpiller) && (
         <div className="surface animate-fade-up mb-5 rounded-2xl p-4">
           <div className="flex items-start justify-between gap-3">
@@ -153,62 +157,68 @@ export default function KanbanBrett({
         </div>
       )}
 
-      {/* Kanban-kolonner etter status */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {KOLONNER.map((kol) => {
-          const kort = spill.filter((s) => s.status === kol.status);
+      {/* Bento-rutenett */}
+      <div className="grid grid-cols-2 gap-3 sm:auto-rows-[9rem] sm:grid-flow-row-dense sm:grid-cols-4">
+        {spill.map((s, i) => {
+          const spenn = SPENN[i % SPENN.length];
+          const stor = spenn.includes("row-span-2");
+          const aktiv = valg?.type === "spill" && valg.id === s.id;
+          const uthevet = spillerSpillIder?.has(s.id);
+          const maksChips = stor ? 8 : 3;
           return (
-            <div key={kol.status}>
-              <div className="mb-2 flex items-center gap-2 px-1">
-                <span className={cn("h-2 w-2 rounded-full", kol.farge)} />
-                <h3 className="text-xs font-medium tracking-widest text-fg-dim uppercase">
-                  {statusTekst[kol.status]}
+            <button
+              key={s.id}
+              type="button"
+              onClick={() =>
+                setValg(aktiv ? null : { type: "spill", id: s.id })
+              }
+              className={cn(
+                "flex flex-col overflow-hidden rounded-2xl border p-4 text-left transition-all",
+                spenn,
+                aktiv
+                  ? "border-accent-2 bg-accent-2/10"
+                  : uthevet
+                    ? "border-accent-2/60 bg-white/[0.05]"
+                    : "border-line bg-white/[0.03] hover:border-line-strong hover:bg-white/[0.05]"
+              )}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <h3
+                  className={cn(
+                    "font-display leading-tight text-fg",
+                    stor ? "text-2xl" : "text-lg"
+                  )}
+                >
+                  {s.navn}
                 </h3>
-                <span className="text-xs text-fg-faint">{kort.length}</span>
+                <Badge
+                  variant={statusVariant[s.status]}
+                  pulse={s.status === "PAAGAAR"}
+                >
+                  {statusTekst[s.status]}
+                </Badge>
               </div>
+              <p className="mt-1 truncate text-xs text-fg-faint">
+                {s.type === "LAG" ? "Lagøvelse" : "Individuell"} · Vert:{" "}
+                {s.vertNavn}
+              </p>
 
-              <div className="flex flex-col gap-2">
-                {kort.length === 0 && (
-                  <div className="rounded-xl border border-dashed border-line px-3 py-6 text-center text-xs text-fg-faint">
-                    Ingen her
-                  </div>
+              <div className="mt-auto flex flex-wrap items-center gap-1 pt-3">
+                {s.kvaliteter.slice(0, maksChips).map((k) => (
+                  <KvalitetChip key={k} kvalitet={k} />
+                ))}
+                {s.kvaliteter.length > maksChips && (
+                  <span className="text-[11px] text-fg-faint">
+                    +{s.kvaliteter.length - maksChips}
+                  </span>
                 )}
-                {kort.map((s) => {
-                  const aktiv = valg?.type === "spill" && valg.id === s.id;
-                  const uthevet = spillerSpillIder?.has(s.id);
-                  return (
-                    <button
-                      key={s.id}
-                      type="button"
-                      onClick={() =>
-                        setValg(aktiv ? null : { type: "spill", id: s.id })
-                      }
-                      className={cn(
-                        "rounded-xl border p-3 text-left transition-all",
-                        aktiv
-                          ? "border-accent-2 bg-accent-2/10"
-                          : uthevet
-                            ? "border-accent-2/60 bg-white/[0.05]"
-                            : "border-line bg-white/[0.03] hover:border-line-strong hover:bg-white/[0.05]"
-                      )}
-                    >
-                      <p className="truncate font-medium text-fg">{s.navn}</p>
-                      <p className="mt-0.5 truncate text-xs text-fg-faint">
-                        {s.type === "LAG" ? "Lagøvelse" : "Individuell"} · Vert:{" "}
-                        {s.vertNavn}
-                      </p>
-                      {s.kvaliteter.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {s.kvaliteter.map((k) => (
-                            <KvalitetChip key={k} kvalitet={k} />
-                          ))}
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
+                {s.kvaliteter.length === 0 && (
+                  <span className="text-[11px] text-fg-faint">
+                    Ingen egenskaper
+                  </span>
+                )}
               </div>
-            </div>
+            </button>
           );
         })}
       </div>
