@@ -47,8 +47,8 @@ export default function OvelseGrid({ spill }: { spill: SpillKort[] }) {
               "flex flex-col overflow-hidden rounded-2xl border p-4 text-left transition-colors",
               spenn,
               er
-                ? "border-accent-2/60 bg-accent-2/[0.07]"
-                : "border-line bg-white/[0.03] hover:border-line-strong hover:bg-white/[0.05]"
+                ? "border-accent-2/60 bg-bg-elev"
+                : "surface hover:border-line-strong hover:bg-bg-elev-2"
             )}
           >
             <motion.div layout="position" className="flex items-start justify-between gap-2">
