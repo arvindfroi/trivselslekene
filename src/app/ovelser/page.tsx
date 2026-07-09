@@ -3,8 +3,9 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
+import { opprettTestdeltakere, slettTestdeltakere } from "@/lib/actions/testdeltakere";
 import Card from "@/components/ui/Card";
-import { LinkButton } from "@/components/ui/Button";
+import Button, { LinkButton } from "@/components/ui/Button";
 import OvelseGrid, { type SpillKort } from "@/components/OvelseGrid";
 import DeltakerSlideshow from "@/components/DeltakerSlideshow";
 import { Plus } from "lucide-react";
@@ -68,9 +69,21 @@ export default async function OvelserSide() {
               egenskaper og deltakere.
             </p>
           </div>
-          <LinkButton href="/profil" className="hidden shrink-0 px-4 sm:inline-flex">
-            <Plus size={16} /> Ny øvelse
-          </LinkButton>
+          <div className="flex shrink-0 items-center gap-2">
+            <form action={opprettTestdeltakere}>
+              <Button type="submit" variant="outline" className="px-3 py-1.5 text-xs">
+                Testdeltakere
+              </Button>
+            </form>
+            <form action={slettTestdeltakere}>
+              <Button type="submit" variant="danger" className="px-3 py-1.5 text-xs">
+                Slett testdata
+              </Button>
+            </form>
+            <LinkButton href="/profil" className="hidden shrink-0 px-4 sm:inline-flex">
+              <Plus size={16} /> Ny øvelse
+            </LinkButton>
+          </div>
         </div>
 
       {ovelser.length === 0 ? (

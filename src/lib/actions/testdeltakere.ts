@@ -56,6 +56,7 @@ export async function opprettTestdeltakere() {
   }
 
   revalidatePath("/fotball-kamp");
+  revalidatePath("/ovelser");
   revalidatePath("/stilling");
   revalidatePath("/dashboard");
 }
@@ -88,6 +89,7 @@ export async function slettTestdeltakere() {
   });
 
   revalidatePath("/fotball-kamp");
+  revalidatePath("/ovelser");
   revalidatePath("/stilling");
   revalidatePath("/dashboard");
 }
