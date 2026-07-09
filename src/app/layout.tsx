@@ -64,19 +64,6 @@ export default function RootLayout({
       className={`${robotoFlex.variable} ${amstelvar.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-bg text-fg">
-        {/* Squircle clipPath for iPhone-style continuous corners — referenced by .surface */}
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="0"
-          height="0"
-          aria-hidden="true"
-        >
-          <defs>
-            <clipPath id="squircle" clipPathUnits="objectBoundingBox">
-              <path d="M0.15,0 L0.85,0 C0.9175,0 1,0.0675 1,0.15 L1,0.85 C1,0.9175 0.9325,1 0.85,1 L0.15,1 C0.0675,1 0,0.9325 0,0.85 L0,0.15 C0,0.0675 0.0675,0 0.15,0 Z" />
-            </clipPath>
-          </defs>
-        </svg>
         <SiteNav />
         <main className="flex-1">{children}</main>
       </body>
