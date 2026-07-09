@@ -67,12 +67,27 @@ export default function OvelseGrid({
                 {s.navn}
               </h3>
               <div className="flex shrink-0 items-center gap-2">
-                <Badge
-                  variant={statusVariant[s.status]}
-                  pulse={s.status === "PAAGAAR"}
-                >
-                  {statusTekst[s.status]}
-                </Badge>
+                {er ? (
+                  <Badge
+                    variant={statusVariant[s.status]}
+                    pulse={s.status === "PAAGAAR"}
+                  >
+                    {statusTekst[s.status]}
+                  </Badge>
+                ) : (
+                  <span
+                    className={cn(
+                      "h-2.5 w-2.5 shrink-0 rounded-full border",
+                      s.status === "PAAGAAR" &&
+                        "animate-pulse-dot border-accent-3/40 bg-accent-3",
+                      s.status === "FULLFORT" &&
+                        "border-emerald-500/40 bg-emerald-400",
+                      s.status === "PLANLAGT" &&
+                        "border-line bg-fg-dim"
+                    )}
+                    aria-label={statusTekst[s.status]}
+                  />
+                )}
                 <span
                   className="transition-transform duration-200"
                   style={{ transform: er ? "rotate(180deg)" : "rotate(0deg)" }}
