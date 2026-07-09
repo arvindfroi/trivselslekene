@@ -36,39 +36,55 @@ export default function FloatingNav({ loggedIn }: { loggedIn: boolean }) {
     lastScrollY.current = latest;
   });
 
-  // ── Toolbar swipe ──
+  // ── Toolbar swipe (native listeners for reliable passive:false) ──
+  const navRef = React.useRef<HTMLElement>(null);
   const touchStart = React.useRef<{ x: number; y: number } | null>(null);
 
-  const onTouchStart = (e: React.TouchEvent) => {
-    touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-  };
+  React.useEffect(() => {
+    const el = navRef.current;
+    if (!el) return;
 
-  const onTouchMove = (e: React.TouchEvent) => {
-    if (!touchStart.current) return;
-    const dx = Math.abs(e.touches[0].clientX - touchStart.current.x);
-    const dy = Math.abs(e.touches[0].clientY - touchStart.current.y);
-    if (dx > dy && dx > 8) {
-      e.preventDefault();
-    }
-  };
+    const onTouchStart = (e: TouchEvent) => {
+      touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    };
 
-  const onTouchEnd = (e: React.TouchEvent) => {
-    if (!touchStart.current) return;
-    const dx = e.changedTouches[0].clientX - touchStart.current.x;
-    const dy = e.changedTouches[0].clientY - touchStart.current.y;
-    touchStart.current = null;
+    const onTouchMove = (e: TouchEvent) => {
+      if (!touchStart.current) return;
+      const dx = Math.abs(e.touches[0].clientX - touchStart.current.x);
+      const dy = Math.abs(e.touches[0].clientY - touchStart.current.y);
+      if (dx > dy && dx > 8) {
+        e.preventDefault();
+      }
+    };
 
-    const absDx = Math.abs(dx);
-    const currentIndex = RUTER.indexOf(pathname);
+    const onTouchEnd = (e: TouchEvent) => {
+      if (!touchStart.current) return;
+      const dx = e.changedTouches[0].clientX - touchStart.current.x;
+      const dy = e.changedTouches[0].clientY - touchStart.current.y;
+      touchStart.current = null;
 
-    if (absDx < SWIPE_THRESHOLD || Math.abs(dy) > absDx * 0.6 || currentIndex < 0) return;
+      const absDx = Math.abs(dx);
+      const currentIndex = RUTER.indexOf(pathname);
 
-    if (dx > 0 && currentIndex > 0) {
-      router.push(RUTER[currentIndex - 1]);
-    } else if (dx < 0 && currentIndex < RUTER.length - 1) {
-      router.push(RUTER[currentIndex + 1]);
-    }
-  };
+      if (absDx < SWIPE_THRESHOLD || Math.abs(dy) > absDx * 0.6 || currentIndex < 0) return;
+
+      if (dx > 0 && currentIndex > 0) {
+        router.push(RUTER[currentIndex - 1]);
+      } else if (dx < 0 && currentIndex < RUTER.length - 1) {
+        router.push(RUTER[currentIndex + 1]);
+      }
+    };
+
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd, { passive: true });
+
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [pathname, router]);
 
   const hidden =
     !loggedIn || pathname === "/" || pathname.startsWith("/bli-med");
@@ -83,9 +99,7 @@ export default function FloatingNav({ loggedIn }: { loggedIn: boolean }) {
       style={{ bottom: `calc(1rem + env(safe-area-inset-bottom, 0px))` }}
     >
       <nav
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
+        ref={navRef}
         style={{ touchAction: "none" }}
         className={cn(
           "flex h-12 items-center gap-0.5 overflow-hidden rounded-full border border-line bg-bg-elev/95 px-2 shadow-[0_-10px_40px_-12px_rgba(0,0,0,0.8)] backdrop-blur-xl",
