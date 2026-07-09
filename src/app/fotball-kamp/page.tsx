@@ -2,15 +2,15 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
-import { opprettFotballKamp, registrerVinner } from "@/lib/actions/fotballkamp";
+import { registrerVinner } from "@/lib/actions/fotballkamp";
+import NyFotballKampForm from "@/components/NyFotballKampForm";
 import Card from "@/components/ui/Card";
 import Button, { LinkButton } from "@/components/ui/Button";
-import { Input, Label } from "@/components/ui/Field";
 import Badge from "@/components/ui/Badge";
 import DeltakerSlideshow from "@/components/DeltakerSlideshow";
 import Avatar from "@/components/Avatar";
 import { statusTekst, statusVariant } from "@/lib/ovelseLabels";
-import { MapPin, Plus, Swords, Trophy } from "lucide-react";
+import { MapPin, Swords, Trophy } from "lucide-react";
 
 export default async function FotballKampSide() {
   const session = await auth();
@@ -49,35 +49,7 @@ export default async function FotballKampSide() {
         </div>
 
         {/* Ny kamp */}
-        <Card className="mt-8" padding="p-5 sm:p-6">
-          <h2 className="mb-4 flex items-center gap-2 text-sm font-medium tracking-widest text-fg-dim uppercase">
-            <Plus size={16} /> Ny fotballkamp
-          </h2>
-          <form action={opprettFotballKamp} className="flex flex-col gap-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <Label htmlFor="navn">Navn på kampen</Label>
-                <Input
-                  id="navn"
-                  name="navn"
-                  required
-                  placeholder="F.eks. Fotballkamp runde 1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="lokasjon">Lokasjon</Label>
-                <Input
-                  id="lokasjon"
-                  name="lokasjon"
-                  placeholder="F.eks. kunstgressbanen"
-                />
-              </div>
-            </div>
-            <Button type="submit" className="self-start">
-              Opprett kamp
-            </Button>
-          </form>
-        </Card>
+        <NyFotballKampForm />
 
         {/* Kampliste */}
         <section className="mt-10">

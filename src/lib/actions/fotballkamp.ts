@@ -7,19 +7,18 @@ import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
 import { hentStilling } from "@/lib/stilling";
 
-export async function opprettFotballKamp(formData: FormData) {
+export async function opprettFotballKamp(prev: unknown, formData: FormData) {
   const session = await auth();
   if (!session?.user?.id) redirect("/bli-med");
 
   const navn = String(formData.get("navn") ?? "").trim();
   const lokasjon = String(formData.get("lokasjon") ?? "").trim();
-  if (!navn) return;
+  if (!navn) return { error: "Navn er påkrevd" };
 
   const sesong = await sikreAktivSesong();
   const stilling = await hentStilling(sesong.id);
   const topp9 = stilling.slice(0, 9);
 
-  // Snake draft: 1.→4-lag, 2.→5-lag, 3.→4-lag, 4.→5-lag, ...
   const lag4: string[] = [];
   const lag5: string[] = [];
   topp9.forEach((r, i) => {
@@ -52,7 +51,7 @@ export async function opprettFotballKamp(formData: FormData) {
   });
 
   revalidatePath("/fotball-kamp");
-  redirect("/fotball-kamp");
+  return { success: true };
 }
 
 export async function registrerVinner(
