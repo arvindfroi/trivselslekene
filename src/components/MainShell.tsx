@@ -170,35 +170,6 @@ export default function MainShell({ panels }: MainShellProps) {
         <AnimatedGradientBackground Breathing breathingRange={6} />
       </div>
 
-      {/* Page indicator dots — iOS-style */}
-      {currentIndex >= 0 && (
-        <div className="pointer-events-none fixed bottom-20 left-1/2 z-30 flex -translate-x-1/2 gap-2">
-          {RUTER.map((_, i) => {
-            const isActive = i === activeIdx;
-            const swipingToward =
-              dragX > SWIPE_THRESHOLD && activeIdx > 0
-                ? activeIdx - 1
-                : dragX < -SWIPE_THRESHOLD && activeIdx < RUTER.length - 1
-                  ? activeIdx + 1
-                  : activeIdx;
-            const isTarget = i === swipingToward && isDragging;
-            const width = isActive ? 24 : isTarget ? 6 + dragProgress * 18 : 6;
-            const bg = isActive
-              ? "var(--accent)"
-              : isTarget
-                ? `color-mix(in srgb, var(--accent) ${Math.round(dragProgress * 70)}%, var(--line) ${Math.round(100 - dragProgress * 70)}%)`
-                : "var(--line)";
-            return (
-              <div
-                key={i}
-                className="rounded-full transition-all duration-200"
-                style={{ width, height: 6, backgroundColor: bg }}
-              />
-            );
-          })}
-        </div>
-      )}
-
       {/* Page peek label during swipe */}
       {peekName && isDragging && (
         <div
