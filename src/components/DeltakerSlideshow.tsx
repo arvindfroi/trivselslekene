@@ -41,7 +41,7 @@ export default function DeltakerSlideshow() {
               width: "33.333%",
               left: `${i * 33.333}%`,
               opacity: aktiv ? 1 : 0,
-              transition: "opacity 0.9s ease-in-out",
+              transition: "opacity 1.5s ease",
               zIndex: aktiv ? 1 : 0,
             }}
           >
@@ -50,7 +50,7 @@ export default function DeltakerSlideshow() {
               src={src}
               alt="Deltaker"
               className="h-full w-full object-cover"
-              style={{ objectPosition: "50% 30%" }}
+              style={{ objectPosition: "50% 30%", filter: "brightness(0.65)" }}
             />
           </div>
         ));
