@@ -79,16 +79,9 @@ export default async function FotballKampSide() {
           ) : (
             <div className="flex flex-col gap-6">
               {kamper.map((kamp) => {
-                const lag1 = kamp.lag[0]; // Lag 1 (4)
-                const lag2 = kamp.lag[1]; // Lag 2 (5)
                 const erVert = session.user.id === kamp.vertId;
                 const erFerdig = kamp.status === "FULLFORT";
-                const vinner =
-                  lag1?.resultat?.plassering === 1
-                    ? lag1
-                    : lag2?.resultat?.plassering === 1
-                      ? lag2
-                      : null;
+                const vinner = kamp.lag.find((l) => l.resultat?.plassering === 1) ?? null;
                 const poeng = vinner?.resultat?.poeng ?? 0;
 
                 return (
@@ -141,14 +134,13 @@ export default async function FotballKampSide() {
                     </div>
 
                     {/* Lag-oppstilling */}
-                    <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      {[lag1, lag2].map((lag) => {
-                        if (!lag) return null;
-                        const maxSpillere = lag === lag1 ? 4 : 5;
-                        const erVinner =
-                          erFerdig && lag.resultat?.plassering === 1;
-                        const erTaper =
-                          erFerdig && lag.resultat?.plassering !== 1;
+                    <div className={`mt-4 grid grid-cols-1 gap-3 ${kamp.lag.length >= 4 ? "sm:grid-cols-4" : kamp.lag.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+                      {kamp.lag.map((lag) => {
+                        // Parse max spillere fra lagnavn: "Lag 1 (4)" → 4
+                        const maxMatch = lag.navn.match(/\((\d+)\)/);
+                        const maxSpillere = maxMatch ? parseInt(maxMatch[1]) : lag.medlemmer.length;
+                        const erVinner = erFerdig && lag.resultat?.plassering === 1;
+                        const erTaper = erFerdig && lag.resultat?.plassering !== 1 && lag.resultat !== null;
 
                         async function velgVinner() {
                           "use server";
@@ -167,30 +159,19 @@ export default async function FotballKampSide() {
                             }`}
                           >
                             <div className="flex items-center justify-between mb-2">
-                              <span className="text-sm font-medium text-fg">
-                                {lag.navn}
-                              </span>
+                              <span className="text-sm font-medium text-fg">{lag.navn}</span>
                               <span className="text-xs text-fg-faint">
                                 {lag.medlemmer.length}/{maxSpillere} spillere
                               </span>
                             </div>
 
                             {lag.medlemmer.length === 0 ? (
-                              <p className="text-xs text-fg-faint">
-                                Ingen spillere tildelt — settes automatisk fra stilling ved opprettelse
-                              </p>
+                              <p className="text-xs text-fg-faint">Ingen spillere</p>
                             ) : (
                               <ul className="flex flex-col gap-1.5">
                                 {lag.medlemmer.map((m) => (
-                                  <li
-                                    key={m.id}
-                                    className="flex items-center gap-2 text-sm text-fg"
-                                  >
-                                    <Avatar
-                                      navn={m.user.navn}
-                                      bildeUrl={m.user.bildeUrl}
-                                      size={24}
-                                    />
+                                  <li key={m.id} className="flex items-center gap-2 text-sm text-fg">
+                                    <Avatar navn={m.user.navn} bildeUrl={m.user.bildeUrl} size={24} />
                                     <span>{m.user.navn}</span>
                                     {erFerdig && lag.resultat && (
                                       <span className="ml-auto text-xs tabular-nums text-accent-2">
@@ -202,13 +183,9 @@ export default async function FotballKampSide() {
                               </ul>
                             )}
 
-                            {/* Vinner-knapp (kun for vert, når kampen ikke er ferdig) */}
                             {erVert && !erFerdig && lag.medlemmer.length > 0 && (
                               <form action={velgVinner} className="mt-3">
-                                <Button
-                                  type="submit"
-                                  className="w-full justify-center py-2 text-xs"
-                                >
+                                <Button type="submit" className="w-full justify-center py-2 text-xs">
                                   <Trophy size={14} /> {lag.navn} vant kampen
                                 </Button>
                               </form>

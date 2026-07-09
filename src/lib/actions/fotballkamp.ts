@@ -6,24 +6,42 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
 import { hentStilling } from "@/lib/stilling";
+import type { LagFormat } from "@prisma/client";
 
-export async function opprettFotballKamp(prev: unknown, formData: FormData) {
+type FormatDef = {
+  teams: number;
+  sizes: number[];
+  label: string;
+};
+
+const FORMATER: Record<string, FormatDef> = {
+  FIRE_MOT_FEM: { teams: 2, sizes: [4, 5], label: "4 mot 5" },
+  TRE_MOT_TRE_MOT_TRE: { teams: 3, sizes: [3, 3, 3], label: "3 mot 3 mot 3" },
+  TO_MOT_TO_MOT_TO_MOT_TO: { teams: 4, sizes: [2, 2, 2, 2], label: "2 mot 2 mot 2 mot 2" },
+};
+
+export async function opprettLagkamp(prev: unknown, formData: FormData) {
   const session = await auth();
   if (!session?.user?.id) redirect("/bli-med");
 
   const navn = String(formData.get("navn") ?? "").trim();
   const lokasjon = String(formData.get("lokasjon") ?? "").trim();
+  const formatKey = (formData.get("format") as string) || "FIRE_MOT_FEM";
+
   if (!navn) return { error: "Navn er påkrevd" };
+
+  const fmt = FORMATER[formatKey];
+  if (!fmt) return { error: "Ugyldig format" };
 
   const sesong = await sikreAktivSesong();
   const stilling = await hentStilling(sesong.id);
-  const topp9 = stilling.slice(0, 9);
+  const totalSpillere = fmt.sizes.reduce((a, b) => a + b, 0);
+  const topp = stilling.slice(0, totalSpillere);
 
-  const lag4: string[] = [];
-  const lag5: string[] = [];
-  topp9.forEach((r, i) => {
-    if (i % 2 === 0) lag4.push(r.userId);
-    else lag5.push(r.userId);
+  // Snake draft: fordel spillere på lag
+  const lagenesMedlemmer: string[][] = fmt.sizes.map(() => []);
+  topp.forEach((r, i) => {
+    lagenesMedlemmer[i % fmt.teams].push(r.userId);
   });
 
   await prisma.ovelse.create({
@@ -31,21 +49,15 @@ export async function opprettFotballKamp(prev: unknown, formData: FormData) {
       navn,
       lokasjon: lokasjon || null,
       type: "LAG",
-      lagFormat: "FIRE_MOT_FEM",
+      lagFormat: formatKey as LagFormat,
       kvaliteter: ["LAGSPILL", "UTHOLDENHET", "TAKTIKK"],
       sesongId: sesong.id,
       vertId: session.user.id,
       lag: {
-        create: [
-          {
-            navn: "Lag 1 (4)",
-            medlemmer: { create: lag4.map((userId) => ({ userId })) },
-          },
-          {
-            navn: "Lag 2 (5)",
-            medlemmer: { create: lag5.map((userId) => ({ userId })) },
-          },
-        ],
+        create: lagenesMedlemmer.map((medlemmer, i) => ({
+          navn: `Lag ${i + 1} (${fmt.sizes[i]})`,
+          medlemmer: { create: medlemmer.map((userId) => ({ userId })) },
+        })),
       },
     },
   });
