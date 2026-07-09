@@ -13,7 +13,7 @@ export default function NyFotballKampForm() {
   return (
     <Card className="mt-8" padding="p-5 sm:p-6">
       <h2 className="mb-4 flex items-center gap-2 text-sm font-medium tracking-widest text-fg-dim uppercase">
-        <Plus size={16} /> Ny fotballkamp
+        <Plus size={16} /> Ny lagkamp
       </h2>
       <form action={formAction} className="flex flex-col gap-4">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -23,7 +23,7 @@ export default function NyFotballKampForm() {
               id="navn"
               name="navn"
               required
-              placeholder="F.eks. Fotballkamp runde 1"
+              placeholder="F.eks. Lagkamp runde 1"
             />
           </div>
           <div>

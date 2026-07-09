@@ -42,9 +42,9 @@ export default async function FotballKampSide() {
             <p className="text-xs tracking-[0.3em] text-accent-2 uppercase">
               {sesong.navn}
             </p>
-            <h1 className="mt-1 font-display text-4xl text-fg">Fotball kamp</h1>
+            <h1 className="mt-1 font-display text-4xl text-fg">Lag</h1>
             <p className="mt-2 max-w-xl text-sm text-fg-dim">
-              4 mot 5 — lagene settes automatisk fra stillingen (1.→4-lag, 2.→5-lag, 3.→4-lag, …). Vinnerlaget får poeng.
+              4 mot 5 — lag settes automatisk fra stillingen. Vinnerlaget får poeng.
             </p>
           </div>
         </div>

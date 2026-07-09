@@ -13,7 +13,7 @@ const navItems = [
   { name: "Statistikk", href: "/stilling", icon: BarChart3 },
   { name: "Profil", href: "/profil", icon: User },
   { name: "Turnering", href: "/turnering", icon: Trophy },
-  { name: "Fotball", href: "/fotball-kamp", icon: Flag },
+  { name: "Lag", href: "/fotball-kamp", icon: Flag },
 ];
 
 const EXPAND_SCROLL_THRESHOLD = 80;
