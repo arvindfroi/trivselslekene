@@ -2,14 +2,15 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
-import { opprettFotballKamp } from "@/lib/actions/fotballkamp";
+import { opprettFotballKamp, registrerVinner } from "@/lib/actions/fotballkamp";
 import Card from "@/components/ui/Card";
 import Button, { LinkButton } from "@/components/ui/Button";
 import { Input, Label } from "@/components/ui/Field";
 import Badge from "@/components/ui/Badge";
 import DeltakerSlideshow from "@/components/DeltakerSlideshow";
+import Avatar from "@/components/Avatar";
 import { statusTekst, statusVariant } from "@/lib/ovelseLabels";
-import { MapPin, Plus, Swords, Users } from "lucide-react";
+import { MapPin, Plus, Swords, Trophy } from "lucide-react";
 
 export default async function FotballKampSide() {
   const session = await auth();
@@ -41,8 +42,8 @@ export default async function FotballKampSide() {
               {sesong.navn}
             </p>
             <h1 className="mt-1 font-display text-4xl text-fg">Fotball kamp</h1>
-            <p className="mt-2 text-sm text-fg-dim">
-              4 mot 5 — opprett kamper, sett opp lag og registrer resultater.
+            <p className="mt-2 max-w-xl text-sm text-fg-dim">
+              4 mot 5 — lagene settes automatisk fra stillingen (1.→4-lag, 2.→5-lag, 3.→4-lag, …). Vinnerlaget får poeng.
             </p>
           </div>
         </div>
@@ -85,15 +86,27 @@ export default async function FotballKampSide() {
           </h2>
 
           {kamper.length === 0 ? (
-            <p className="text-sm text-fg-dim">Ingen fotballkamper er opprettet ennå.</p>
+            <p className="text-sm text-fg-dim">
+              Ingen fotballkamper er opprettet ennå.
+            </p>
           ) : (
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-6">
               {kamper.map((kamp) => {
                 const lag1 = kamp.lag[0]; // Lag 1 (4)
                 const lag2 = kamp.lag[1]; // Lag 2 (5)
+                const erVert = session.user.id === kamp.vertId;
+                const erFerdig = kamp.status === "FULLFORT";
+                const vinner =
+                  lag1?.resultat?.plassering === 1
+                    ? lag1
+                    : lag2?.resultat?.plassering === 1
+                      ? lag2
+                      : null;
+                const poeng = vinner?.resultat?.poeng ?? 0;
 
                 return (
                   <Card key={kamp.id} padding="p-5 sm:p-6">
+                    {/* Header */}
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <div className="flex items-center gap-2">
@@ -115,6 +128,11 @@ export default async function FotballKampSide() {
                               <MapPin size={11} /> {kamp.lokasjon}
                             </span>
                           )}
+                          {erFerdig && vinner && (
+                            <span className="inline-flex items-center gap-1 text-accent-2">
+                              <Trophy size={11} /> {vinner.navn} vant ({poeng} p per spiller)
+                            </span>
+                          )}
                         </p>
                       </div>
                       <LinkButton
@@ -122,87 +140,92 @@ export default async function FotballKampSide() {
                         variant="secondary"
                         className="px-3 py-1.5 text-xs"
                       >
-                        Administrer
+                        Rediger lag
                       </LinkButton>
                     </div>
 
                     {/* Lag-oppstilling */}
                     <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      {/* Lag 1 (4 spillere) */}
-                      {lag1 && (
-                        <div className="rounded-xl border border-line bg-white/[0.03] p-4">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium text-fg">
-                              {lag1.navn}
-                            </span>
-                            <span className="text-xs text-fg-faint">
-                              {lag1.medlemmer.length}/4 spillere
-                            </span>
-                          </div>
-                          <div className="flex flex-wrap gap-1.5">
-                            {lag1.medlemmer.map((m) => (
-                              <span
-                                key={m.id}
-                                className="rounded-full border border-line bg-white/[0.05] px-2.5 py-0.5 text-xs text-fg"
-                              >
-                                <Users size={11} className="mr-1 inline text-fg-faint" />
-                                {m.user.navn}
-                              </span>
-                            ))}
-                            {lag1.medlemmer.length === 0 && (
-                              <span className="text-xs text-fg-faint">
-                                Ingen spillere
-                              </span>
-                            )}
-                          </div>
-                          {lag1.resultat && (
-                            <p className="mt-2 text-xs tabular-nums text-accent-2">
-                              {lag1.resultat.poeng} poeng
-                              {lag1.resultat.plassering
-                                ? ` · ${lag1.resultat.plassering}. plass`
-                                : ""}
-                            </p>
-                          )}
-                        </div>
-                      )}
+                      {[lag1, lag2].map((lag) => {
+                        if (!lag) return null;
+                        const maxSpillere = lag === lag1 ? 4 : 5;
+                        const erVinner =
+                          erFerdig && lag.resultat?.plassering === 1;
+                        const erTaper =
+                          erFerdig && lag.resultat?.plassering !== 1;
 
-                      {/* Lag 2 (5 spillere) */}
-                      {lag2 && (
-                        <div className="rounded-xl border border-line bg-white/[0.03] p-4">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium text-fg">
-                              {lag2.navn}
-                            </span>
-                            <span className="text-xs text-fg-faint">
-                              {lag2.medlemmer.length}/5 spillere
-                            </span>
-                          </div>
-                          <div className="flex flex-wrap gap-1.5">
-                            {lag2.medlemmer.map((m) => (
-                              <span
-                                key={m.id}
-                                className="rounded-full border border-line bg-white/[0.05] px-2.5 py-0.5 text-xs text-fg"
-                              >
-                                <Users size={11} className="mr-1 inline text-fg-faint" />
-                                {m.user.navn}
+                        async function velgVinner() {
+                          "use server";
+                          await registrerVinner(kamp.id, lag.id, 3);
+                        }
+
+                        return (
+                          <div
+                            key={lag.id}
+                            className={`rounded-xl border p-4 ${
+                              erVinner
+                                ? "border-accent-2 bg-accent-2/10"
+                                : erTaper
+                                  ? "border-line opacity-60"
+                                  : "border-line bg-white/[0.03]"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium text-fg">
+                                {lag.navn}
                               </span>
-                            ))}
-                            {lag2.medlemmer.length === 0 && (
                               <span className="text-xs text-fg-faint">
-                                Ingen spillere
+                                {lag.medlemmer.length}/{maxSpillere} spillere
                               </span>
+                            </div>
+
+                            {lag.medlemmer.length === 0 ? (
+                              <p className="text-xs text-fg-faint">
+                                Ingen spillere tildelt — settes automatisk fra stilling ved opprettelse
+                              </p>
+                            ) : (
+                              <ul className="flex flex-col gap-1.5">
+                                {lag.medlemmer.map((m) => (
+                                  <li
+                                    key={m.id}
+                                    className="flex items-center gap-2 text-sm text-fg"
+                                  >
+                                    <Avatar
+                                      navn={m.user.navn}
+                                      bildeUrl={m.user.bildeUrl}
+                                      size={24}
+                                    />
+                                    <span>{m.user.navn}</span>
+                                    {erFerdig && lag.resultat && (
+                                      <span className="ml-auto text-xs tabular-nums text-accent-2">
+                                        +{lag.resultat.poeng} p
+                                      </span>
+                                    )}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+
+                            {/* Vinner-knapp (kun for vert, når kampen ikke er ferdig) */}
+                            {erVert && !erFerdig && lag.medlemmer.length > 0 && (
+                              <form action={velgVinner} className="mt-3">
+                                <Button
+                                  type="submit"
+                                  className="w-full justify-center py-2 text-xs"
+                                >
+                                  <Trophy size={14} /> {lag.navn} vant kampen
+                                </Button>
+                              </form>
+                            )}
+
+                            {erVinner && (
+                              <p className="mt-2 text-center text-xs font-medium text-accent-2">
+                                🏆 Vinnerlag — {poeng} poeng per spiller
+                              </p>
                             )}
                           </div>
-                          {lag2.resultat && (
-                            <p className="mt-2 text-xs tabular-nums text-accent-2">
-                              {lag2.resultat.poeng} poeng
-                              {lag2.resultat.plassering
-                                ? ` · ${lag2.resultat.plassering}. plass`
-                                : ""}
-                            </p>
-                          )}
-                        </div>
-                      )}
+                        );
+                      })}
                     </div>
                   </Card>
                 );
