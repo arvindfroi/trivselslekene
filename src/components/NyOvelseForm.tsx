@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useActionState } from "react";
+import { useRef, useState, useActionState } from "react";
 import { opprettOvelse } from "@/lib/actions/ovelser";
 import {
   kvalitetValg,
@@ -8,6 +8,34 @@ import {
 } from "@/lib/ovelseLabels";
 import Button from "@/components/ui/Button";
 import { Input, Label, Select, Textarea } from "@/components/ui/Field";
+import { ImageIcon, X } from "lucide-react";
+
+// Skalerer bildet ned til maks 1024px og komprimerer til JPEG data-URL
+function skalerBilde(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("lesefeil"));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("bildefeil"));
+      img.onload = () => {
+        const maks = 1024;
+        const skala = Math.min(1, maks / Math.max(img.width, img.height));
+        const w = Math.round(img.width * skala);
+        const h = Math.round(img.height * skala);
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return reject(new Error("canvas"));
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", 0.85));
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 type StillingSpiller = {
   userId: string;
@@ -23,12 +51,29 @@ type OpprettType = "ovelse" | "lagkamp" | "turnering";
 export default function NyOvelseForm({ stillingTopp8 }: Props) {
   const [opprettType, setOpprettType] = useState<OpprettType>("ovelse");
   const [ovelseType, setOvelseType] = useState<"INDIVIDUELL" | "LAG">("INDIVIDUELL");
+  const [bildeUrl, setBildeUrl] = useState<string | null>(null);
   const [, formAction, isPending] = useActionState(opprettOvelse, null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const velgFil = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    try {
+      const dataUrl = await skalerBilde(file);
+      setBildeUrl(dataUrl);
+    } catch {
+      // ignorer – brukeren kan prøve på nytt
+    }
+  };
+
+  const fjernBilde = () => setBildeUrl(null);
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
       {/* Skjult felt så server-action vet hva som skal opprettes */}
       <input type="hidden" name="opprettType" value={opprettType} />
+      <input type="hidden" name="bildeUrl" value={bildeUrl ?? ""} />
 
       {/* Navn */}
       <div>
@@ -144,6 +189,45 @@ export default function NyOvelseForm({ stillingTopp8 }: Props) {
           <div>
             <Label htmlFor="beskrivelse">Beskrivelse (valgfritt)</Label>
             <Textarea id="beskrivelse" name="beskrivelse" rows={2} />
+          </div>
+
+          {/* Bilde (kart/illustrasjon) */}
+          <div>
+            <Label>Kart / illustrasjon (valgfritt)</Label>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={velgFil}
+            />
+            {bildeUrl ? (
+              <div className="relative mt-2 overflow-hidden rounded-xl border border-line">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={bildeUrl}
+                  alt="Forhåndsvisning"
+                  className="max-h-64 w-full object-contain bg-black/20"
+                />
+                <button
+                  type="button"
+                  onClick={fjernBilde}
+                  className="absolute top-2 right-2 rounded-full bg-black/60 p-1.5 text-white backdrop-blur transition-colors hover:bg-red-600"
+                  aria-label="Fjern bilde"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-line bg-white/[0.02] px-4 py-6 text-sm text-fg-dim transition-colors hover:border-accent-2 hover:text-accent-2"
+              >
+                <ImageIcon size={18} />
+                Last opp kart eller illustrasjon
+              </button>
+            )}
           </div>
 
           {/* Kvaliteter */}

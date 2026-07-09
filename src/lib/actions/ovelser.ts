@@ -91,6 +91,7 @@ export async function opprettOvelse(
   const type = formData.get("type") as OvelseType;
   const lagFormat = formData.get("lagFormat") as LagFormat | null;
   const fellesLek = formData.get("fellesLek") === "on";
+  const bildeUrl = String(formData.get("bildeUrl") ?? "").trim() || null;
   const kvaliteter = formData
     .getAll("kvaliteter")
     .map(String)
@@ -105,6 +106,7 @@ export async function opprettOvelse(
       lagFormat: type === "LAG" ? lagFormat : null,
       kvaliteter,
       fellesLek,
+      bildeUrl: bildeUrl?.startsWith("data:image/") ? bildeUrl : null,
       sesongId: sesong.id,
       vertId: bruker.id,
     },

@@ -85,6 +85,7 @@ model Ovelse {
   lagFormat   LagFormat?
   kvaliteter  Kvalitet[]
   fellesLek   Boolean      @default(false)
+  bildeUrl    String?      /// Data-URL for kart/illustrasjon til øvelsen
   status      OvelseStatus @default(PLANLAGT)
   createdAt   DateTime     @default(now())
 

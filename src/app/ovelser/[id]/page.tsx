@@ -101,6 +101,16 @@ export default async function OvelseSide({
               {ovelse.beskrivelse}
             </p>
           )}
+          {ovelse.bildeUrl && (
+            <div className="mt-4 overflow-hidden rounded-xl border border-line">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={ovelse.bildeUrl}
+                alt={`Kart for ${ovelse.navn}`}
+                className="max-h-96 w-full object-contain bg-black/20"
+              />
+            </div>
+          )}
           {ovelse.kvaliteter.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-1.5">
               {ovelse.kvaliteter.map((k) => (
