@@ -204,16 +204,6 @@ body {
   to   { transform: translateX(0) translateZ(0); }
 }
 
-/* Dark overlay that fades over the exiting page during transition */
-@keyframes slide-overlay-forward {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-@keyframes slide-overlay-backward {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
 @keyframes pulse-dot {
   0%,
   100% {

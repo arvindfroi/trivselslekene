@@ -55,8 +55,6 @@ export default function MainShell({ panels }: MainShellProps) {
     prevPathname.current = pathname;
   }, [pathname, currentIndex]);
 
-  const showExit = isTransitioning && prevIndex !== null;
-
   const navDir: "forward" | "backward" =
     prevIndex !== null && currentIndex > prevIndex ? "forward" : "backward";
 
@@ -187,29 +185,7 @@ export default function MainShell({ panels }: MainShellProps) {
 
       {/* ── Content stack ── */}
       <div className="relative z-10">
-        {/* Exiting (previous) page — behind the entering page */}
-        {showExit && prevIndex !== null && (
-          <>
-            {/* Dark overlay fades in over the exiting page */}
-            <div
-              aria-hidden
-              className="absolute inset-0 z-[5] bg-black/30"
-              style={{
-                animation: `slide-overlay-${navDir} 0.4s cubic-bezier(0.32, 0.72, 0, 1) forwards`,
-              }}
-            />
-            <div
-              aria-hidden
-              className="absolute inset-0 z-0"
-            >
-              <div className={`mx-auto ${MAX_WIDTHS[prevIndex]} px-4 pt-6 pb-28`}>
-                {panels[prevIndex]}
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Current page — slides over the exit page */}
+        {/* Current page — slides in over the gradient background */}
         <div
           className="relative z-10"
           style={{
