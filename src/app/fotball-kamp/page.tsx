@@ -111,13 +111,13 @@ export default async function FotballKampSide() {
                         <LinkButton
                           href={`/ovelser/${kamp.id}`}
                           variant="secondary"
-                          className="px-3 py-1.5 text-xs"
+                          className="px-3 py-2 text-xs"
                         >
                           Rediger lag
                         </LinkButton>
                         {erVert && (
                           <form action={slettFotballKamp.bind(null, kamp.id)}>
-                            <SubmitButton variant="danger" className="px-3 py-1.5 text-xs" pendingText="Sletter…">
+                            <SubmitButton variant="danger" className="px-3 py-2 text-xs" pendingText="Sletter…">
                               <Trash2 size={14} /> Slett
                             </SubmitButton>
                           </form>

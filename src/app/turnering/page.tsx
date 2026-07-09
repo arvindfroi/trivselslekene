@@ -123,7 +123,7 @@ export default async function TurneringSide() {
                           await slettTurnering(t.id);
                         }}
                       >
-                        <SubmitButton variant="danger" className="px-3 py-1.5 text-xs" pendingText="Sletter…">
+                        <SubmitButton variant="danger" className="px-3 py-2 text-xs" pendingText="Sletter…">
                           <Trash2 size={14} /> Slett
                         </SubmitButton>
                       </form>

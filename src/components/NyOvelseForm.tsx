@@ -298,7 +298,7 @@ export default function NyOvelseForm({ stillingTopp8 }: Props) {
               <Button
                 type="button"
                 variant="outline"
-                className="shrink-0 px-3 py-1.5 text-xs"
+                className="shrink-0 px-3 py-2 text-xs"
                 onClick={leggTilFase}
               >
                 <Plus size={14} /> Legg til fase

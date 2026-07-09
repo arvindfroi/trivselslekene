@@ -14,10 +14,24 @@ const alleBilder = [
   "/deltakere/deltaker-9.webp",
 ];
 
-const GRUPPE = 3;
-const antallGrupper = Math.ceil(alleBilder.length / GRUPPE);
+function useGruppeStorrelse() {
+  const [gruppe, setGruppe] = useState(3);
+
+  useEffect(() => {
+    function oppdater() {
+      setGruppe(window.innerWidth < 640 ? 1 : 3);
+    }
+    oppdater();
+    window.addEventListener("resize", oppdater);
+    return () => window.removeEventListener("resize", oppdater);
+  }, []);
+
+  return gruppe;
+}
 
 export default function DeltakerSlideshow() {
+  const gruppe = useGruppeStorrelse();
+  const antallGrupper = Math.ceil(alleBilder.length / gruppe);
   const [indeks, setIndeks] = useState(0);
 
   useEffect(() => {
@@ -25,21 +39,22 @@ export default function DeltakerSlideshow() {
       setIndeks((prev) => (prev + 1) % antallGrupper);
     }, 4000);
     return () => clearInterval(timer);
-  }, []);
+  }, [antallGrupper]);
 
   return (
     <div className="fixed inset-0 z-0 overflow-hidden">
       {Array.from({ length: antallGrupper }).map((_, gi) => {
         const aktiv = gi === indeks;
-        const start = gi * GRUPPE;
-        const bilder = alleBilder.slice(start, start + GRUPPE);
+        const start = gi * gruppe;
+        const bilder = alleBilder.slice(start, start + gruppe);
+        const bredde = `${100 / gruppe}%`;
         return bilder.map((src, i) => (
           <div
             key={src}
             className="absolute top-0 h-full"
             style={{
-              width: "33.333%",
-              left: `${i * 33.333}%`,
+              width: bredde,
+              left: `${i * (100 / gruppe)}%`,
               opacity: aktiv ? 1 : 0,
               transition: "opacity 1.5s ease",
               zIndex: aktiv ? 1 : 0,
