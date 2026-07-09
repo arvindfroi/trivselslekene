@@ -34,20 +34,19 @@ export default function DeltakerSlideshow() {
   const aktive = grupper[indeks];
 
   return (
-    <div className="flex items-center justify-center gap-3 sm:gap-4">
+    <div className="fixed inset-0 z-0 overflow-hidden">
       <AnimatePresence mode="popLayout">
-        {aktive.map((src) => (
+        {aktive.map((src, i) => (
           <motion.div
             key={src}
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            transition={{ duration: 0.45, ease: "easeInOut" }}
-            className="overflow-hidden rounded-full shadow-lg shadow-black/40"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.9, ease: "easeInOut" }}
+            className="absolute top-0 h-full"
             style={{
-              width: 56,
-              height: 56,
-              border: "3px solid rgba(255,255,255,0.10)",
+              width: "33.333%",
+              left: `${i * 33.333}%`,
             }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -55,11 +54,13 @@ export default function DeltakerSlideshow() {
               src={src}
               alt="Deltaker"
               className="h-full w-full object-cover"
-              loading="lazy"
             />
           </motion.div>
         ))}
       </AnimatePresence>
+
+      {/* Mørkt overlay så innholdet er lesbart */}
+      <div className="absolute inset-0 bg-bg/75 backdrop-blur-[2px]" />
     </div>
   );
 }

@@ -44,36 +44,35 @@ export default async function ProfilSide({
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 pt-28 pb-12">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs tracking-[0.3em] text-accent-2 uppercase">
-            {session.user.name}
-          </p>
-          <h1 className="mt-1 font-display text-4xl text-fg">Profil</h1>
-          <p className="mt-2 text-sm text-fg-dim">
-            Legg til øvelser og styr poengene dine.
-          </p>
+    <>
+      <DeltakerSlideshow />
+      <div className="relative z-10 mx-auto max-w-4xl px-4 pt-28 pb-12">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs tracking-[0.3em] text-accent-2 uppercase">
+              {session.user.name}
+            </p>
+            <h1 className="mt-1 font-display text-4xl text-fg">Profil</h1>
+            <p className="mt-2 text-sm text-fg-dim">
+              Legg til øvelser og styr poengene dine.
+            </p>
+          </div>
+          <form action={loggUt}>
+            <Button type="submit" variant="secondary" className="px-4 py-2 text-xs">
+              Logg ut
+            </Button>
+          </form>
         </div>
-        <form action={loggUt}>
-          <Button type="submit" variant="secondary" className="px-4 py-2 text-xs">
-            Logg ut
-          </Button>
-        </form>
-      </div>
 
-      <div className="mt-8 flex flex-col items-center gap-6 sm:flex-row sm:items-start">
-        <div className="shrink-0">
-          <ProfilRediger
-            navn={bruker?.navn ?? session.user.name ?? ""}
-            bildeUrl={bruker?.bildeUrl ?? null}
-            navnFeil={navnfeil}
-          />
+        <div className="mt-8 flex flex-col items-center gap-6 sm:flex-row sm:items-start">
+          <div className="shrink-0">
+            <ProfilRediger
+              navn={bruker?.navn ?? session.user.name ?? ""}
+              bildeUrl={bruker?.bildeUrl ?? null}
+              navnFeil={navnfeil}
+            />
+          </div>
         </div>
-        <div className="flex flex-1 items-center justify-center sm:justify-end">
-          <DeltakerSlideshow />
-        </div>
-      </div>
 
       <Card className="mt-6" padding="p-5 sm:p-6">
         <h2 className="mb-4 flex items-center gap-2 text-sm font-medium tracking-widest text-fg-dim uppercase">
@@ -252,5 +251,6 @@ export default async function ProfilSide({
         )}
       </section>
     </div>
+    </>
   );
 }
