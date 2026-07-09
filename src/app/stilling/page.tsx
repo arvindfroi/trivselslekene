@@ -20,35 +20,6 @@ import StatCard from "@/components/ui/StatCard";
 import StatFlis from "@/components/StatFlis";
 import StillingListe from "@/components/StillingListe";
 import DeltakerSlideshow from "@/components/DeltakerSlideshow";
-import {
-  CloudRain,
-  Crown,
-  Flame,
-  HeartCrack,
-  Medal,
-  Shapes,
-  Swords,
-  TrendingUp,
-  Trophy,
-  type LucideIcon,
-} from "lucide-react";
-
-const UTMERKELSER: {
-  key: string;
-  tittel: string;
-  tekst: string;
-  Ikon: LucideIcon;
-}[] = [
-  { key: "seire", tittel: "Vinnermaskin", tekst: "Flest førsteplasser", Ikon: Trophy },
-  { key: "pall", tittel: "Pallhabitué", tekst: "Flest pallplasser", Ikon: Medal },
-  { key: "kamper", tittel: "Ironman", tekst: "Flest kamper spilt", Ikon: Swords },
-  { key: "snitt", tittel: "Snittkongen", tekst: "Best poengsnitt", Ikon: TrendingUp },
-  { key: "rekord", tittel: "Rekordholder", tekst: "Høyeste enkeltresultat", Ikon: Flame },
-  { key: "allsidig", tittel: "Multitalentet", tekst: "Flest ulike egenskaper", Ikon: Shapes },
-  { key: "vert", tittel: "Sjefsarrangør", tekst: "Arrangert flest leker", Ikon: Crown },
-  { key: "uheldig", tittel: "Uflaks-magneten", tekst: "Flest sisteplasser", Ikon: CloudRain },
-  { key: "trost", tittel: "Trøstepremien", tekst: "Lavest poengsnitt", Ikon: HeartCrack },
-];
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: "Statistikk" };
@@ -113,6 +84,7 @@ export default async function StillingSide() {
         </Card>
       </section>
 
+      {/* TEST: Kun kvalitetsledere (ikke utmerkelser) */}
       <section className="mt-10">
         <h2 className="mb-3 text-sm font-medium tracking-widest text-fg-dim uppercase">
           Beste innen hver egenskap
@@ -144,34 +116,17 @@ export default async function StillingSide() {
         </div>
       </section>
 
+      {/* DEBUG: vis utmerkelser-data uten StatFlis */}
       <section className="mt-10">
         <h2 className="mb-3 text-sm font-medium tracking-widest text-fg-dim uppercase">
-          Rekorder og utmerkelser
+          Rekorder og utmerkelser (debug)
         </h2>
-        <div className={BENTO_GRID}>
-          {UTMERKELSER.map((u, i) => {
-            const l = utmerkelser.find((x) => x.key === u.key);
-            return (
-              <StatFlis
-                key={u.key}
-                className={bentoSpenn(i)}
-                stor={erStor(i)}
-                Ikon={u.Ikon}
-                tittel={u.tittel}
-                tekst={u.tekst}
-                leder={
-                  l?.leder
-                    ? { navn: l.leder.navn, bildeUrl: l.leder.bildeUrl, verdi: l.leder.verdi }
-                    : null
-                }
-                topp3={l?.topp3.map((t) => ({
-                  navn: t.navn,
-                  bildeUrl: t.bildeUrl,
-                  verdi: t.verdi,
-                }))}
-              />
-            );
-          })}
+        <div className="surface rounded-2xl p-4">
+          {utmerkelser.map((u) => (
+            <p key={u.key} className="text-xs text-fg-dim">
+              {u.key}: leder={u.leder?.navn ?? "null"}, topp3={u.topp3.length}
+            </p>
+          ))}
         </div>
       </section>
     </div>
