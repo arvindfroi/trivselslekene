@@ -379,10 +379,23 @@ export function hentUtmerkelser(data: SesongData): Utmerkelse[] {
     }
     return valgt;
   };
+  const toppN = (
+    verdiAv: (r: Rad) => number,
+    gyldig: (r: Rad) => boolean,
+    lavest = false,
+    n = 3,
+  ): { r: Rad; v: number }[] => {
+    return rader
+      .filter(gyldig)
+      .map((r) => ({ r, v: verdiAv(r) }))
+      .sort((a, b) => (lavest ? a.v - b.v : b.v - a.v))
+      .slice(0, n);
+  };
   const pakk = (
     key: string,
     d: { r: Rad; v: number } | null,
     format: (v: number) => string,
+    top3: { r: Rad; v: number }[],
   ): Utmerkelse => ({
     key,
     leder: d
@@ -393,82 +406,68 @@ export function hentUtmerkelser(data: SesongData): Utmerkelse[] {
           verdi: format(d.v),
         }
       : null,
-    topp3: [],
+    topp3: top3.map(({ r, v }) => ({
+      userId: r.userId,
+      navn: r.navn,
+      bildeUrl: r.bildeUrl,
+      verdi: format(v),
+    })),
   });
 
   return [
     pakk(
       "seire",
-      finn(
-        (r) => r.seire,
-        (r) => r.seire >= 1,
-      ),
+      finn((r) => r.seire, (r) => r.seire >= 1),
       (v) => `${v} seire`,
+      toppN((r) => r.seire, (r) => r.seire >= 1),
     ),
     pakk(
       "pall",
-      finn(
-        (r) => r.pall,
-        (r) => r.pall >= 1,
-      ),
+      finn((r) => r.pall, (r) => r.pall >= 1),
       (v) => `${v} pallplasser`,
+      toppN((r) => r.pall, (r) => r.pall >= 1),
     ),
     pakk(
       "kamper",
-      finn(
-        (r) => r.kamper,
-        (r) => r.kamper >= 1,
-      ),
+      finn((r) => r.kamper, (r) => r.kamper >= 1),
       (v) => `${v} kamper`,
+      toppN((r) => r.kamper, (r) => r.kamper >= 1),
     ),
     pakk(
       "snitt",
-      finn(
-        (r) => r.snitt,
-        (r) => r.kamper >= 2,
-      ),
+      finn((r) => r.snitt, (r) => r.kamper >= 2),
       (v) => `${v.toFixed(1)} i snitt`,
+      toppN((r) => r.snitt, (r) => r.kamper >= 2),
     ),
     pakk(
       "rekord",
-      finn(
-        (r) => r.rekord,
-        (r) => r.rekord >= 1,
-      ),
+      finn((r) => r.rekord, (r) => r.rekord >= 1),
       (v) => `${v} poeng`,
+      toppN((r) => r.rekord, (r) => r.rekord >= 1),
     ),
     pakk(
       "allsidig",
-      finn(
-        (r) => r.egenskaper,
-        (r) => r.egenskaper >= 1,
-      ),
+      finn((r) => r.egenskaper, (r) => r.egenskaper >= 1),
       (v) => `${v} egenskaper`,
+      toppN((r) => r.egenskaper, (r) => r.egenskaper >= 1),
     ),
     pakk(
       "vert",
-      finn(
-        (r) => r.verter,
-        (r) => r.verter >= 1,
-      ),
+      finn((r) => r.verter, (r) => r.verter >= 1),
       (v) => `${v} leker`,
+      toppN((r) => r.verter, (r) => r.verter >= 1),
     ),
     pakk(
       "uheldig",
-      finn(
-        (r) => r.sisteplasser,
-        (r) => r.sisteplasser >= 1,
-      ),
+      finn((r) => r.sisteplasser, (r) => r.sisteplasser >= 1),
       (v) => `${v} sisteplasser`,
+      toppN((r) => r.sisteplasser, (r) => r.sisteplasser >= 1),
     ),
     pakk(
       "trost",
-      finn(
-        (r) => r.snitt,
-        (r) => r.kamper >= 2,
-        true,
-      ),
+      finn((r) => r.snitt, (r) => r.kamper >= 2, true),
       (v) => `${v.toFixed(1)} i snitt`,
+      toppN((r) => r.snitt, (r) => r.kamper >= 2, true),
     ),
   ];
 }
