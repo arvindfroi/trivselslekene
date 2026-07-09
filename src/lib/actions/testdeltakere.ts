@@ -6,22 +6,46 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
 
+async function cleanupDUsers() {
+  // Finn alle D-brukere
+  const dUsers = await prisma.user.findMany({
+    where: { navn: { startsWith: "D" } },
+    select: { id: true },
+  });
+  const dIds = dUsers.map((u) => u.id);
+  if (dIds.length === 0) return;
+
+  // Slett i riktig FK-rekkefølge
+  await prisma.turneringsKamp.updateMany({
+    where: { vinnerId: { in: dIds } },
+    data: { vinnerId: null },
+  });
+  await prisma.turneringsKamp.updateMany({
+    where: { OR: [{ deltager1Id: { in: dIds } }, { deltager2Id: { in: dIds } }] },
+    data: { deltager1Id: null, deltager2Id: null },
+  });
+  await prisma.turneringsDeltager.deleteMany({ where: { userId: { in: dIds } } });
+  await prisma.lagMedlem.deleteMany({ where: { userId: { in: dIds } } });
+  await prisma.resultatIndividuell.deleteMany({ where: { userId: { in: dIds } } });
+  await prisma.resultatLag.deleteMany({
+    where: { lag: { medlemmer: { some: { userId: { in: dIds } } } } },
+  });
+  await prisma.lag.deleteMany({
+    where: { medlemmer: { some: { userId: { in: dIds } } } },
+  });
+  await prisma.ovelse.deleteMany({
+    where: { OR: [{ vertId: { in: dIds } }, { navn: "Testpoeng" }] },
+  });
+  await prisma.user.deleteMany({ where: { id: { in: dIds } } });
+}
+
 export async function opprettTestdeltakere() {
   const session = await auth();
   if (!session?.user?.id) redirect("/bli-med");
 
   const sesong = await sikreAktivSesong();
 
-  // Slett gamle testdeltakere
-  await prisma.lagMedlem.deleteMany({
-    where: { user: { navn: { startsWith: "D" } } },
-  });
-  await prisma.resultatIndividuell.deleteMany({
-    where: { user: { navn: { startsWith: "D" } } },
-  });
-  await prisma.user.deleteMany({
-    where: { navn: { startsWith: "D" } },
-  });
+  await cleanupDUsers();
 
   // Opprett D1–D9 med poeng: D1=1, D2=2, … D9=9
   const users: { id: string; navn: string }[] = [];
@@ -67,28 +91,7 @@ export async function slettTestdeltakere() {
   const session = await auth();
   if (!session?.user?.id) redirect("/bli-med");
 
-  // Slett testdata i riktig rekkefølge
-  await prisma.lagMedlem.deleteMany({
-    where: { user: { navn: { startsWith: "D" } } },
-  });
-  await prisma.resultatLag.deleteMany({
-    where: { lag: { ovelse: { lagFormat: "ANNET" } } },
-  });
-  await prisma.lag.deleteMany({
-    where: { ovelse: { lagFormat: "ANNET" } },
-  });
-  await prisma.resultatIndividuell.deleteMany({
-    where: { user: { navn: { startsWith: "D" } } },
-  });
-  await prisma.ovelse.deleteMany({
-    where: { navn: "Testpoeng" },
-  });
-  await prisma.ovelse.deleteMany({
-    where: { navn: { startsWith: "Fotballkamp" } },
-  });
-  await prisma.user.deleteMany({
-    where: { navn: { startsWith: "D" } },
-  });
+  await cleanupDUsers();
 
   revalidatePath("/fotball-kamp");
   revalidatePath("/ovelser");
