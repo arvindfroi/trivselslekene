@@ -19,6 +19,7 @@ model User {
   vertFor          Ovelse[]          @relation("Vert")
   individuelleResultater ResultatIndividuell[]
   lagmedlemskap    LagMedlem[]
+  turneringsDeltagelser TurneringsDeltager[]
 }
 
 /// Et årgang av Trivselslekene, f.eks. "Trivselslekene 2026"
@@ -29,7 +30,8 @@ model Sesong {
   aktiv     Boolean  @default(true)
   createdAt DateTime @default(now())
 
-  ovelser Ovelse[]
+  ovelser     Ovelse[]
+  turneringer Turnering[]
 }
 
 enum OvelseType {
@@ -142,4 +144,56 @@ model ResultatLag {
   notat     String?
 
   @@unique([ovelseId, lagId])
+}
+
+/// En turnering med dobbel-eliminering (winners + losers bracket)
+model Turnering {
+  id        String   @id @default(cuid())
+  navn      String
+  sesongId  String
+  sesong    Sesong   @relation(fields: [sesongId], references: [id], onDelete: Cascade)
+  status    String   @default("PLANLAGT") // PLANLAGT | PAAGAAR | FULLFORT
+  createdAt DateTime @default(now())
+
+  deltagere TurneringsDeltager[]
+  kamper    TurneringsKamp[]
+}
+
+/// Deltager i en turnering med seed 1–8
+model TurneringsDeltager {
+  id          String @id @default(cuid())
+  turneringId String
+  turnering   Turnering @relation(fields: [turneringId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User   @relation(fields: [userId], references: [id])
+  seed        Int
+
+  kamperSomDeltager1 TurneringsKamp[] @relation("Deltager1")
+  kamperSomDeltager2 TurneringsKamp[] @relation("Deltager2")
+  seire             TurneringsKamp[] @relation("Vinner")
+
+  @@unique([turneringId, userId])
+  @@unique([turneringId, seed])
+}
+
+/// En kamp i turnerings-bracket
+model TurneringsKamp {
+  id          String @id @default(cuid())
+  turneringId String
+  turnering   Turnering @relation(fields: [turneringId], references: [id], onDelete: Cascade)
+
+  runde       Int    // rundenummer (1–5 i winners, 1–5 i losers)
+  bracket     String // "W" = winners, "L" = losers, "G" = grand finals
+  posisjon    Int    // posisjon innen runden (1..N)
+
+  deltager1Id String?
+  deltager1   TurneringsDeltager? @relation("Deltager1", fields: [deltager1Id], references: [id])
+  deltager2Id String?
+  deltager2   TurneringsDeltager? @relation("Deltager2", fields: [deltager2Id], references: [id])
+  vinnerId    String?
+  vinner      TurneringsDeltager? @relation("Vinner", fields: [vinnerId], references: [id])
+
+  status      String   @default("VENTER") // VENTER | KLAR | FULLFORT
+
+  @@unique([turneringId, bracket, runde, posisjon])
 }

@@ -1,25 +1,194 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
+import { hentStilling } from "@/lib/stilling";
+import { opprettTurnering, slettTurnering } from "@/lib/actions/turnering";
+import Card from "@/components/ui/Card";
+import Button from "@/components/ui/Button";
+import { Input, Label, Select } from "@/components/ui/Field";
+import Badge from "@/components/ui/Badge";
 import DeltakerSlideshow from "@/components/DeltakerSlideshow";
+import TurneringsBracket, { type TurneringMedData } from "@/components/TurneringsBracket";
+import { Plus, Trophy, Trash2 } from "lucide-react";
+
+const statusBadge: Record<string, "planlagt" | "pagaar" | "fullfort"> = {
+  PLANLAGT: "planlagt",
+  PAAGAAR: "pagaar",
+  FULLFORT: "fullfort",
+};
+
+const statusTekst: Record<string, string> = {
+  PLANLAGT: "Planlagt",
+  PAAGAAR: "Pågår",
+  FULLFORT: "Fullført",
+};
 
 export default async function TurneringSide() {
   const session = await auth();
   if (!session?.user) redirect("/bli-med");
 
   const sesong = await sikreAktivSesong();
+  const stilling = await hentStilling(sesong.id);
+
+  const turneringer = await prisma.turnering.findMany({
+    where: { sesongId: sesong.id },
+    include: {
+      deltagere: {
+        include: { user: { select: { id: true, navn: true, bildeUrl: true } } },
+        orderBy: { seed: "asc" },
+      },
+      kamper: {
+        include: {
+          deltager1: {
+            include: { user: { select: { id: true, navn: true, bildeUrl: true } } },
+          },
+          deltager2: {
+            include: { user: { select: { id: true, navn: true, bildeUrl: true } } },
+          },
+        },
+        orderBy: [{ bracket: "asc" }, { runde: "asc" }, { posisjon: "asc" }],
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  // Topp 8 på stillingen for forhåndsutfylling
+  const topp8 = stilling.slice(0, 8);
 
   return (
     <>
       <DeltakerSlideshow />
-      <div className="relative z-10 mx-auto max-w-5xl px-4 pt-28 pb-12">
-        <p className="text-xs tracking-[0.3em] text-accent-2 uppercase">
-          {sesong.navn}
-        </p>
-        <h1 className="mt-1 font-display text-4xl text-fg">Turnering</h1>
-        <p className="mt-2 text-sm text-fg-dim">
-          Se og administrer turneringer.
-        </p>
+      <div className="relative z-10 mx-auto max-w-6xl px-4 pt-28 pb-12">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <p className="text-xs tracking-[0.3em] text-accent-2 uppercase">
+              {sesong.navn}
+            </p>
+            <h1 className="mt-1 font-display text-4xl text-fg">Turnering</h1>
+            <p className="mt-2 max-w-xl text-sm text-fg-dim">
+              Dobbel-eliminering med winners og losers bracket — 8 deltagere.
+            </p>
+          </div>
+        </div>
+
+        {/* Ny turnering */}
+        <Card className="mt-8" padding="p-5 sm:p-6">
+          <h2 className="mb-4 flex items-center gap-2 text-sm font-medium tracking-widest text-fg-dim uppercase">
+            <Plus size={16} /> Ny turnering
+          </h2>
+          <form action={opprettTurnering} className="flex flex-col gap-4">
+            <div>
+              <Label htmlFor="navn">Navn på turnering</Label>
+              <Input
+                id="navn"
+                name="navn"
+                required
+                placeholder="F.eks. Trivselslekene Cup 2026"
+              />
+            </div>
+
+            <div>
+              <Label>Deltagere (seed 1–8)</Label>
+              <p className="mb-2 text-xs text-fg-faint">
+                Forhåndsutfylt fra stillingen. Bytt ut ved å velge andre deltagere.
+              </p>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((seed) => (
+                  <div key={seed}>
+                    <Label htmlFor={`seed${seed}`} className="text-xs">
+                      Seed #{seed}
+                    </Label>
+                    <Select
+                      id={`seed${seed}`}
+                      name={`seed${seed}`}
+                      required
+                      defaultValue={topp8[seed - 1]?.userId ?? ""}
+                    >
+                      <option value="">Velg deltager</option>
+                      {stilling.map((r) => (
+                        <option key={r.userId} value={r.userId}>
+                          {r.navn}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <Button type="submit" className="self-start">
+              Opprett turnering
+            </Button>
+          </form>
+        </Card>
+
+        {/* Turneringer */}
+        <section className="mt-10">
+          <h2 className="mb-3 text-sm font-medium tracking-widest text-fg-dim uppercase">
+            Turneringer
+          </h2>
+
+          {turneringer.length === 0 ? (
+            <p className="text-sm text-fg-dim">
+              Ingen turneringer er opprettet ennå.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-10">
+              {turneringer.map((t) => (
+                <Card key={t.id} padding="p-5 sm:p-6">
+                  {/* Header */}
+                  <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Trophy size={18} className="text-accent-2" />
+                        <h3 className="font-display text-xl text-fg">{t.navn}</h3>
+                        <Badge
+                          variant={statusBadge[t.status] ?? "planlagt"}
+                          pulse={t.status === "PAAGAAR"}
+                        >
+                          {statusTekst[t.status] ?? t.status}
+                        </Badge>
+                      </div>
+                      <p className="mt-1 text-xs text-fg-faint">
+                        {t.deltagere.length} deltagere — dobbel-eliminering
+                      </p>
+                    </div>
+
+                    {t.status === "PLANLAGT" && (
+                      <form
+                        action={async () => {
+                          "use server";
+                          await slettTurnering(t.id);
+                        }}
+                      >
+                        <Button variant="danger" className="px-3 py-1.5 text-xs">
+                          <Trash2 size={14} /> Slett
+                        </Button>
+                      </form>
+                    )}
+                  </div>
+
+                  {/* Deltagerliste */}
+                  <div className="mb-4 flex flex-wrap gap-1.5">
+                    {t.deltagere.map((d) => (
+                      <span
+                        key={d.id}
+                        className="inline-flex items-center gap-1 rounded-full bg-white/[0.06] border border-line px-2.5 py-1 text-xs text-fg-dim"
+                      >
+                        <span className="font-mono text-fg-faint">#{d.seed}</span>
+                        <span>{d.user.navn}</span>
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Bracket */}
+                  <TurneringsBracket turnering={t as unknown as TurneringMedData} />
+                </Card>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
     </>
   );
