@@ -19,7 +19,6 @@ const images = [
 function explode(x: number, y: number) {
   const origin = { x: x / window.innerWidth, y: y / window.innerHeight };
 
-  // Første burst: stjerneformet eksplosjon
   confetti({
     particleCount: 60,
     spread: 70,
@@ -33,7 +32,6 @@ function explode(x: number, y: number) {
     startVelocity: 35,
   });
 
-  // Andre burst: små sirkler med delay for lagdelt effekt
   setTimeout(() => {
     confetti({
       particleCount: 30,
@@ -49,7 +47,6 @@ function explode(x: number, y: number) {
     });
   }, 80);
 
-  // Tredje burst: enda mindre, sprer seg bredere
   setTimeout(() => {
     confetti({
       particleCount: 20,
@@ -69,9 +66,11 @@ function explode(x: number, y: number) {
 function ParticipantImage({
   src,
   imageSize,
+  onPop,
 }: {
   src: string;
   imageSize: number;
+  onPop: (src: string) => void;
 }) {
   const controls = useAnimation();
 
@@ -81,15 +80,16 @@ function ParticipantImage({
       const cx = rect.left + rect.width / 2;
       const cy = rect.top + rect.height / 2;
 
-      // Pop-animasjon
-      controls.start({
-        scale: [1, 1.35, 0.9, 1.05, 1],
-        transition: { duration: 0.45, ease: "easeOut" },
-      });
-
       explode(cx, cy);
+
+      // Pop ut: skaler opp → krymp til null
+      controls.start({
+        scale: [1, 1.4, 0],
+        opacity: [1, 1, 0],
+        transition: { duration: 0.4, ease: "easeOut", times: [0, 0.3, 1] },
+      }).then(() => onPop(src));
     },
-    [controls],
+    [controls, src, onPop],
   );
 
   return (
@@ -118,7 +118,7 @@ function ParticipantImage({
         <img
           src={src}
           alt="Deltaker"
-          className="pointer-events-none h-full w-full object-cover select-none"
+          className="pointer-events-none h-full w-full select-none object-cover"
           loading="eager"
           draggable={false}
         />
@@ -133,9 +133,19 @@ interface OrbitRingProps {
   clockwise: boolean;
   images: string[];
   imageSize: number;
+  popped: Set<string>;
+  onPop: (src: string) => void;
 }
 
-function OrbitRing({ radius, duration, clockwise, images: ringImages, imageSize }: OrbitRingProps) {
+function OrbitRing({
+  radius,
+  duration,
+  clockwise,
+  images: ringImages,
+  imageSize,
+  popped,
+  onPop,
+}: OrbitRingProps) {
   return (
     <motion.div
       className="pointer-events-none absolute left-1/2 top-1/2"
@@ -144,6 +154,8 @@ function OrbitRing({ radius, duration, clockwise, images: ringImages, imageSize 
       transition={{ duration, repeat: Infinity, ease: "linear" }}
     >
       {ringImages.map((src, i) => {
+        if (popped.has(src)) return null;
+
         const angle = (360 / ringImages.length) * i;
         return (
           <div
@@ -155,7 +167,6 @@ function OrbitRing({ radius, duration, clockwise, images: ringImages, imageSize 
               transform: `rotate(${angle}deg) translateX(${radius}px)`,
             }}
           >
-            {/* Counter-rotate wrapper for click handling */}
             <motion.div
               className="pointer-events-auto"
               style={{
@@ -166,9 +177,8 @@ function OrbitRing({ radius, duration, clockwise, images: ringImages, imageSize 
               }}
               animate={{ rotate: clockwise ? -360 : 360 }}
               transition={{ duration, repeat: Infinity, ease: "linear" }}
-              onAnimationStart={undefined}
             >
-              <ParticipantImage src={src} imageSize={imageSize} />
+              <ParticipantImage src={src} imageSize={imageSize} onPop={onPop} />
             </motion.div>
           </div>
         );
@@ -179,6 +189,7 @@ function OrbitRing({ radius, duration, clockwise, images: ringImages, imageSize 
 
 export default function ParticipantOrbit() {
   const [dims, setDims] = useState({ w: 1200, h: 800 });
+  const [popped, setPopped] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const update = () => setDims({ w: window.innerWidth, h: window.innerHeight });
@@ -187,7 +198,10 @@ export default function ParticipantOrbit() {
     return () => window.removeEventListener("resize", update);
   }, []);
 
-  // ~1/30 av skjermarealet, minus 30% = sqrt(w*h/30) * 0.7
+  const handlePop = useCallback((src: string) => {
+    setPopped((prev) => new Set(prev).add(src));
+  }, []);
+
   const imageSize = Math.round(Math.sqrt((dims.w * dims.h) / 30) * 0.7);
   const vmin = Math.min(dims.w, dims.h);
 
@@ -202,7 +216,7 @@ export default function ParticipantOrbit() {
   return (
     <div className="pointer-events-none absolute inset-0 z-[5] overflow-hidden">
       {orbits.map((cfg, i) => (
-        <OrbitRing key={i} {...cfg} imageSize={imageSize} />
+        <OrbitRing key={i} {...cfg} imageSize={imageSize} popped={popped} onPop={handlePop} />
       ))}
     </div>
   );
