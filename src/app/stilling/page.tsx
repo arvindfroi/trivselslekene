@@ -51,24 +51,102 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: "Statistikk" };
 }
 
+function FeilVisning({ melding }: { melding: string }) {
+  return (
+    <div className="mx-auto max-w-4xl px-4 pt-28 pb-12">
+      <h1 className="font-display text-4xl text-fg">Statistikk</h1>
+      <div className="surface mt-6 rounded-2xl p-6">
+        <p className="text-sm font-medium text-red-400">Debug-feil:</p>
+        <pre className="mt-2 whitespace-pre-wrap text-xs text-fg-dim">{melding}</pre>
+      </div>
+    </div>
+  );
+}
+
+async function lastStatistikk(sesongId: string) {
+  const steps: string[] = [];
+
+  try {
+    steps.push("henter sesongdata...");
+    const [sesongData, antallOvelser, antallFullfort] = await Promise.all([
+      hentAlleSesongData(sesongId),
+      prisma.ovelse.count({ where: { sesongId } }),
+      prisma.ovelse.count({
+        where: { sesongId, status: "FULLFORT" },
+      }),
+    ]);
+    steps.push(`sesongdata OK: ${sesongData.brukere.length} brukere`);
+
+    steps.push("hentStilling...");
+    const stilling = hentStilling(sesongData);
+    steps.push(`stilling OK: ${stilling.length} rader`);
+
+    steps.push("hentSpillerdetaljer...");
+    const detaljer = hentSpillerdetaljer(sesongData);
+    steps.push(`detaljer OK: ${Object.keys(detaljer).length}`);
+
+    steps.push("hentKvalitetsledere...");
+    const kvalitetsledere = hentKvalitetsledere(sesongData);
+    steps.push(`kvalitetsledere OK: ${kvalitetsledere.length}`);
+
+    steps.push("hentUtmerkelser...");
+    const utmerkelser = hentUtmerkelser(sesongData);
+    steps.push(`utmerkelser OK: ${utmerkelser.length}`);
+
+    const toppPoeng = Math.max(1, ...stilling.map((s) => s.totalPoeng));
+    const leder = stilling.find((s) => s.totalPoeng > 0);
+
+    return {
+      stilling,
+      detaljer,
+      kvalitetsledere,
+      utmerkelser,
+      antallOvelser,
+      antallFullfort,
+      toppPoeng,
+      leder,
+    };
+  } catch (err) {
+    const message = err instanceof Error ? `${err.name}: ${err.message}\n${err.stack}` : String(err);
+    throw new Error(`Statistikk-feil:\nSiste steg: ${steps[steps.length - 1] ?? "ukjent"}\n${message}`);
+  }
+}
+
 export default async function StillingSide() {
   const session = await auth();
   if (!session?.user) redirect("/bli-med");
 
   const sesong = await sikreAktivSesong();
-  const [sesongData, antallOvelser, antallFullfort] = await Promise.all([
-    hentAlleSesongData(sesong.id),
-    prisma.ovelse.count({ where: { sesongId: sesong.id } }),
-    prisma.ovelse.count({
-      where: { sesongId: sesong.id, status: "FULLFORT" },
-    }),
-  ]);
-  const stilling = hentStilling(sesongData);
-  const detaljer = hentSpillerdetaljer(sesongData);
-  const kvalitetsledere = hentKvalitetsledere(sesongData);
-  const utmerkelser = hentUtmerkelser(sesongData);
-  const toppPoeng = Math.max(1, ...stilling.map((s) => s.totalPoeng));
-  const leder = stilling.find((s) => s.totalPoeng > 0);
+
+  let feil: string | null = null;
+  let stilling, detaljer, kvalitetsledere, utmerkelser;
+  let antallOvelser = 0;
+  let antallFullfort = 0;
+  let toppPoeng = 1;
+  let leder;
+
+  try {
+    const data = await lastStatistikk(sesong.id);
+    stilling = data.stilling;
+    detaljer = data.detaljer;
+    kvalitetsledere = data.kvalitetsledere;
+    utmerkelser = data.utmerkelser;
+    antallOvelser = data.antallOvelser;
+    antallFullfort = data.antallFullfort;
+    toppPoeng = data.toppPoeng;
+    leder = data.leder;
+  } catch (err) {
+    feil = err instanceof Error ? err.message : String(err);
+  }
+
+  if (feil) {
+    return (
+      <>
+        <DeltakerSlideshow />
+        <FeilVisning melding={feil} />
+      </>
+    );
+  }
 
   return (
     <>
@@ -83,7 +161,7 @@ export default async function StillingSide() {
         </p>
 
       <div className="mt-6 grid grid-cols-3 gap-3 sm:gap-4">
-        <StatCard label="Deltakere" verdi={String(stilling.length)} />
+        <StatCard label="Deltakere" verdi={String(stilling!.length)} />
         <StatCard
           label="Øvelser"
           verdi={`${antallFullfort}/${antallOvelser}`}
@@ -96,14 +174,14 @@ export default async function StillingSide() {
           Sammenlagt
         </h2>
         <Card padding="p-0" className="overflow-hidden">
-          {stilling.length === 0 ? (
+          {stilling!.length === 0 ? (
             <p className="px-5 py-8 text-center text-sm text-fg-dim">
               Ingen resultater er registrert ennå.
             </p>
           ) : (
             <StillingListe
-              rader={stilling}
-              detaljer={detaljer}
+              rader={stilling!}
+              detaljer={detaljer!}
               meId={session.user.id}
               toppPoeng={toppPoeng}
             />
@@ -116,7 +194,7 @@ export default async function StillingSide() {
           Beste innen hver egenskap
         </h2>
         <div className={BENTO_GRID}>
-          {kvalitetsledere.map(({ kvalitet, leder: best, topp3 }, i) => (
+          {kvalitetsledere!.map(({ kvalitet, leder: best, topp3 }, i) => (
             <StatFlis
               key={kvalitet}
               className={bentoSpenn(i)}
@@ -148,7 +226,7 @@ export default async function StillingSide() {
         </h2>
         <div className={BENTO_GRID}>
           {UTMERKELSER.map((u, i) => {
-            const l = utmerkelser.find((x) => x.key === u.key);
+            const l = utmerkelser!.find((x) => x.key === u.key);
             return (
               <StatFlis
                 key={u.key}
