@@ -62,6 +62,12 @@ export type KvalitetsLeder = {
     bildeUrl: string | null;
     poeng: number;
   } | null;
+  topp3: {
+    userId: string;
+    navn: string;
+    bildeUrl: string | null;
+    poeng: number;
+  }[];
 };
 
 /**
@@ -123,15 +129,17 @@ export async function hentKvalitetsledere(
 
   return ALLE_KVALITETER.map((kvalitet) => {
     const kart = poeng.get(kvalitet)!;
-    let beste: KvalitetsLeder["leder"] = null;
-    for (const [userId, p] of kart) {
-      if (p <= 0) continue;
-      if (!beste || p > beste.poeng) {
-        const info = navnKart.get(userId)!;
-        beste = { userId, navn: info.navn, bildeUrl: info.bildeUrl, poeng: p };
-      }
-    }
-    return { kvalitet, leder: beste };
+    const sortert = [...kart.entries()]
+      .filter(([, p]) => p > 0)
+      .sort((a, b) => b[1] - a[1]);
+    const beste = sortert[0]
+      ? { userId: sortert[0][0], navn: navnKart.get(sortert[0][0])!.navn, bildeUrl: navnKart.get(sortert[0][0])!.bildeUrl, poeng: sortert[0][1] }
+      : null;
+    const topp3 = sortert.slice(0, 3).map(([userId, p]) => {
+      const info = navnKart.get(userId)!;
+      return { userId, navn: info.navn, bildeUrl: info.bildeUrl, poeng: p };
+    });
+    return { kvalitet, leder: beste, topp3 };
   });
 }
 
@@ -221,6 +229,12 @@ export type Utmerkelse = {
     bildeUrl: string | null;
     verdi: string;
   } | null;
+  topp3: {
+    userId: string;
+    navn: string;
+    bildeUrl: string | null;
+    verdi: string;
+  }[];
 };
 
 /**
@@ -347,26 +361,45 @@ export async function hentUtmerkelser(sesongId: string): Promise<Utmerkelse[]> {
     }
     return valgt;
   };
+  const toppN = (
+    verdiAv: (r: Rad) => number,
+    gyldig: (r: Rad) => boolean,
+    lavest = false,
+    n = 3
+  ): { r: Rad; v: number }[] => {
+    return rader
+      .filter(gyldig)
+      .map((r) => ({ r, v: verdiAv(r) }))
+      .sort((a, b) => (lavest ? a.v - b.v : b.v - a.v))
+      .slice(0, n);
+  };
   const pakk = (
     key: string,
     d: { r: Rad; v: number } | null,
-    format: (v: number) => string
+    format: (v: number) => string,
+    top3: { r: Rad; v: number }[]
   ): Utmerkelse => ({
     key,
     leder: d
       ? { userId: d.r.userId, navn: d.r.navn, bildeUrl: d.r.bildeUrl, verdi: format(d.v) }
       : null,
+    topp3: top3.map(({ r, v }) => ({
+      userId: r.userId,
+      navn: r.navn,
+      bildeUrl: r.bildeUrl,
+      verdi: format(v),
+    })),
   });
 
   return [
-    pakk("seire", finn((r) => r.seire, (r) => r.seire >= 1), (v) => `${v} seire`),
-    pakk("pall", finn((r) => r.pall, (r) => r.pall >= 1), (v) => `${v} pallplasser`),
-    pakk("kamper", finn((r) => r.kamper, (r) => r.kamper >= 1), (v) => `${v} kamper`),
-    pakk("snitt", finn((r) => r.snitt, (r) => r.kamper >= 2), (v) => `${v.toFixed(1)} i snitt`),
-    pakk("rekord", finn((r) => r.rekord, (r) => r.rekord >= 1), (v) => `${v} poeng`),
-    pakk("allsidig", finn((r) => r.egenskaper, (r) => r.egenskaper >= 1), (v) => `${v} egenskaper`),
-    pakk("vert", finn((r) => r.verter, (r) => r.verter >= 1), (v) => `${v} leker`),
-    pakk("uheldig", finn((r) => r.sisteplasser, (r) => r.sisteplasser >= 1), (v) => `${v} sisteplasser`),
-    pakk("trost", finn((r) => r.snitt, (r) => r.kamper >= 2, true), (v) => `${v.toFixed(1)} i snitt`),
+    pakk("seire", finn((r) => r.seire, (r) => r.seire >= 1), (v) => `${v} seire`, toppN((r) => r.seire, (r) => r.seire >= 1)),
+    pakk("pall", finn((r) => r.pall, (r) => r.pall >= 1), (v) => `${v} pallplasser`, toppN((r) => r.pall, (r) => r.pall >= 1)),
+    pakk("kamper", finn((r) => r.kamper, (r) => r.kamper >= 1), (v) => `${v} kamper`, toppN((r) => r.kamper, (r) => r.kamper >= 1)),
+    pakk("snitt", finn((r) => r.snitt, (r) => r.kamper >= 2), (v) => `${v.toFixed(1)} i snitt`, toppN((r) => r.snitt, (r) => r.kamper >= 2)),
+    pakk("rekord", finn((r) => r.rekord, (r) => r.rekord >= 1), (v) => `${v} poeng`, toppN((r) => r.rekord, (r) => r.rekord >= 1)),
+    pakk("allsidig", finn((r) => r.egenskaper, (r) => r.egenskaper >= 1), (v) => `${v} egenskaper`, toppN((r) => r.egenskaper, (r) => r.egenskaper >= 1)),
+    pakk("vert", finn((r) => r.verter, (r) => r.verter >= 1), (v) => `${v} leker`, toppN((r) => r.verter, (r) => r.verter >= 1)),
+    pakk("uheldig", finn((r) => r.sisteplasser, (r) => r.sisteplasser >= 1), (v) => `${v} sisteplasser`, toppN((r) => r.sisteplasser, (r) => r.sisteplasser >= 1)),
+    pakk("trost", finn((r) => r.snitt, (r) => r.kamper >= 2, true), (v) => `${v.toFixed(1)} i snitt`, toppN((r) => r.snitt, (r) => r.kamper >= 2, true)),
   ];
 }

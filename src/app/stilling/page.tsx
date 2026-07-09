@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -44,6 +45,10 @@ const UTMERKELSER: {
   { key: "uheldig", tittel: "Uflaks-magneten", tekst: "Flest sisteplasser", Ikon: CloudRain },
   { key: "trost", tittel: "Trøstepremien", tekst: "Lavest poengsnitt", Ikon: HeartCrack },
 ];
+
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: "Statistikk" };
+}
 
 export default async function StillingSide() {
   const session = await auth();
@@ -116,7 +121,7 @@ export default async function StillingSide() {
           Beste innen hver egenskap
         </h2>
         <div className={BENTO_GRID}>
-          {kvalitetsledere.map(({ kvalitet, leder: best }, i) => (
+          {kvalitetsledere.map(({ kvalitet, leder: best, topp3 }, i) => (
             <StatFlis
               key={kvalitet}
               className={bentoSpenn(i)}
@@ -132,6 +137,11 @@ export default async function StillingSide() {
                     }
                   : null
               }
+              topp3={topp3.map((t) => ({
+                navn: t.navn,
+                bildeUrl: t.bildeUrl,
+                verdi: String(t.poeng),
+              }))}
             />
           ))}
         </div>
@@ -143,7 +153,7 @@ export default async function StillingSide() {
         </h2>
         <div className={BENTO_GRID}>
           {UTMERKELSER.map((u, i) => {
-            const l = utmerkelser.find((x) => x.key === u.key)?.leder ?? null;
+            const l = utmerkelser.find((x) => x.key === u.key);
             return (
               <StatFlis
                 key={u.key}
@@ -153,10 +163,15 @@ export default async function StillingSide() {
                 tittel={u.tittel}
                 tekst={u.tekst}
                 leder={
-                  l
-                    ? { navn: l.navn, bildeUrl: l.bildeUrl, verdi: l.verdi }
+                  l?.leder
+                    ? { navn: l.leder.navn, bildeUrl: l.leder.bildeUrl, verdi: l.leder.verdi }
                     : null
                 }
+                topp3={l?.topp3.map((t) => ({
+                  navn: t.navn,
+                  bildeUrl: t.bildeUrl,
+                  verdi: t.verdi,
+                }))}
               />
             );
           })}
