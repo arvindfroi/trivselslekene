@@ -5,6 +5,7 @@ import { sikreAktivSesong } from "@/lib/sesong";
 import Card from "@/components/ui/Card";
 import { LinkButton } from "@/components/ui/Button";
 import OvelseGrid, { type SpillKort } from "@/components/OvelseGrid";
+import DeltakerSlideshow from "@/components/DeltakerSlideshow";
 import { Plus } from "lucide-react";
 
 export default async function OvelserSide() {
@@ -63,6 +64,10 @@ export default async function OvelserSide() {
         <LinkButton href="/profil" className="hidden shrink-0 px-4 sm:inline-flex">
           <Plus size={16} /> Ny øvelse
         </LinkButton>
+      </div>
+
+      <div className="mt-6 flex justify-center">
+        <DeltakerSlideshow />
       </div>
 
       {ovelser.length === 0 ? (

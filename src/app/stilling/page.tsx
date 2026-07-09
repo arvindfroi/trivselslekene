@@ -14,6 +14,7 @@ import Card from "@/components/ui/Card";
 import StatCard from "@/components/ui/StatCard";
 import StatFlis from "@/components/StatFlis";
 import StillingListe from "@/components/StillingListe";
+import DeltakerSlideshow from "@/components/DeltakerSlideshow";
 import {
   CloudRain,
   Crown,
@@ -78,6 +79,10 @@ export default async function StillingSide() {
       <p className="mt-2 text-sm text-fg-dim">
         Sammenlagt stilling, egenskaper og utmerkelser for lekene.
       </p>
+
+      <div className="mt-6 flex justify-center">
+        <DeltakerSlideshow />
+      </div>
 
       <div className="mt-6 grid grid-cols-3 gap-3 sm:gap-4">
         <StatCard label="Deltakere" verdi={String(stilling.length)} />

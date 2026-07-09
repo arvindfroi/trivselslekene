@@ -14,6 +14,7 @@ import Button, { LinkButton } from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import { Input, Label, Select, Textarea } from "@/components/ui/Field";
 import ProfilRediger from "@/components/ProfilRediger";
+import DeltakerSlideshow from "@/components/DeltakerSlideshow";
 import { MapPin, Users, Settings2, Trash2, Plus } from "lucide-react";
 
 export default async function ProfilSide({
@@ -61,12 +62,17 @@ export default async function ProfilSide({
         </form>
       </div>
 
-      <div className="mt-8">
-        <ProfilRediger
-          navn={bruker?.navn ?? session.user.name ?? ""}
-          bildeUrl={bruker?.bildeUrl ?? null}
-          navnFeil={navnfeil}
-        />
+      <div className="mt-8 flex flex-col items-center gap-6 sm:flex-row sm:items-start">
+        <div className="shrink-0">
+          <ProfilRediger
+            navn={bruker?.navn ?? session.user.name ?? ""}
+            bildeUrl={bruker?.bildeUrl ?? null}
+            navnFeil={navnfeil}
+          />
+        </div>
+        <div className="flex flex-1 items-center justify-center sm:justify-end">
+          <DeltakerSlideshow />
+        </div>
       </div>
 
       <Card className="mt-6" padding="p-5 sm:p-6">
