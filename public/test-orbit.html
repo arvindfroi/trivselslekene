@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="nb">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trivselslekene 2026 – Test</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #060608;
+      --fg: #f4f4f5;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: system-ui, -apple-system, sans-serif;
+      overflow: hidden;
+      height: 100dvh;
+    }
+
+    .scene {
+      position: relative;
+      width: 100%;
+      height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* Bakgrunn: enkel gradient som imiterer PrismaticBurst */
+    .bg-gradient {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at center, #1a1a2e 0%, #0d0d1a 40%, #060608 80%);
+      z-index: 0;
+    }
+    .bg-gradient::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 30% 40%, rgba(43,229,160,0.12) 0%, transparent 50%),
+        radial-gradient(circle at 70% 60%, rgba(56,189,248,0.10) 0%, transparent 50%),
+        radial-gradient(circle at 50% 30%, rgba(124,92,255,0.10) 0%, transparent 50%),
+        radial-gradient(circle at 60% 70%, rgba(168,85,247,0.08) 0%, transparent 50%);
+      animation: bgPulse 8s ease-in-out infinite alternate;
+    }
+
+    @keyframes bgPulse {
+      0% { opacity: 0.7; }
+      100% { opacity: 1; }
+    }
+
+    /* Vignett */
+    .vignette {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background: radial-gradient(ellipse at center, rgba(6,6,8,0.12) 0%, rgba(6,6,8,0.55) 72%, #060608 100%);
+    }
+
+    /* Orbit-system */
+    .orbit-system {
+      position: absolute;
+      inset: 0;
+      z-index: 5;
+      pointer-events: none;
+    }
+
+    .orbit-ring {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+    }
+
+    .orbit-ring.outer  { animation: spinCW 28s linear infinite; }
+    .orbit-ring.middle { animation: spinCCW 22s linear infinite; }
+    .orbit-ring.inner  { animation: spinCW 16s linear infinite; }
+
+    @keyframes spinCW  { to { rotate: 360deg; } }
+    @keyframes spinCCW { to { rotate: -360deg; } }
+
+    .participant {
+      position: absolute;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      overflow: hidden;
+      box-shadow: 0 0 0 2px rgba(255,255,255,0.15), 0 4px 16px rgba(0,0,0,0.5);
+    }
+
+    .orbit-ring.outer .participant  { animation: spinCCW 28s linear infinite; }
+    .orbit-ring.middle .participant { animation: spinCW 22s linear infinite; }
+    .orbit-ring.inner .participant  { animation: spinCCW 16s linear infinite; }
+
+    .participant img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* Posisjoner på ytre bane (radius 260) */
+    .orbit-ring.outer .p0 { transform: rotate(0deg)   translateX(260px); }
+    .orbit-ring.outer .p1 { transform: rotate(120deg) translateX(260px); }
+    .orbit-ring.outer .p2 { transform: rotate(240deg) translateX(260px); }
+
+    /* Midtre bane (radius 190) */
+    .orbit-ring.middle .p0 { transform: rotate(30deg)  translateX(190px); }
+    .orbit-ring.middle .p1 { transform: rotate(150deg) translateX(190px); }
+    .orbit-ring.middle .p2 { transform: rotate(270deg) translateX(190px); }
+
+    /* Indre bane (radius 120) */
+    .orbit-ring.inner .p0 { transform: rotate(60deg)  translateX(120px); }
+    .orbit-ring.inner .p1 { transform: rotate(180deg) translateX(120px); }
+    .orbit-ring.inner .p2 { transform: rotate(300deg) translateX(120px); }
+
+    /* Tittel */
+    .title-area {
+      position: relative;
+      z-index: 10;
+      text-align: center;
+      padding: 2rem;
+    }
+
+    .title {
+      font-size: clamp(3rem, 13vw, 7rem);
+      font-weight: 500;
+      line-height: 0.95;
+      letter-spacing: -0.02em;
+    }
+
+    .year {
+      display: block;
+      font-size: clamp(3.5rem, 15vw, 8rem);
+      font-weight: 700;
+      margin-top: 0.15em;
+      background: linear-gradient(135deg, #2be5a0, #38bdf8, #7c5cff, #a855f7);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 4s ease-in-out infinite;
+    }
+
+    @keyframes shimmer {
+      0%, 100% { filter: brightness(1); }
+      50% { filter: brightness(1.3); }
+    }
+  </style>
+</head>
+<body>
+  <section class="scene">
+    <div class="bg-gradient"></div>
+
+    <div class="orbit-system">
+      <!-- Ytre bane (3 bilder, radius 260, med klokken) -->
+      <div class="orbit-ring outer">
+        <div class="participant p0"><img src="/deltakere/deltaker-1.webp" alt="Deltaker 1" /></div>
+        <div class="participant p1"><img src="/deltakere/deltaker-2.webp" alt="Deltaker 2" /></div>
+        <div class="participant p2"><img src="/deltakere/deltaker-3.webp" alt="Deltaker 3" /></div>
+      </div>
+
+      <!-- Midtre bane (3 bilder, radius 190, mot klokken) -->
+      <div class="orbit-ring middle">
+        <div class="participant p0"><img src="/deltakere/deltaker-4.webp" alt="Deltaker 4" /></div>
+        <div class="participant p1"><img src="/deltakere/deltaker-5.webp" alt="Deltaker 5" /></div>
+        <div class="participant p2"><img src="/deltakere/deltaker-6.webp" alt="Deltaker 6" /></div>
+      </div>
+
+      <!-- Indre bane (3 bilder, radius 120, med klokken) -->
+      <div class="orbit-ring inner">
+        <div class="participant p0"><img src="/deltakere/deltaker-7.webp" alt="Deltaker 7" /></div>
+        <div class="participant p1"><img src="/deltakere/deltaker-8.webp" alt="Deltaker 8" /></div>
+        <div class="participant p2"><img src="/deltakere/deltaker-9.webp" alt="Deltaker 9" /></div>
+      </div>
+    </div>
+
+    <div class="vignette"></div>
+
+    <div class="title-area">
+      <div class="title">TrivselsLekene</div>
+      <span class="year">2026</span>
+    </div>
+  </section>
+</body>
+</html>

@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { LinkButton } from "@/components/ui/Button";
 import PrismaticBurst from "@/components/PrismaticBurst";
 import InteractiveTitle from "@/components/InteractiveTitle";
+import ParticipantOrbit from "@/components/ParticipantOrbit";
 import { ArrowRight } from "lucide-react";
 
 export default async function Hjemmeside() {
@@ -22,7 +23,10 @@ export default async function Hjemmeside() {
         />
       </div>
 
-      {/* Mørk vignett så teksten er lesbar over bursten */}
+      {/* Deltaker-bilder i bane */}
+      <ParticipantOrbit />
+
+      {/* Mørk vignett så teksten er lesbar over bakgrunnen */}
       <div className="pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(ellipse_at_center,rgba(6,6,8,0.12)_0%,rgba(6,6,8,0.55)_72%,#060608_100%)]" />
 
       <div className="relative z-10 mx-auto max-w-3xl px-6 py-16 text-center">
