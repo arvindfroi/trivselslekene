@@ -76,7 +76,7 @@ body {
 
 /* Frosted surface used for cards and panels over the dark base */
 .surface {
-  background-color: color-mix(in srgb, var(--bg-elev) 82%, transparent);
+  background-color: color-mix(in srgb, var(--bg-elev) 95%, transparent);
   border: 1px solid var(--line);
   backdrop-filter: blur(8px);
 }
@@ -90,7 +90,7 @@ body {
 .surface-hover:hover {
   border-color: var(--line-strong);
   transform: translateY(-2px);
-  background-color: color-mix(in srgb, var(--bg-elev-2) 85%, transparent);
+  background-color: color-mix(in srgb, var(--bg-elev-2) 95%, transparent);
 }
 
 /* Interactive landing title — each letter lifts and shifts colour on hover */

@@ -103,7 +103,7 @@ export default function FloatingNav({ loggedIn }: { loggedIn: boolean }) {
         whileTap={!isExpanded ? { scale: 0.95 } : {}}
         onClick={handleNavClick}
         className={cn(
-          "relative flex h-12 items-center overflow-hidden rounded-full border border-line bg-bg-elev/80 shadow-[0_10px_40px_-12px_rgba(0,0,0,0.8)] backdrop-blur-xl",
+          "relative flex h-12 items-center overflow-hidden rounded-full border border-line bg-bg-elev/95 shadow-[0_10px_40px_-12px_rgba(0,0,0,0.8)] backdrop-blur-xl",
           !isExpanded && "cursor-pointer justify-center"
         )}
       >

@@ -61,7 +61,7 @@ export default function DeltakerSlideshow() {
       </AnimatePresence>
 
       {/* Mørkt overlay så innholdet er lesbart */}
-      <div className="absolute inset-0 bg-bg/75 backdrop-blur-[2px]" />
+      <div className="absolute inset-0 bg-bg/85 backdrop-blur-[2px]" />
     </div>
   );
 }

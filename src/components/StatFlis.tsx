@@ -27,7 +27,7 @@ export default function StatFlis({
   return (
     <div
       className={cn(
-        "flex flex-col overflow-hidden rounded-2xl border border-line bg-white/[0.03] p-4",
+        "flex flex-col overflow-hidden rounded-2xl border border-line bg-white/[0.06] p-4",
         className
       )}
     >

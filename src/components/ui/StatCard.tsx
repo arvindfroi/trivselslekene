@@ -6,7 +6,7 @@ export default function StatCard({
   verdi: string;
 }) {
   return (
-    <div className="rounded-2xl border border-line bg-white/[0.03] p-4 sm:p-5">
+    <div className="rounded-2xl border border-line bg-white/[0.06] p-4 sm:p-5">
       <p className="text-[11px] tracking-widest text-fg-faint uppercase">
         {label}
       </p>
