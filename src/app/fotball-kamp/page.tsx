@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
-import { registrerVinner } from "@/lib/actions/fotballkamp";
+import { registrerVinner, slettFotballKamp } from "@/lib/actions/fotballkamp";
 import NyFotballKampForm from "@/components/NyFotballKampForm";
 import Card from "@/components/ui/Card";
 import Button, { LinkButton } from "@/components/ui/Button";
@@ -10,7 +10,7 @@ import Badge from "@/components/ui/Badge";
 import DeltakerSlideshow from "@/components/DeltakerSlideshow";
 import Avatar from "@/components/Avatar";
 import { statusTekst, statusVariant } from "@/lib/ovelseLabels";
-import { MapPin, Swords, Trophy } from "lucide-react";
+import { MapPin, Swords, Trash2, Trophy } from "lucide-react";
 
 export default async function FotballKampSide() {
   const session = await auth();
@@ -107,13 +107,22 @@ export default async function FotballKampSide() {
                           )}
                         </p>
                       </div>
-                      <LinkButton
-                        href={`/ovelser/${kamp.id}`}
-                        variant="secondary"
-                        className="px-3 py-1.5 text-xs"
-                      >
-                        Rediger lag
-                      </LinkButton>
+                      <div className="flex items-center gap-2">
+                        <LinkButton
+                          href={`/ovelser/${kamp.id}`}
+                          variant="secondary"
+                          className="px-3 py-1.5 text-xs"
+                        >
+                          Rediger lag
+                        </LinkButton>
+                        {erVert && (
+                          <form action={slettFotballKamp.bind(null, kamp.id)}>
+                            <Button type="submit" variant="danger" className="px-3 py-1.5 text-xs">
+                              <Trash2 size={14} /> Slett
+                            </Button>
+                          </form>
+                        )}
+                      </div>
                     </div>
 
                     {/* Lag-oppstilling */}

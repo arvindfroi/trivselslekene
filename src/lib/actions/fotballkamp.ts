@@ -93,3 +93,20 @@ export async function registrerVinner(
   revalidatePath("/stilling");
   revalidatePath("/dashboard");
 }
+
+export async function slettFotballKamp(ovelseId: string) {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/bli-med");
+
+  const ovelse = await prisma.ovelse.findUnique({
+    where: { id: ovelseId },
+    select: { vertId: true },
+  });
+  if (!ovelse || ovelse.vertId !== session.user.id) redirect("/fotball-kamp");
+
+  await prisma.ovelse.delete({ where: { id: ovelseId } });
+
+  revalidatePath("/fotball-kamp");
+  revalidatePath("/stilling");
+  revalidatePath("/dashboard");
+}
