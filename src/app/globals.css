@@ -193,20 +193,12 @@ body {
  * decelerasjon som matcher iOS sin standard navigasjons-animasjon.
  * translateZ(0) + will-change tvinger GPU-compositing for silkemyk 60fps.
  */
-/* Forward (swiping left → next page): */
-@keyframes slide-out-forward {
-  from { transform: translateX(0) translateZ(0); opacity: 1; }
-  to   { transform: translateX(-30%) translateZ(0); opacity: 0.4; }
-}
+/* Forward (swiping left → next page): exit stays, enter slides over it */
 @keyframes slide-in-forward {
   from { transform: translateX(100%) translateZ(0); }
   to   { transform: translateX(0) translateZ(0); }
 }
-/* Backward (swiping right → prev page): */
-@keyframes slide-out-backward {
-  from { transform: translateX(0) translateZ(0); opacity: 1; }
-  to   { transform: translateX(30%) translateZ(0); opacity: 0.4; }
-}
+/* Backward (swiping right → prev page): exit stays, enter slides over it */
 @keyframes slide-in-backward {
   from { transform: translateX(-100%) translateZ(0); }
   to   { transform: translateX(0) translateZ(0); }

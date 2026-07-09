@@ -201,10 +201,6 @@ export default function MainShell({ panels }: MainShellProps) {
             <div
               aria-hidden
               className="absolute inset-0 z-0"
-              style={{
-                animation: `slide-out-${navDir} 0.4s cubic-bezier(0.32, 0.72, 0, 1) forwards`,
-                willChange: "transform, opacity",
-              }}
             >
               <div className={`mx-auto ${MAX_WIDTHS[prevIndex]} px-4 pt-6 pb-28`}>
                 {panels[prevIndex]}
