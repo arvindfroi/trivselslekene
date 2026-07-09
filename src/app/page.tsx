@@ -11,17 +11,15 @@ export default async function Hjemmeside() {
   return (
     <section className="relative flex min-h-dvh items-center justify-center overflow-hidden">
       {/* PrismaticBurst-bakgrunn */}
-      <div className="absolute inset-0 z-0">
-        <PrismaticBurst
-          intensity={4.4}
-          speed={0.55}
-          distort={2}
-          animationType="rotate3d"
-          colors={["#2be5a0", "#38bdf8", "#7c5cff", "#a855f7"]}
-          rayCount={0}
-          mixBlendMode="none"
-        />
-      </div>
+      <PrismaticBurst
+        intensity={4.4}
+        speed={0.55}
+        distort={2}
+        animationType="rotate3d"
+        colors={["#2be5a0", "#38bdf8", "#7c5cff", "#a855f7"]}
+        rayCount={0}
+        mixBlendMode="none"
+      />
 
       {/* Deltaker-bilder i bane */}
       <ParticipantOrbit />
