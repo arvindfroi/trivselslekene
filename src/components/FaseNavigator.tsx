@@ -41,9 +41,11 @@ export default function FaseNavigator({
 
   function gaaTil(fase: number) {
     const neste = Math.min(totalFaser, Math.max(0, fase));
-    startTransition(async () => {
-      settVisFase(neste);
-      await settAktivFase(ovelseId, neste);
+    // Optimistisk oppdatering må skje FØR startTransition/await, ellers
+    // flusher ikke React den synkront på iOS Safari og knappene responderer ikke.
+    settVisFase(neste);
+    startTransition(() => {
+      settAktivFase(ovelseId, neste);
     });
   }
 
