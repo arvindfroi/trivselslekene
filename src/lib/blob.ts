@@ -28,9 +28,10 @@ export async function lastOppBilde(
     });
     return url;
   } catch {
-    // Ved nettverksfeil: fallback til data-URL i databasen.
-    // Bildet kan migreres senere.
-    return null;
+    // Mangler token / nettverksfeil: fall tilbake til data-URL i databasen
+    // slik at bildet ALDRI forsvinner stille. /api/bilde-ruten serverer det,
+    // og migreringsskriptet flytter det til Blob senere.
+    return dataUrl;
   }
 }
 

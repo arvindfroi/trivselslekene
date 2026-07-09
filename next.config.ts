@@ -6,6 +6,12 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     optimizePackageImports: ["lucide-react", "framer-motion"],
+    serverActions: {
+      // Ny øvelse poster hovedbilde + inntil 20 fasebilder som base64
+      // gjennom en server action før Blob-opplasting. Default 1 MB
+      // knekker alt over ~3 bilder.
+      bodySizeLimit: "8mb",
+    },
   },
   async headers() {
     return [

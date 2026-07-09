@@ -1,7 +1,0 @@
-{
-  "functions": {
-    "api/bilde/*": {
-      "maxDuration": 30
-    }
-  }
-}

@@ -8,10 +8,16 @@ import confetti from "canvas-confetti";
  * Plasseres på øvelsessiden — trigger kun én gang per FULLFØRT-status.
  */
 export default function FullfortKonfetti({ status }: { status: string }) {
+  // Init med gjeldende status: en side som ÅPNES ferdig skal ikke fyre —
+  // bare selve øyeblikket der status går over til FULLFØRT.
+  const forrige = useRef(status);
   const fired = useRef(false);
 
   useEffect(() => {
-    if (status !== "FULLFORT" || fired.current) return;
+    const varOverfang =
+      status === "FULLFORT" && forrige.current !== "FULLFORT";
+    forrige.current = status;
+    if (!varOverfang || fired.current) return;
     fired.current = true;
 
     const varighet = 3000;
