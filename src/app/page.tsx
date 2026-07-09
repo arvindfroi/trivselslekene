@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { LinkButton } from "@/components/ui/Button";
+import NavigateButton from "@/components/NavigateButton";
 import PrismaticBurst from "@/components/PrismaticBurst";
 import InteractiveTitle from "@/components/InteractiveTitle";
 import ParticipantOrbit from "@/components/ParticipantOrbit";
@@ -43,10 +44,10 @@ export default async function Hjemmeside() {
           style={{ animationDelay: "160ms" }}
         >
           {session?.user ? (
-            <LinkButton href="/dashboard" className="animate-float px-7 py-3 text-base">
+            <NavigateButton href="/dashboard" className="animate-float px-7 py-3 text-base">
               Let the games begin!
               <ArrowRight size={18} />
-            </LinkButton>
+            </NavigateButton>
           ) : (
             <LinkButton href="/bli-med" className="animate-float px-8 py-3.5 text-base">
               Bli med
