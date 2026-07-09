@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, useScroll, useMotionValueEvent } from "framer-motion";
-import { Home, Swords, BarChart3, User, Menu } from "lucide-react";
+import { Home, Swords, BarChart3, User, Trophy, Flag, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -12,6 +12,8 @@ const navItems = [
   { name: "Øvelser", href: "/ovelser", icon: Swords },
   { name: "Statistikk", href: "/stilling", icon: BarChart3 },
   { name: "Profil", href: "/profil", icon: User },
+  { name: "Turnering", href: "/turnering", icon: Trophy },
+  { name: "Fotball", href: "/fotball-kamp", icon: Flag },
 ];
 
 const EXPAND_SCROLL_THRESHOLD = 80;
