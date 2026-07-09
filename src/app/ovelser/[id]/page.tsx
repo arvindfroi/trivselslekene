@@ -32,15 +32,43 @@ export default async function OvelseSide({
 
   const ovelse = await prisma.ovelse.findUnique({
     where: { id },
-    include: {
-      vert: true,
-      sesong: true,
-      faser: { orderBy: { rekkefolge: "asc" } },
-      individuelleResultater: { include: { user: true }, orderBy: { poeng: "desc" } },
+    select: {
+      id: true,
+      navn: true,
+      beskrivelse: true,
+      lokasjon: true,
+      type: true,
+      lagFormat: true,
+      kvaliteter: true,
+      fellesLek: true,
+      bildeUrl: true,
+      status: true,
+      aktivFase: true,
+      vertId: true,
+      sesongId: true,
+      vert: { select: { id: true, navn: true } },
+      sesong: { select: { navn: true } },
+      faser: {
+        select: { id: true, ovelseId: true, rekkefolge: true, tittel: true, bildeUrl: true },
+        orderBy: { rekkefolge: "asc" },
+      },
+      individuelleResultater: {
+        select: {
+          id: true,
+          plassering: true,
+          poeng: true,
+          user: { select: { id: true, navn: true } },
+        },
+        orderBy: { poeng: "desc" },
+      },
       lag: {
-        include: {
-          medlemmer: { include: { user: true } },
-          resultat: true,
+        select: {
+          id: true,
+          navn: true,
+          medlemmer: {
+            select: { id: true, userId: true, user: { select: { id: true, navn: true } } },
+          },
+          resultat: { select: { plassering: true, poeng: true } },
         },
       },
     },
@@ -49,7 +77,10 @@ export default async function OvelseSide({
   if (!ovelse) notFound();
 
   const ovelseId = ovelse.id;
-  const alleBrukere = await prisma.user.findMany({ orderBy: { navn: "asc" } });
+  const alleBrukere = await prisma.user.findMany({
+    select: { id: true, navn: true },
+    orderBy: { navn: "asc" },
+  });
   const deltakere = ovelse.fellesLek
     ? alleBrukere
     : alleBrukere.filter((b) => b.id !== ovelse.vertId);

@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, ChevronDown, MapPin, Users } from "lucide-react";
 import type { Kvalitet, OvelseStatus, OvelseType } from "@prisma/client";
 import { kvalitetIkon, statusTekst, statusVariant } from "@/lib/ovelseLabels";
@@ -29,7 +28,7 @@ export default function OvelseGrid({ spill }: { spill: SpillKort[] }) {
   const [apen, setApen] = useState<string | null>(null);
 
   return (
-    <motion.div layout className={BENTO_GRID}>
+    <div className={BENTO_GRID}>
       {spill.map((s, i) => {
         const er = apen === s.id;
         const grunn = bentoSpenn(i);
@@ -38,20 +37,19 @@ export default function OvelseGrid({ spill }: { spill: SpillKort[] }) {
           !er && grunn.includes("col-span-2") && grunn.includes("row-span-2");
 
         return (
-          <motion.button
-            layout
+          <button
             key={s.id}
             type="button"
             onClick={() => setApen(er ? null : s.id)}
             className={cn(
-              "flex flex-col overflow-hidden rounded-2xl border p-4 text-left transition-colors",
+              "flex flex-col overflow-hidden rounded-2xl border p-4 text-left transition-all duration-200",
               spenn,
               er
                 ? "border-accent-2/60 bg-bg-elev"
                 : "surface hover:border-line-strong hover:bg-bg-elev-2"
             )}
           >
-            <motion.div layout="position" className="flex items-start justify-between gap-2">
+            <div className="flex items-start justify-between gap-2">
               <h3
                 className={cn(
                   "font-display leading-tight text-fg",
@@ -67,16 +65,16 @@ export default function OvelseGrid({ spill }: { spill: SpillKort[] }) {
                 >
                   {statusTekst[s.status]}
                 </Badge>
-                <motion.span animate={{ rotate: er ? 180 : 0 }}>
+                <span
+                  className="transition-transform duration-200"
+                  style={{ transform: er ? "rotate(180deg)" : "rotate(0deg)" }}
+                >
                   <ChevronDown size={16} className="text-fg-faint" />
-                </motion.span>
+                </span>
               </div>
-            </motion.div>
+            </div>
 
-            <motion.p
-              layout="position"
-              className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-fg-faint"
-            >
+            <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-fg-faint">
               <span>{s.type === "LAG" ? "Lagøvelse" : "Individuell"}</span>
               <span>Vert: {s.vertNavn}</span>
               {s.lokasjon && (
@@ -89,7 +87,7 @@ export default function OvelseGrid({ spill }: { spill: SpillKort[] }) {
                   <Users size={11} /> Felles lek
                 </span>
               )}
-            </motion.p>
+            </p>
 
             {/* Kollapset: kompakt ikon-rad for egenskapene */}
             {!er && s.kvaliteter.length > 0 && (
@@ -114,57 +112,49 @@ export default function OvelseGrid({ spill }: { spill: SpillKort[] }) {
             )}
 
             {/* Utvidet: full detalj */}
-            <AnimatePresence initial={false}>
-              {er && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="mt-3 border-t border-line pt-3"
-                >
-                  <p className="text-[11px] tracking-widest text-fg-faint uppercase">
-                    Egenskaper leken tester
+            {er && (
+              <div className="animate-fade-up mt-3 border-t border-line pt-3">
+                <p className="text-[11px] tracking-widest text-fg-faint uppercase">
+                  Egenskaper leken tester
+                </p>
+                {s.kvaliteter.length > 0 ? (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {s.kvaliteter.map((k) => (
+                      <KvalitetChip key={k} kvalitet={k} />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-1 text-sm text-fg-faint">
+                    Ingen egenskaper valgt.
                   </p>
-                  {s.kvaliteter.length > 0 ? (
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {s.kvaliteter.map((k) => (
-                        <KvalitetChip key={k} kvalitet={k} />
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="mt-1 text-sm text-fg-faint">
-                      Ingen egenskaper valgt.
-                    </p>
-                  )}
+                )}
 
-                  {s.deltakere.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {s.deltakere.map((d) => (
-                        <span
-                          key={d.id}
-                          className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white/[0.03] py-0.5 pr-2.5 pl-0.5 text-xs text-fg-dim"
-                        >
-                          <Avatar navn={d.navn} size={20} />
-                          {d.navn}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+                {s.deltakere.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {s.deltakere.map((d) => (
+                      <span
+                        key={d.id}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white/[0.03] py-0.5 pr-2.5 pl-0.5 text-xs text-fg-dim"
+                      >
+                        <Avatar navn={d.navn} size={20} />
+                        {d.navn}
+                      </span>
+                    ))}
+                  </div>
+                )}
 
-                  <Link
-                    href={`/ovelser/${s.id}`}
-                    onClick={(e) => e.stopPropagation()}
-                    className="mt-3 inline-flex items-center gap-1 text-sm text-accent-2 hover:text-fg"
-                  >
-                    Åpne og administrer <ArrowRight size={14} />
-                  </Link>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.button>
+                <Link
+                  href={`/ovelser/${s.id}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="mt-3 inline-flex items-center gap-1 text-sm text-accent-2 hover:text-fg"
+                >
+                  Åpne og administrer <ArrowRight size={14} />
+                </Link>
+              </div>
+            )}
+          </button>
         );
       })}
-    </motion.div>
+    </div>
   );
 }

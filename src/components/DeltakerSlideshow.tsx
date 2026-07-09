@@ -1,6 +1,5 @@
 "use client";
 
-import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
 
 const alleBilder = [
@@ -15,38 +14,35 @@ const alleBilder = [
   "/deltakere/deltaker-9.webp",
 ];
 
-/** Del opp i grupper på 3 */
-const grupper = alleBilder.reduce<string[][]>((acc, _, i) => {
-  if (i % 3 === 0) acc.push(alleBilder.slice(i, i + 3));
-  return acc;
-}, []);
+const GRUPPE = 3;
+const antallGrupper = Math.ceil(alleBilder.length / GRUPPE);
 
 export default function DeltakerSlideshow() {
   const [indeks, setIndeks] = useState(0);
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setIndeks((prev) => (prev + 1) % grupper.length);
+      setIndeks((prev) => (prev + 1) % antallGrupper);
     }, 4000);
     return () => clearInterval(timer);
   }, []);
 
-  const aktive = grupper[indeks];
-
   return (
     <div className="fixed inset-0 z-0 overflow-hidden">
-      <AnimatePresence mode="popLayout">
-        {aktive.map((src, i) => (
-          <motion.div
+      {Array.from({ length: antallGrupper }).map((_, gi) => {
+        const aktiv = gi === indeks;
+        const start = gi * GRUPPE;
+        const bilder = alleBilder.slice(start, start + GRUPPE);
+        return bilder.map((src, i) => (
+          <div
             key={src}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.9, ease: "easeInOut" }}
             className="absolute top-0 h-full"
             style={{
               width: "33.333%",
               left: `${i * 33.333}%`,
+              opacity: aktiv ? 1 : 0,
+              transition: "opacity 0.9s ease-in-out",
+              zIndex: aktiv ? 1 : 0,
             }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -56,9 +52,9 @@ export default function DeltakerSlideshow() {
               className="h-full w-full object-cover"
               style={{ objectPosition: "50% 30%" }}
             />
-          </motion.div>
-        ))}
-      </AnimatePresence>
+          </div>
+        ));
+      })}
 
       {/* Mørkt overlay så innholdet er lesbart */}
       <div className="absolute inset-0 bg-bg/75 backdrop-blur-[2px]" />

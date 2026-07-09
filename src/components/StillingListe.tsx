@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import type { SpillerDetalj, StillingRad } from "@/lib/stilling";
 import { kvalitetIkon, kvalitetTekst } from "@/lib/ovelseLabels";
@@ -80,61 +79,56 @@ export default function StillingListe({
                   </span>
                 </div>
               </div>
-              <motion.span animate={{ rotate: er ? 180 : 0 }} className="shrink-0">
+              <span
+                className="shrink-0 transition-transform duration-200"
+                style={{ transform: er ? "rotate(180deg)" : "rotate(0deg)" }}
+              >
                 <ChevronDown size={16} className="text-fg-faint" />
-              </motion.span>
+              </span>
             </button>
 
-            <AnimatePresence initial={false}>
-              {er && d && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-                  className="overflow-hidden"
-                >
-                  <div className="px-4 pb-4 sm:px-5">
-                    <div className="grid grid-cols-4 gap-2">
-                      <MiniStat label="Kamper" verdi={String(d.kamper)} />
-                      <MiniStat label="Seire" verdi={String(d.seire)} />
-                      <MiniStat
-                        label="Snitt"
-                        verdi={d.kamper ? d.snitt.toFixed(1) : "–"}
-                      />
-                      <MiniStat label="Rekord" verdi={String(d.rekord)} />
-                    </div>
-
-                    <p className="mt-4 text-[11px] tracking-widest text-fg-faint uppercase">
-                      Sterkest i
-                    </p>
-                    {d.kvaliteter.length > 0 ? (
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {d.kvaliteter.map(({ kvalitet, poeng }) => {
-                          const Ikon = kvalitetIkon[kvalitet];
-                          return (
-                            <span
-                              key={kvalitet}
-                              className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white/[0.03] px-2.5 py-1 text-xs text-fg-dim"
-                            >
-                              <Ikon size={13} className="text-accent-2" />
-                              {kvalitetTekst[kvalitet]}
-                              <span className="font-medium text-fg tabular-nums">
-                                {poeng}
-                              </span>
-                            </span>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <p className="mt-2 text-sm text-fg-faint">
-                        Ingen egenskapspoeng ennå.
-                      </p>
-                    )}
+            {er && d && (
+              <div className="animate-fade-up overflow-hidden">
+                <div className="px-4 pb-4 sm:px-5">
+                  <div className="grid grid-cols-4 gap-2">
+                    <MiniStat label="Kamper" verdi={String(d.kamper)} />
+                    <MiniStat label="Seire" verdi={String(d.seire)} />
+                    <MiniStat
+                      label="Snitt"
+                      verdi={d.kamper ? d.snitt.toFixed(1) : "–"}
+                    />
+                    <MiniStat label="Rekord" verdi={String(d.rekord)} />
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+
+                  <p className="mt-4 text-[11px] tracking-widest text-fg-faint uppercase">
+                    Sterkest i
+                  </p>
+                  {d.kvaliteter.length > 0 ? (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {d.kvaliteter.map(({ kvalitet, poeng }) => {
+                        const Ikon = kvalitetIkon[kvalitet];
+                        return (
+                          <span
+                            key={kvalitet}
+                            className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white/[0.03] px-2.5 py-1 text-xs text-fg-dim"
+                          >
+                            <Ikon size={13} className="text-accent-2" />
+                            {kvalitetTekst[kvalitet]}
+                            <span className="font-medium text-fg tabular-nums">
+                              {poeng}
+                            </span>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-sm text-fg-faint">
+                      Ingen egenskapspoeng ennå.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
           </li>
         );
       })}

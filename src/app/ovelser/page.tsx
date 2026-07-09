@@ -22,10 +22,26 @@ export default async function OvelserSide() {
 
   const ovelser = await prisma.ovelse.findMany({
     where: { sesongId: sesong.id },
-    include: {
-      vert: true,
-      individuelleResultater: { include: { user: true } },
-      lag: { include: { medlemmer: { include: { user: true } } } },
+    select: {
+      id: true,
+      navn: true,
+      status: true,
+      type: true,
+      vertId: true,
+      lokasjon: true,
+      fellesLek: true,
+      kvaliteter: true,
+      vert: { select: { id: true, navn: true } },
+      individuelleResultater: {
+        select: { user: { select: { id: true, navn: true } } },
+      },
+      lag: {
+        select: {
+          medlemmer: {
+            select: { user: { select: { id: true, navn: true } } },
+          },
+        },
+      },
     },
     orderBy: { createdAt: "desc" },
   });
