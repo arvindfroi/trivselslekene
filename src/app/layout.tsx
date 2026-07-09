@@ -18,8 +18,18 @@ const amstelvar = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Trivselslekene 2026",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_URL || "https://trivselslekene.vercel.app"),
+  title: {
+    default: "Trivselslekene 2026",
+    template: "%s · Trivselslekene 2026",
+  },
   description: "Organiser, registrer og følg med på Trivselslekene",
+  openGraph: {
+    type: "website",
+    siteName: "Trivselslekene",
+    title: "Trivselslekene 2026",
+    description: "Organiser, registrer og følg med på Trivselslekene",
+  },
 };
 
 export const viewport: Viewport = {

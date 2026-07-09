@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -7,6 +8,10 @@ import { LinkButton } from "@/components/ui/Button";
 import OvelseGrid, { type SpillKort } from "@/components/OvelseGrid";
 import DeltakerSlideshow from "@/components/DeltakerSlideshow";
 import { Plus } from "lucide-react";
+
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: "Øvelser" };
+}
 
 export default async function OvelserSide() {
   const session = await auth();

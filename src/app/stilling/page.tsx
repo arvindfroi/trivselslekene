@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
 import {
+  hentAlleSesongData,
   hentKvalitetsledere,
   hentSpillerdetaljer,
   hentStilling,
@@ -55,23 +56,17 @@ export default async function StillingSide() {
   if (!session?.user) redirect("/bli-med");
 
   const sesong = await sikreAktivSesong();
-  const [
-    stilling,
-    detaljer,
-    kvalitetsledere,
-    utmerkelser,
-    antallOvelser,
-    antallFullfort,
-  ] = await Promise.all([
-    hentStilling(sesong.id),
-    hentSpillerdetaljer(sesong.id),
-    hentKvalitetsledere(sesong.id),
-    hentUtmerkelser(sesong.id),
+  const [sesongData, antallOvelser, antallFullfort] = await Promise.all([
+    hentAlleSesongData(sesong.id),
     prisma.ovelse.count({ where: { sesongId: sesong.id } }),
     prisma.ovelse.count({
       where: { sesongId: sesong.id, status: "FULLFORT" },
     }),
   ]);
+  const stilling = hentStilling(sesongData);
+  const detaljer = hentSpillerdetaljer(sesongData);
+  const kvalitetsledere = hentKvalitetsledere(sesongData);
+  const utmerkelser = hentUtmerkelser(sesongData);
   const toppPoeng = Math.max(1, ...stilling.map((s) => s.totalPoeng));
   const leder = stilling.find((s) => s.totalPoeng > 0);
 

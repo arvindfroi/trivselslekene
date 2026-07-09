@@ -1,8 +1,9 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { auth, signOut } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
-import { hentStilling } from "@/lib/stilling";
+import { hentAlleSesongData, hentStilling } from "@/lib/stilling";
 import { slettOvelse } from "@/lib/actions/ovelser";
 import {
   statusTekst,
@@ -16,6 +17,10 @@ import ProfilRediger from "@/components/ProfilRediger";
 import DeltakerSlideshow from "@/components/DeltakerSlideshow";
 import { MapPin, Users, Settings2, Trash2, Plus } from "lucide-react";
 
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: "Profil" };
+}
+
 export default async function ProfilSide({
   searchParams,
 }: {
@@ -26,7 +31,7 @@ export default async function ProfilSide({
 
   const { navnfeil } = await searchParams;
   const sesong = await sikreAktivSesong();
-  const [bruker, mine, stilling] = await Promise.all([
+  const [bruker, mine, sesongData] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
       select: { navn: true, bildeUrl: true },
@@ -34,9 +39,18 @@ export default async function ProfilSide({
     prisma.ovelse.findMany({
       where: { sesongId: sesong.id, vertId: session.user.id },
       orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        navn: true,
+        status: true,
+        type: true,
+        lokasjon: true,
+        fellesLek: true,
+      },
     }),
-    hentStilling(sesong.id),
+    hentAlleSesongData(sesong.id),
   ]);
+  const stilling = hentStilling(sesongData);
 
   const stillingTopp8 = stilling.slice(0, 8).map((r) => ({
     userId: r.userId,

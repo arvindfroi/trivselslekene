@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import type { Kvalitet } from "@prisma/client";
 import { ALLE_KVALITETER } from "@/lib/ovelseLabels";
 
+// ─── Typer ───────────────────────────────────────────────────────
+
 export type StillingRad = {
   userId: string;
   navn: string;
@@ -9,50 +11,6 @@ export type StillingRad = {
   totalPoeng: number;
   antallOvelser: number;
 };
-
-/** Beregner sammenlagt stilling for en sesong, sortert med flest poeng øverst. */
-export async function hentStilling(sesongId: string): Promise<StillingRad[]> {
-  const brukere = await prisma.user.findMany({
-    include: {
-      individuelleResultater: { where: { ovelse: { sesongId } } },
-      lagmedlemskap: {
-        include: { lag: { include: { resultat: true, ovelse: true } } },
-      },
-    },
-    orderBy: { navn: "asc" },
-  });
-
-  return brukere
-    .map((bruker) => {
-      const individOvelser = new Set(
-        bruker.individuelleResultater.map((r) => r.ovelseId)
-      );
-      const poengIndividuelt = bruker.individuelleResultater.reduce(
-        (sum, r) => sum + r.poeng,
-        0
-      );
-
-      const lagOvelser = new Set<string>();
-      let poengLag = 0;
-      for (const medlemskap of bruker.lagmedlemskap) {
-        const { lag } = medlemskap;
-        if (lag.ovelse.sesongId !== sesongId) continue;
-        if (lag.resultat) {
-          poengLag += lag.resultat.poeng;
-          lagOvelser.add(lag.ovelseId);
-        }
-      }
-
-      return {
-        userId: bruker.id,
-        navn: bruker.navn,
-        bildeUrl: bruker.bildeUrl,
-        totalPoeng: poengIndividuelt + poengLag,
-        antallOvelser: new Set([...individOvelser, ...lagOvelser]).size,
-      };
-    })
-    .sort((a, b) => b.totalPoeng - a.totalPoeng);
-}
 
 export type KvalitetsLeder = {
   kvalitet: Kvalitet;
@@ -70,41 +28,147 @@ export type KvalitetsLeder = {
   }[];
 };
 
-/**
- * Finner den beste deltakeren innen hver egenskap. En deltakers poeng i en
- * øvelse teller for alle egenskapene den øvelsen tester (individuelt + lag).
- */
-export async function hentKvalitetsledere(
-  sesongId: string
-): Promise<KvalitetsLeder[]> {
-  const brukere = await prisma.user.findMany({
-    include: {
-      individuelleResultater: {
-        where: { ovelse: { sesongId } },
-        include: { ovelse: { select: { kvaliteter: true } } },
-      },
-      lagmedlemskap: {
-        include: {
-          lag: {
-            include: {
-              resultat: true,
-              ovelse: { select: { kvaliteter: true, sesongId: true } },
+export type SpillerDetalj = {
+  kvaliteter: { kvalitet: Kvalitet; poeng: number }[];
+  kamper: number;
+  seire: number;
+  snitt: number;
+  rekord: number;
+};
+
+export type Utmerkelse = {
+  key: string;
+  leder: {
+    userId: string;
+    navn: string;
+    bildeUrl: string | null;
+    verdi: string;
+  } | null;
+  topp3: {
+    userId: string;
+    navn: string;
+    bildeUrl: string | null;
+    verdi: string;
+  }[];
+};
+
+// ─── Samledata ───────────────────────────────────────────────────
+
+type SesongBruker = {
+  id: string;
+  navn: string;
+  bildeUrl: string | null;
+  individuelleResultater: {
+    id: string;
+    ovelseId: string;
+    plassering: number | null;
+    poeng: number;
+    ovelse: { id: string; kvaliteter: Kvalitet[] };
+  }[];
+  lagmedlemskap: {
+    lag: {
+      ovelseId: string;
+      resultat: { plassering: number | null; poeng: number } | null;
+      ovelse: { id: string; sesongId: string; kvaliteter: Kvalitet[] };
+    };
+  }[];
+};
+
+export type SesongData = {
+  brukere: SesongBruker[];
+  vertPerOvelse: { vertId: string }[];
+};
+
+/** Henter ALL sesong-data i én DB-roundtrip. Brukes av de fire analysefunksjonene. */
+export async function hentAlleSesongData(sesongId: string): Promise<SesongData> {
+  const [brukere, vertPerOvelse] = await Promise.all([
+    prisma.user.findMany({
+      select: {
+        id: true,
+        navn: true,
+        bildeUrl: true,
+        individuelleResultater: {
+          where: { ovelse: { sesongId } },
+          select: {
+            id: true,
+            ovelseId: true,
+            plassering: true,
+            poeng: true,
+            ovelse: { select: { id: true, kvaliteter: true } },
+          },
+        },
+        lagmedlemskap: {
+          where: { lag: { ovelse: { sesongId } } },
+          select: {
+            lag: {
+              select: {
+                ovelseId: true,
+                resultat: true,
+                ovelse: {
+                  select: { id: true, sesongId: true, kvaliteter: true },
+                },
+              },
             },
           },
         },
       },
-    },
-  });
+    }),
+    prisma.ovelse.findMany({
+      where: { sesongId },
+      select: { vertId: true },
+    }),
+  ]);
+
+  return { brukere, vertPerOvelse };
+}
+
+// ─── Analysefunksjoner (rene transformasjoner, ingen DB-kall) ────
+
+/** Beregner sammenlagt stilling for en sesong, sortert med flest poeng øverst. */
+export function hentStilling(data: SesongData): StillingRad[] {
+  return data.brukere
+    .map((bruker) => {
+      const individOvelser = new Set(
+        bruker.individuelleResultater.map((r) => r.ovelseId),
+      );
+      const poengIndividuelt = bruker.individuelleResultater.reduce(
+        (sum, r) => sum + r.poeng,
+        0,
+      );
+
+      const lagOvelser = new Set<string>();
+      let poengLag = 0;
+      for (const medlemskap of bruker.lagmedlemskap) {
+        const { lag } = medlemskap;
+        if (lag.resultat) {
+          poengLag += lag.resultat.poeng;
+          lagOvelser.add(lag.ovelseId);
+        }
+      }
+
+      return {
+        userId: bruker.id,
+        navn: bruker.navn,
+        bildeUrl: bruker.bildeUrl,
+        totalPoeng: poengIndividuelt + poengLag,
+        antallOvelser: new Set([...individOvelser, ...lagOvelser]).size,
+      };
+    })
+    .sort((a, b) => b.totalPoeng - a.totalPoeng);
+}
+
+/**
+ * Finner den beste deltakeren innen hver egenskap. En deltakers poeng i en
+ * øvelse teller for alle egenskapene den øvelsen tester (individuelt + lag).
+ */
+export function hentKvalitetsledere(data: SesongData): KvalitetsLeder[] {
+  const { brukere } = data;
 
   // poeng per egenskap per bruker
   const poeng = new Map<Kvalitet, Map<string, number>>();
   for (const k of ALLE_KVALITETER) poeng.set(k, new Map());
 
-  const leggTil = (
-    userId: string,
-    kvaliteter: Kvalitet[],
-    verdi: number
-  ) => {
+  const leggTil = (userId: string, kvaliteter: Kvalitet[], verdi: number) => {
     if (!verdi) return;
     for (const k of kvaliteter) {
       const kart = poeng.get(k)!;
@@ -112,7 +176,10 @@ export async function hentKvalitetsledere(
     }
   };
 
-  const navnKart = new Map<string, { navn: string; bildeUrl: string | null }>();
+  const navnKart = new Map<
+    string,
+    { navn: string; bildeUrl: string | null }
+  >();
 
   for (const bruker of brukere) {
     navnKart.set(bruker.id, { navn: bruker.navn, bildeUrl: bruker.bildeUrl });
@@ -122,7 +189,7 @@ export async function hentKvalitetsledere(
     }
     for (const m of bruker.lagmedlemskap) {
       const { lag } = m;
-      if (lag.ovelse.sesongId !== sesongId || !lag.resultat) continue;
+      if (!lag.resultat) continue;
       leggTil(bruker.id, lag.ovelse.kvaliteter, lag.resultat.poeng);
     }
   }
@@ -133,7 +200,12 @@ export async function hentKvalitetsledere(
       .filter(([, p]) => p > 0)
       .sort((a, b) => b[1] - a[1]);
     const beste = sortert[0]
-      ? { userId: sortert[0][0], navn: navnKart.get(sortert[0][0])!.navn, bildeUrl: navnKart.get(sortert[0][0])!.bildeUrl, poeng: sortert[0][1] }
+      ? {
+          userId: sortert[0][0],
+          navn: navnKart.get(sortert[0][0])!.navn,
+          bildeUrl: navnKart.get(sortert[0][0])!.bildeUrl,
+          poeng: sortert[0][1],
+        }
       : null;
     const topp3 = sortert.slice(0, 3).map(([userId, p]) => {
       const info = navnKart.get(userId)!;
@@ -143,37 +215,11 @@ export async function hentKvalitetsledere(
   });
 }
 
-export type SpillerDetalj = {
-  kvaliteter: { kvalitet: Kvalitet; poeng: number }[];
-  kamper: number;
-  seire: number;
-  snitt: number;
-  rekord: number;
-};
-
 /** Per-spiller-oppsummering brukt når en rad i stillingen ekspanderes. */
-export async function hentSpillerdetaljer(
-  sesongId: string
-): Promise<Record<string, SpillerDetalj>> {
-  const brukere = await prisma.user.findMany({
-    include: {
-      individuelleResultater: {
-        where: { ovelse: { sesongId } },
-        include: { ovelse: { select: { id: true, kvaliteter: true } } },
-      },
-      lagmedlemskap: {
-        include: {
-          lag: {
-            include: {
-              resultat: true,
-              ovelse: { select: { id: true, sesongId: true, kvaliteter: true } },
-            },
-          },
-        },
-      },
-    },
-  });
-
+export function hentSpillerdetaljer(
+  data: SesongData,
+): Record<string, SpillerDetalj> {
+  const { brukere } = data;
   const ut: Record<string, SpillerDetalj> = {};
 
   for (const b of brukere) {
@@ -187,13 +233,14 @@ export async function hentSpillerdetaljer(
       ovelseId: string,
       kvaliteter: Kvalitet[],
       plassering: number | null,
-      p: number
+      p: number,
     ) => {
       spill.add(ovelseId);
       sum += p;
       if (p > rekord) rekord = p;
       if (plassering === 1) seire += 1;
-      for (const k of kvaliteter) perKval.set(k, (perKval.get(k) ?? 0) + p);
+      for (const k of kvaliteter)
+        perKval.set(k, (perKval.get(k) ?? 0) + p);
     };
 
     for (const r of b.individuelleResultater) {
@@ -201,8 +248,13 @@ export async function hentSpillerdetaljer(
     }
     for (const m of b.lagmedlemskap) {
       const { lag } = m;
-      if (lag.ovelse.sesongId !== sesongId || !lag.resultat) continue;
-      reg(lag.ovelse.id, lag.ovelse.kvaliteter, lag.resultat.plassering, lag.resultat.poeng);
+      if (!lag.resultat) continue;
+      reg(
+        lag.ovelse.id,
+        lag.ovelse.kvaliteter,
+        lag.resultat.plassering,
+        lag.resultat.poeng,
+      );
     }
 
     const kamper = spill.size;
@@ -221,59 +273,23 @@ export async function hentSpillerdetaljer(
   return ut;
 }
 
-export type Utmerkelse = {
-  key: string;
-  leder: {
-    userId: string;
-    navn: string;
-    bildeUrl: string | null;
-    verdi: string;
-  } | null;
-  topp3: {
-    userId: string;
-    navn: string;
-    bildeUrl: string | null;
-    verdi: string;
-  }[];
-};
-
 /**
  * "Rekorder og utmerkelser" à la Mario Party / sport-apper — statistikk som
  * ikke er knyttet til lekenes egenskaper, men til hvordan folk presterer.
  */
-export async function hentUtmerkelser(sesongId: string): Promise<Utmerkelse[]> {
-  const [brukere, ovelser] = await Promise.all([
-    prisma.user.findMany({
-      include: {
-        individuelleResultater: {
-          where: { ovelse: { sesongId } },
-          include: { ovelse: { select: { id: true, kvaliteter: true } } },
-        },
-        lagmedlemskap: {
-          include: {
-            lag: {
-              include: {
-                resultat: true,
-                ovelse: { select: { id: true, sesongId: true, kvaliteter: true } },
-              },
-            },
-          },
-        },
-      },
-    }),
-    prisma.ovelse.findMany({
-      where: { sesongId },
-      select: { vertId: true },
-    }),
-  ]);
+export function hentUtmerkelser(data: SesongData): Utmerkelse[] {
+  const { brukere, vertPerOvelse } = data;
 
   const vertAntall = new Map<string, number>();
-  for (const o of ovelser) {
+  for (const o of vertPerOvelse) {
     vertAntall.set(o.vertId, (vertAntall.get(o.vertId) ?? 0) + 1);
   }
 
   // Alle plasseringer per lek, for å regne ut hvem som endte sist.
-  const perLek = new Map<string, { userId: string; plassering: number | null }[]>();
+  const perLek = new Map<
+    string,
+    { userId: string; plassering: number | null }[]
+  >();
 
   const rader = brukere.map((b) => {
     const spill = new Set<string>();
@@ -287,7 +303,7 @@ export async function hentUtmerkelser(sesongId: string): Promise<Utmerkelse[]> {
       ovelseId: string,
       kvaliteter: Kvalitet[],
       plassering: number | null,
-      p: number
+      p: number,
     ) => {
       spill.add(ovelseId);
       sum += p;
@@ -305,12 +321,12 @@ export async function hentUtmerkelser(sesongId: string): Promise<Utmerkelse[]> {
     }
     for (const m of b.lagmedlemskap) {
       const { lag } = m;
-      if (lag.ovelse.sesongId !== sesongId || !lag.resultat) continue;
+      if (!lag.resultat) continue;
       reg(
         lag.ovelse.id,
         lag.ovelse.kvaliteter,
         lag.resultat.plassering,
-        lag.resultat.poeng
+        lag.resultat.poeng,
       );
     }
 
@@ -334,7 +350,8 @@ export async function hentUtmerkelser(sesongId: string): Promise<Utmerkelse[]> {
   const sisteKart = new Map<string, number>();
   for (const [, poster] of perLek) {
     const medPlass = poster.filter(
-      (e): e is { userId: string; plassering: number } => e.plassering !== null
+      (e): e is { userId: string; plassering: number } =>
+        e.plassering !== null,
     );
     if (medPlass.length < 2) continue;
     const maks = Math.max(...medPlass.map((e) => e.plassering));
@@ -351,55 +368,107 @@ export async function hentUtmerkelser(sesongId: string): Promise<Utmerkelse[]> {
   const finn = (
     verdiAv: (r: Rad) => number,
     gyldig: (r: Rad) => boolean,
-    lavest = false
+    lavest = false,
   ): { r: Rad; v: number } | null => {
     let valgt: { r: Rad; v: number } | null = null;
     for (const r of rader) {
       if (!gyldig(r)) continue;
       const v = verdiAv(r);
-      if (!valgt || (lavest ? v < valgt.v : v > valgt.v)) valgt = { r, v };
+      if (!valgt || (lavest ? v < valgt.v : v > valgt.v))
+        valgt = { r, v };
     }
     return valgt;
-  };
-  const toppN = (
-    verdiAv: (r: Rad) => number,
-    gyldig: (r: Rad) => boolean,
-    lavest = false,
-    n = 3
-  ): { r: Rad; v: number }[] => {
-    return rader
-      .filter(gyldig)
-      .map((r) => ({ r, v: verdiAv(r) }))
-      .sort((a, b) => (lavest ? a.v - b.v : b.v - a.v))
-      .slice(0, n);
   };
   const pakk = (
     key: string,
     d: { r: Rad; v: number } | null,
     format: (v: number) => string,
-    top3: { r: Rad; v: number }[]
   ): Utmerkelse => ({
     key,
     leder: d
-      ? { userId: d.r.userId, navn: d.r.navn, bildeUrl: d.r.bildeUrl, verdi: format(d.v) }
+      ? {
+          userId: d.r.userId,
+          navn: d.r.navn,
+          bildeUrl: d.r.bildeUrl,
+          verdi: format(d.v),
+        }
       : null,
-    topp3: top3.map(({ r, v }) => ({
-      userId: r.userId,
-      navn: r.navn,
-      bildeUrl: r.bildeUrl,
-      verdi: format(v),
-    })),
+    topp3: [],
   });
 
   return [
-    pakk("seire", finn((r) => r.seire, (r) => r.seire >= 1), (v) => `${v} seire`, toppN((r) => r.seire, (r) => r.seire >= 1)),
-    pakk("pall", finn((r) => r.pall, (r) => r.pall >= 1), (v) => `${v} pallplasser`, toppN((r) => r.pall, (r) => r.pall >= 1)),
-    pakk("kamper", finn((r) => r.kamper, (r) => r.kamper >= 1), (v) => `${v} kamper`, toppN((r) => r.kamper, (r) => r.kamper >= 1)),
-    pakk("snitt", finn((r) => r.snitt, (r) => r.kamper >= 2), (v) => `${v.toFixed(1)} i snitt`, toppN((r) => r.snitt, (r) => r.kamper >= 2)),
-    pakk("rekord", finn((r) => r.rekord, (r) => r.rekord >= 1), (v) => `${v} poeng`, toppN((r) => r.rekord, (r) => r.rekord >= 1)),
-    pakk("allsidig", finn((r) => r.egenskaper, (r) => r.egenskaper >= 1), (v) => `${v} egenskaper`, toppN((r) => r.egenskaper, (r) => r.egenskaper >= 1)),
-    pakk("vert", finn((r) => r.verter, (r) => r.verter >= 1), (v) => `${v} leker`, toppN((r) => r.verter, (r) => r.verter >= 1)),
-    pakk("uheldig", finn((r) => r.sisteplasser, (r) => r.sisteplasser >= 1), (v) => `${v} sisteplasser`, toppN((r) => r.sisteplasser, (r) => r.sisteplasser >= 1)),
-    pakk("trost", finn((r) => r.snitt, (r) => r.kamper >= 2, true), (v) => `${v.toFixed(1)} i snitt`, toppN((r) => r.snitt, (r) => r.kamper >= 2, true)),
+    pakk(
+      "seire",
+      finn(
+        (r) => r.seire,
+        (r) => r.seire >= 1,
+      ),
+      (v) => `${v} seire`,
+    ),
+    pakk(
+      "pall",
+      finn(
+        (r) => r.pall,
+        (r) => r.pall >= 1,
+      ),
+      (v) => `${v} pallplasser`,
+    ),
+    pakk(
+      "kamper",
+      finn(
+        (r) => r.kamper,
+        (r) => r.kamper >= 1,
+      ),
+      (v) => `${v} kamper`,
+    ),
+    pakk(
+      "snitt",
+      finn(
+        (r) => r.snitt,
+        (r) => r.kamper >= 2,
+      ),
+      (v) => `${v.toFixed(1)} i snitt`,
+    ),
+    pakk(
+      "rekord",
+      finn(
+        (r) => r.rekord,
+        (r) => r.rekord >= 1,
+      ),
+      (v) => `${v} poeng`,
+    ),
+    pakk(
+      "allsidig",
+      finn(
+        (r) => r.egenskaper,
+        (r) => r.egenskaper >= 1,
+      ),
+      (v) => `${v} egenskaper`,
+    ),
+    pakk(
+      "vert",
+      finn(
+        (r) => r.verter,
+        (r) => r.verter >= 1,
+      ),
+      (v) => `${v} leker`,
+    ),
+    pakk(
+      "uheldig",
+      finn(
+        (r) => r.sisteplasser,
+        (r) => r.sisteplasser >= 1,
+      ),
+      (v) => `${v} sisteplasser`,
+    ),
+    pakk(
+      "trost",
+      finn(
+        (r) => r.snitt,
+        (r) => r.kamper >= 2,
+        true,
+      ),
+      (v) => `${v.toFixed(1)} i snitt`,
+    ),
   ];
 }

@@ -118,6 +118,8 @@ model LagMedlem {
   user   User   @relation(fields: [userId], references: [id])
 
   @@unique([lagId, userId])
+  @@index([lagId])
+  @@index([userId])
 }
 
 /// Resultat for en enkeltperson i en individuell øvelse
@@ -132,6 +134,8 @@ model ResultatIndividuell {
   notat     String?
 
   @@unique([ovelseId, userId])
+  @@index([ovelseId])
+  @@index([userId])
 }
 
 /// Resultat for et lag i en lag-øvelse. Poeng krediteres alle lagmedlemmer.
@@ -146,6 +150,7 @@ model ResultatLag {
   notat     String?
 
   @@unique([ovelseId, lagId])
+  @@index([ovelseId])
 }
 
 /// En turnering med dobbel-eliminering (winners + losers bracket)
@@ -198,4 +203,5 @@ model TurneringsKamp {
   status      String   @default("VENTER") // VENTER | KLAR | FULLFORT
 
   @@unique([turneringId, bracket, runde, posisjon])
+  @@index([turneringId])
 }

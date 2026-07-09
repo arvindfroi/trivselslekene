@@ -1,9 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
-import { hentStilling } from "@/lib/stilling";
+import { hentAlleSesongData, hentStilling } from "@/lib/stilling";
 import Card from "@/components/ui/Card";
 import { LinkButton } from "@/components/ui/Button";
 import StatCard from "@/components/ui/StatCard";
@@ -12,17 +13,20 @@ import Avatar from "@/components/Avatar";
 import AnimatedGradientBackground from "@/components/AnimatedGradientBackground";
 import { ArrowRight, BarChart3, Swords, User } from "lucide-react";
 
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: "Dashboard" };
+}
+
 export default async function HjemSide() {
   const session = await auth();
   if (!session?.user) redirect("/bli-med");
 
   const sesong = await sikreAktivSesong();
-  const [stilling, dineOvelser] = await Promise.all([
-    hentStilling(sesong.id),
-    prisma.ovelse.count({
-      where: { sesongId: sesong.id, vertId: session.user.id },
-    }),
-  ]);
+  const alleData = await hentAlleSesongData(sesong.id);
+  const stilling = hentStilling(alleData);
+  const dineOvelser = await prisma.ovelse.count({
+    where: { sesongId: sesong.id, vertId: session.user.id },
+  });
 
   const minIndex = stilling.findIndex((s) => s.userId === session.user!.id);
   const min = minIndex >= 0 ? stilling[minIndex] : null;
