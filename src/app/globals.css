@@ -32,6 +32,8 @@
   --color-accent-3: var(--accent-3);
   --font-display: var(--font-amstelvar), "Iowan Old Style", "Times New Roman", serif;
   --font-sans: var(--font-roboto-flex), ui-sans-serif, system-ui, sans-serif;
+  /* iPhone-style larger corner radius — scales all rounded-* utilities */
+  --radius: 0.375rem;
 }
 
 html {
@@ -104,6 +106,8 @@ body {
   border: 1px solid var(--line);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
+  /* iPhone-style continuous (squircle) corners — convex, concentric */
+  clip-path: url(#squircle);
 }
 
 /* Mobile Safari: backdrop-filter er dyrt. Surface er allerede 95% opak

@@ -51,6 +51,7 @@ export default function OvelseGrid({
             onClick={() => setApen(er ? null : s.id)}
             className={cn(
               "flex flex-col overflow-hidden rounded-2xl border p-4 text-left transition-all duration-200",
+              "[clip-path:url(#squircle)]",
               spenn,
               er
                 ? "border-accent-2/60 bg-bg-elev"
