@@ -12,7 +12,7 @@ import { kvalitetIkon, kvalitetTekst } from "@/lib/ovelseLabels";
 import { BENTO_GRID, bentoSpenn, erStor } from "@/lib/bento";
 import Card from "@/components/ui/Card";
 import StatCard from "@/components/ui/StatCard";
-import StatFlis from "@/components/ui/StatFlis";
+import StatFlis from "@/components/StatFlis";
 import StillingListe from "@/components/StillingListe";
 import {
   CloudRain,

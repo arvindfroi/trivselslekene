@@ -15,7 +15,7 @@ import { lagFormatTekst, statusTekst, statusVariant } from "@/lib/ovelseLabels";
 import KvalitetChip from "@/components/KvalitetChip";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
-import Badge, { type BadgeVariant } from "@/components/ui/Badge";
+import Badge from "@/components/ui/Badge";
 import { Input, Label, Select } from "@/components/ui/Field";
 import { MapPin, Users, X, Trash2 } from "lucide-react";
 
