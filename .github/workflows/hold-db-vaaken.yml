@@ -1,0 +1,31 @@
+# Holder Neon-databasen våken ved å pinge /api/helse (som kjører en ekte
+# DB-spørring). Neon free tier suspenderer etter ~5 min inaktivitet, og
+# resume koster 0,5–2 s på første klikk — dette fjerner den kostnaden
+# uten dashboard-tilgang.
+#
+# OBS på kompromisset: free tier har begrenset månedlig compute-tid.
+# Å holde databasen våken 24/7 brenner kvoten. Derfor er cron-planen
+# under begrenset til helger på dagtid (typiske lekedager) — juster
+# tidene til når lekene faktisk skjer, eller kjør workflowen manuelt
+# fra Actions-fanen ("Run workflow") når en samling starter.
+#
+# GitHub cron bruker UTC: 7–19 UTC ≈ 09–21 norsk sommertid.
+
+name: Hold databasen våken
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    # Hvert 4. minutt, lørdag og søndag, 07:00–19:59 UTC
+    - cron: "*/4 7-19 * * 6,0"
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping helse-endepunktet
+        run: |
+          svar=$(curl -sS --max-time 25 https://trivselslekene.vercel.app/api/helse)
+          echo "$svar"
+          # Feil workflowen hvis databasen ikke svarte
+          echo "$svar" | grep -q '"dbVarmSpoerring_ms":null' && exit 1 || true
