@@ -46,7 +46,7 @@ export default async function Hjemmeside() {
         >
           {session?.user ? (
             <LinkButton href="/dashboard" className="animate-float px-7 py-3 text-base">
-              Gå til dashbord
+              Let the games begin!
               <ArrowRight size={18} />
             </LinkButton>
           ) : (
