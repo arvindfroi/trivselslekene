@@ -1,13 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
 
 export async function opprettTestdeltakere() {
   const session = await auth();
-  if (!session?.user?.id) throw new Error("Ikke innlogget");
+  if (!session?.user?.id) redirect("/bli-med");
 
   const sesong = await sikreAktivSesong();
 
@@ -59,11 +60,12 @@ export async function opprettTestdeltakere() {
   revalidatePath("/ovelser");
   revalidatePath("/stilling");
   revalidatePath("/dashboard");
+  redirect("/stilling");
 }
 
 export async function slettTestdeltakere() {
   const session = await auth();
-  if (!session?.user?.id) throw new Error("Ikke innlogget");
+  if (!session?.user?.id) redirect("/bli-med");
 
   // Slett testdata i riktig rekkefølge
   await prisma.lagMedlem.deleteMany({
@@ -92,4 +94,5 @@ export async function slettTestdeltakere() {
   revalidatePath("/ovelser");
   revalidatePath("/stilling");
   revalidatePath("/dashboard");
+  redirect("/ovelser");
 }
