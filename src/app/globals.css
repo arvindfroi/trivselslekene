@@ -101,7 +101,7 @@ body {
     color 0.28s ease,
     font-variation-settings 0.28s ease,
     text-shadow 0.28s ease;
-  will-change: transform;
+  will-change: transform, color;
 }
 .tl-letter:hover {
   transform: translateY(-0.14em) scale(1.05);
@@ -113,15 +113,16 @@ body {
 @keyframes fade-up {
   from {
     opacity: 0;
-    transform: translateY(16px);
+    transform: translateY(16px) translateZ(0);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) translateZ(0);
   }
 }
 .animate-fade-up {
   animation: fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
 }
 
 @keyframes pulse-dot {
@@ -142,14 +143,15 @@ body {
 @keyframes float-soft {
   0%,
   100% {
-    transform: translateY(0);
+    transform: translateY(0) translateZ(0);
   }
   50% {
-    transform: translateY(-4px);
+    transform: translateY(-4px) translateZ(0);
   }
 }
 .animate-float {
   animation: float-soft 3.4s ease-in-out infinite;
+  will-change: transform;
 }
 
 ::selection {

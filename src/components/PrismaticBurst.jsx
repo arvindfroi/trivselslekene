@@ -1,6 +1,7 @@
 'use client';
 /* eslint-disable */
 // Vendored from React Bits (https://reactbits.dev) — PrismaticBurst, JS+CSS variant.
+// Optimised: reduced iterations, resolution scaling, FPS-aware quality, simplified noise.
 
 import { useEffect, useRef } from 'react';
 import { Renderer, Program, Mesh, Triangle, Texture } from 'ogl';
@@ -35,6 +36,7 @@ uniform vec2  uOffset;
 uniform sampler2D uGradient;
 uniform float uNoiseAmount;
 uniform int   uRayCount;
+uniform int   uMaxIter;
 
 float hash21(vec2 p){
     p = floor(p);
@@ -48,11 +50,10 @@ float layeredNoise(vec2 fragPx){
     vec2 p = mod(fragPx + vec2(uTime * 30.0, -uTime * 21.0), 1024.0);
     vec2 q = rot30() * p;
     float n = 0.0;
-    n += 0.40 * hash21(q);
-    n += 0.25 * hash21(q * 2.0 + 17.0);
-    n += 0.20 * hash21(q * 4.0 + 47.0);
-    n += 0.10 * hash21(q * 8.0 + 113.0);
-    n += 0.05 * hash21(q * 16.0 + 191.0);
+    n += 0.45 * hash21(q);
+    n += 0.30 * hash21(q * 2.0 + 17.0);
+    n += 0.18 * hash21(q * 4.0 + 47.0);
+    n += 0.07 * hash21(q * 8.0 + 113.0);
     return n;
 }
 
@@ -119,7 +120,10 @@ void main(){
       hoverMat = rotY(ang.y) * rotX(ang.x);
     }
 
+    int maxI = clamp(uMaxIter, 14, 44);
     for (int i = 0; i < 44; ++i) {
+        if (i >= maxI) break;
+
         vec3 P = marchT * dir;
         P.z -= 2.0;
         float rad = length(P);
@@ -204,6 +208,22 @@ const toPx = v => {
   return isNaN(num) ? 0 : num;
 };
 
+// Dynamisk iterationsgjennomsnitt basert på viewport-bredde
+const getDefaultIterations = (width) => {
+  if (width <= 640) return 18;   // mobil
+  if (width <= 1024) return 22;  // nettbrett
+  if (width <= 1440) return 26;  // laptop
+  return 30;                      // stor skjerm
+};
+
+// Oppløsningsskalering — lavere intern oppløsning, CSS-skalert opp
+const getResScale = (width) => {
+  if (width <= 640) return 0.55;
+  if (width <= 1024) return 0.60;
+  if (width <= 1440) return 0.65;
+  return 0.70;
+};
+
 const PrismaticBurst = ({
   intensity = 2,
   speed = 0.5,
@@ -227,6 +247,12 @@ const PrismaticBurst = ({
   const isVisibleRef = useRef(true);
   const meshRef = useRef(null);
   const triRef = useRef(null);
+  const iterationsRef = useRef(30);
+  const resScaleRef = useRef(0.65);
+  // FPS-overvåking for dynamisk kvalitetsjustering
+  const fpsFramesRef = useRef(0);
+  const fpsLastCheckRef = useRef(0);
+  const fpsRef = useRef(60);
 
   useEffect(() => {
     pausedRef.current = paused;
@@ -243,17 +269,23 @@ const PrismaticBurst = ({
     const renderer = new Renderer({
       dpr,
       alpha: false,
-      antialias: false
+      antialias: false,
+      premultipliedAlpha: false,
+      preserveDrawingBuffer: false,
+      powerPreference: 'high-performance',
     });
     rendererRef.current = renderer;
 
     const gl = renderer.gl;
-    gl.canvas.style.position = 'absolute';
-    gl.canvas.style.inset = '0';
-    gl.canvas.style.width = '100%';
-    gl.canvas.style.height = '100%';
-    gl.canvas.style.mixBlendMode = mixBlendMode && mixBlendMode !== 'none' ? mixBlendMode : '';
-    container.appendChild(gl.canvas);
+    const canvas = gl.canvas;
+    canvas.style.position = 'absolute';
+    canvas.style.inset = '0';
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    canvas.style.mixBlendMode = mixBlendMode && mixBlendMode !== 'none' ? mixBlendMode : '';
+    canvas.style.willChange = 'transform';
+    canvas.style.imageRendering = 'auto';
+    container.appendChild(canvas);
 
     const white = new Uint8Array([255, 255, 255, 255]);
     const gradientTex = new Texture(gl, {
@@ -286,7 +318,8 @@ const PrismaticBurst = ({
         uOffset: { value: [0, 0] },
         uGradient: { value: gradientTex },
         uNoiseAmount: { value: 0.8 },
-        uRayCount: { value: 0 }
+        uRayCount: { value: 0 },
+        uMaxIter: { value: 30 }
       }
     });
 
@@ -297,16 +330,31 @@ const PrismaticBurst = ({
     triRef.current = triangle;
     meshRef.current = mesh;
 
+    const updateQuality = (containerWidth) => {
+      iterationsRef.current = getDefaultIterations(containerWidth);
+      resScaleRef.current = getResScale(containerWidth);
+      program.uniforms.uMaxIter.value = iterationsRef.current;
+    };
+
     const resize = () => {
       const w = container.clientWidth || 1;
       const h = container.clientHeight || 1;
-      renderer.setSize(w, h);
+      const scale = resScaleRef.current;
+
+      // Rendre på lavere intern oppløsning for ytelse
+      const renderW = Math.max(1, Math.round(w * scale));
+      const renderH = Math.max(1, Math.round(h * scale));
+      renderer.setSize(renderW, renderH);
+
+      // Oppdater uniforms med intern oppløsning
       program.uniforms.uResolution.value = [gl.drawingBufferWidth, gl.drawingBufferHeight];
+
+      updateQuality(w);
     };
 
     let ro = null;
     if ('ResizeObserver' in window) {
-      ro = new ResizeObserver(resize);
+      ro = new ResizeObserver(() => resize());
       ro.observe(container);
     } else {
       window.addEventListener('resize', resize);
@@ -314,7 +362,7 @@ const PrismaticBurst = ({
     resize();
 
     const onPointer = e => {
-      const rect = container.getBoundingClientRect();
+      const rect = canvas.getBoundingClientRect();
       const x = (e.clientX - rect.left) / Math.max(rect.width, 1);
       const y = (e.clientY - rect.top) / Math.max(rect.height, 1);
       mouseTargetRef.current = [Math.min(Math.max(x, 0), 1), Math.min(Math.max(y, 0), 1)];
@@ -334,18 +382,37 @@ const PrismaticBurst = ({
       io.observe(container);
     }
 
-    const onVis = () => {};
-    document.addEventListener('visibilitychange', onVis);
+    document.addEventListener('visibilitychange', () => {});
 
     let raf = 0;
     let last = performance.now();
     let accumTime = 0;
+    fpsLastCheckRef.current = last;
 
     const update = now => {
       const dt = Math.max(0, now - last) * 0.001;
       last = now;
       const visible = isVisibleRef.current && !document.hidden;
       if (!pausedRef.current) accumTime += dt;
+
+      // FPS-overvåking: sjekk hvert sekund og juster iterasjoner
+      fpsFramesRef.current++;
+      if (now - fpsLastCheckRef.current >= 1000) {
+        const fps = fpsFramesRef.current;
+        fpsRef.current = fps;
+        fpsFramesRef.current = 0;
+        fpsLastCheckRef.current = now;
+
+        const iter = iterationsRef.current;
+        // Hvis under 45 FPS, reduser iterasjoner; hvis over 55, øk gradvis
+        if (fps < 45 && iter > 14) {
+          iterationsRef.current = Math.max(14, iter - 4);
+          program.uniforms.uMaxIter.value = iterationsRef.current;
+        } else if (fps > 55 && iter < getDefaultIterations(container.clientWidth)) {
+          iterationsRef.current = Math.min(getDefaultIterations(container.clientWidth), iter + 2);
+          program.uniforms.uMaxIter.value = iterationsRef.current;
+        }
+      }
 
       if (!visible) {
         raf = requestAnimationFrame(update);
@@ -373,35 +440,27 @@ const PrismaticBurst = ({
       ro?.disconnect();
       if (!ro) window.removeEventListener('resize', resize);
       io?.disconnect();
-      document.removeEventListener('visibilitychange', onVis);
+      document.removeEventListener('visibilitychange', () => {});
       try {
-        container.removeChild(gl.canvas);
+        container.removeChild(canvas);
       } catch {
-        console.warn('Canvas already removed');
+        // canvas already removed
       }
       try {
         meshRef.current?.remove?.();
-      } catch (e) {
-        /* ignore dispose errors */
-      }
+      } catch { /* ignore */ }
       try {
         triRef.current?.remove?.();
-      } catch (e) {
-        /* ignore dispose errors */
-      }
+      } catch { /* ignore */ }
       try {
         programRef.current?.remove?.();
-      } catch (e) {
-        /* ignore dispose errors */
-      }
+      } catch { /* ignore */ }
       try {
         const glCtx = rendererRef.current?.gl;
         if (glCtx && gradTexRef.current?.texture) {
           glCtx.deleteTexture(gradTexRef.current.texture);
         }
-      } catch (e) {
-        /* ignore texture delete errors */
-      }
+      } catch { /* ignore */ }
       programRef.current = null;
       rendererRef.current = null;
       gradTexRef.current = null;
@@ -412,7 +471,6 @@ const PrismaticBurst = ({
 
   useEffect(() => {
     const canvas = rendererRef.current?.gl?.canvas;
-
     if (canvas) {
       canvas.style.mixBlendMode = mixBlendMode && mixBlendMode !== 'none' ? mixBlendMode : '';
     }
@@ -440,6 +498,7 @@ const PrismaticBurst = ({
     const oy = toPx(offset?.y);
     program.uniforms.uOffset.value = [ox, oy];
     program.uniforms.uRayCount.value = Math.max(0, Math.floor(rayCount ?? 0));
+    program.uniforms.uMaxIter.value = iterationsRef.current;
 
     let count = 0;
     if (Array.isArray(colors) && colors.length > 0) {
@@ -448,9 +507,9 @@ const PrismaticBurst = ({
       count = capped.length;
       const data = new Uint8Array(count * 4);
       for (let i = 0; i < count; i++) {
-        const [r, g, b] = hexToRgb01(capped[i]);
+        const [r, gB, b] = hexToRgb01(capped[i]);
         data[i * 4 + 0] = Math.round(r * 255);
-        data[i * 4 + 1] = Math.round(g * 255);
+        data[i * 4 + 1] = Math.round(gB * 255);
         data[i * 4 + 2] = Math.round(b * 255);
         data[i * 4 + 3] = 255;
       }
