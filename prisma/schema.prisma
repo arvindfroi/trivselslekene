@@ -42,6 +42,7 @@ enum LagFormat {
   TRIO
   FIRE_MOT_FIRE
   FEM_MOT_FEM
+  FIRE_MOT_FEM
   TO_LAG
   TRE_LAG
   FIRE_LAG
