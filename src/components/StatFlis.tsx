@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Avatar from "@/components/Avatar";
@@ -39,8 +38,7 @@ export default function StatFlis({
   const harTopp3 = topp3 && topp3.length > 1;
 
   return (
-    <motion.button
-      layout
+    <button
       type="button"
       onClick={() => harTopp3 && setApen(!apen)}
       className={cn(
@@ -59,9 +57,9 @@ export default function StatFlis({
           <Ikon size={stor ? 26 : 18} />
         </span>
         {harTopp3 && (
-          <motion.span animate={{ rotate: apen ? 180 : 0 }} className="mt-1 shrink-0">
+          <span className="mt-1 shrink-0 transition-transform duration-200" style={{ transform: apen ? "rotate(180deg)" : "rotate(0deg)" }}>
             <ChevronDown size={16} className="text-fg-faint" />
-          </motion.span>
+          </span>
         )}
       </div>
 
@@ -96,39 +94,31 @@ export default function StatFlis({
       )}
 
       {/* Utvidet: topp 3 */}
-      <AnimatePresence initial={false}>
-        {apen && topp3 && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden"
-          >
-            <div className="mt-3 border-t border-line pt-3">
-              <p className="text-[11px] tracking-widest text-fg-faint uppercase mb-2">
-                Topp 3
-              </p>
-              <div className="flex flex-col gap-1.5">
-                {topp3.map((l, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <span className="w-5 text-center text-xs text-fg-faint tabular-nums">
-                      {i + 1}
-                    </span>
-                    <Avatar navn={l.navn} bildeUrl={l.bildeUrl} size={20} />
-                    <span className="truncate text-sm font-medium text-fg">
-                      {l.navn}
-                    </span>
-                    <span className="ml-auto shrink-0 text-xs text-fg-dim tabular-nums">
-                      {l.verdi}
-                    </span>
-                  </div>
-                ))}
-              </div>
+      {apen && topp3 && topp3.length > 0 && (
+        <div className="overflow-hidden">
+          <div className="mt-3 border-t border-line pt-3">
+            <p className="text-[11px] tracking-widest text-fg-faint uppercase mb-2">
+              Topp 3
+            </p>
+            <div className="flex flex-col gap-1.5">
+              {topp3.map((l, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <span className="w-5 text-center text-xs text-fg-faint tabular-nums">
+                    {i + 1}
+                  </span>
+                  <Avatar navn={l.navn} bildeUrl={l.bildeUrl} size={20} />
+                  <span className="truncate text-sm font-medium text-fg">
+                    {l.navn}
+                  </span>
+                  <span className="ml-auto shrink-0 text-xs text-fg-dim tabular-nums">
+                    {l.verdi}
+                  </span>
+                </div>
+              ))}
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.button>
+          </div>
+        </div>
+      )}
+    </button>
   );
 }
