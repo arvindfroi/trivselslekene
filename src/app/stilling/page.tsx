@@ -8,9 +8,7 @@ import {
   hentKvalitetsledere,
   hentSpillerdetaljer,
   hentStilling,
-  hentUtmerkelser,
   type KvalitetsLeder,
-  type Utmerkelse,
   type SpillerDetalj,
 } from "@/lib/stilling";
 import { kvalitetIkon, kvalitetTekst } from "@/lib/ovelseLabels";
@@ -52,49 +50,42 @@ export default async function StillingSide() {
           Sammenlagt stilling, egenskaper og utmerkelser for lekene.
         </p>
 
-      <div className="mt-6 grid grid-cols-3 gap-3 sm:gap-4">
-        <StatCard label="Deltakere" verdi={String(stilling.length)} />
-        <StatCard
-          label="Øvelser"
-          verdi={`${antallFullfort}/${antallOvelser}`}
-        />
-        <StatCard label="Leder" verdi={leder ? leder.navn.split(" ")[0] : "–"} />
+        <div className="mt-6 grid grid-cols-3 gap-3 sm:gap-4">
+          <StatCard label="Deltakere" verdi={String(stilling.length)} />
+          <StatCard label="Øvelser" verdi={`${antallFullfort}/${antallOvelser}`} />
+          <StatCard label="Leder" verdi={leder ? leder.navn.split(" ")[0] : "–"} />
+        </div>
+
+        <section className="mt-8">
+          <h2 className="mb-3 text-sm font-medium tracking-widest text-fg-dim uppercase">Sammenlagt</h2>
+          <Card padding="p-0" className="overflow-hidden">
+            {stilling.length === 0 ? (
+              <p className="px-5 py-8 text-center text-sm text-fg-dim">Ingen resultater er registrert ennå.</p>
+            ) : (
+              <StillingListe rader={stilling} detaljer={detaljer} meId={session.user.id} toppPoeng={toppPoeng} />
+            )}
+          </Card>
+        </section>
+
+        {/* Minimal StatFlis: kun div + ikon + tekst, ingen framer-motion */}
+        <section className="mt-10">
+          <h2 className="mb-3 text-sm font-medium tracking-widest text-fg-dim uppercase">Beste innen hver egenskap</h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {kvalitetsledere.map(({ kvalitet }) => {
+              const Ikon = kvalitetIkon[kvalitet];
+              return (
+                <div key={kvalitet} className="surface rounded-2xl p-4">
+                  <span className="bg-gradient-accent flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white">
+                    <Ikon size={18} />
+                  </span>
+                  <p className="mt-3 text-sm font-medium text-fg">{kvalitetTekst[kvalitet]}</p>
+                  <p className="text-sm text-fg-faint">Ingen ennå</p>
+                </div>
+              );
+            })}
+          </div>
+        </section>
       </div>
-
-      <section className="mt-8">
-        <h2 className="mb-3 text-sm font-medium tracking-widest text-fg-dim uppercase">
-          Sammenlagt
-        </h2>
-        <Card padding="p-0" className="overflow-hidden">
-          {stilling.length === 0 ? (
-            <p className="px-5 py-8 text-center text-sm text-fg-dim">
-              Ingen resultater er registrert ennå.
-            </p>
-          ) : (
-            <StillingListe
-              rader={stilling}
-              detaljer={detaljer}
-              meId={session.user.id}
-              toppPoeng={toppPoeng}
-            />
-          )}
-        </Card>
-      </section>
-
-      {/* TEST: Kun tekst, ingen komponenter */}
-      <section className="mt-10 surface rounded-2xl p-4">
-        <h2 className="text-sm font-medium">Debug kvalitetsledere:</h2>
-        {kvalitetsledere.map((k) => {
-          const ikonNavn = kvalitetIkon[k.kvalitet] ? kvalitetIkon[k.kvalitet].name : "MANGLER IKON!";
-          const tekst = kvalitetTekst[k.kvalitet] ?? "MANGLER TEKST!";
-          return (
-            <p key={k.kvalitet} className="text-xs text-fg-dim mt-1">
-              {k.kvalitet} / {tekst} / Ikon: {ikonNavn} / leder: {k.leder?.navn ?? "null"} / topp3: {k.topp3.length}
-            </p>
-          );
-        })}
-      </section>
-    </div>
     </>
   );
 }
