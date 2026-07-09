@@ -2,17 +2,16 @@ import { redirect } from "next/navigation";
 import { auth, signOut } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
-import { opprettOvelse, slettOvelse } from "@/lib/actions/ovelser";
+import { hentStilling } from "@/lib/stilling";
+import { slettOvelse } from "@/lib/actions/ovelser";
 import {
-  kvalitetValg,
-  lagFormatValg,
   statusTekst,
   statusVariant,
 } from "@/lib/ovelseLabels";
 import Card from "@/components/ui/Card";
 import Button, { LinkButton } from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
-import { Input, Label, Select, Textarea } from "@/components/ui/Field";
+import NyOvelseForm from "@/components/NyOvelseForm";
 import ProfilRediger from "@/components/ProfilRediger";
 import DeltakerSlideshow from "@/components/DeltakerSlideshow";
 import { MapPin, Users, Settings2, Trash2, Plus } from "lucide-react";
@@ -27,7 +26,7 @@ export default async function ProfilSide({
 
   const { navnfeil } = await searchParams;
   const sesong = await sikreAktivSesong();
-  const [bruker, mine] = await Promise.all([
+  const [bruker, mine, stilling] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
       select: { navn: true, bildeUrl: true },
@@ -36,7 +35,13 @@ export default async function ProfilSide({
       where: { sesongId: sesong.id, vertId: session.user.id },
       orderBy: { createdAt: "desc" },
     }),
+    hentStilling(sesong.id),
   ]);
+
+  const stillingTopp8 = stilling.slice(0, 8).map((r) => ({
+    userId: r.userId,
+    navn: r.navn,
+  }));
 
   async function loggUt() {
     "use server";
@@ -76,111 +81,9 @@ export default async function ProfilSide({
 
       <Card className="mt-6" padding="p-5 sm:p-6">
         <h2 className="mb-4 flex items-center gap-2 text-sm font-medium tracking-widest text-fg-dim uppercase">
-          <Plus size={16} /> Legg til en ny øvelse
+          <Plus size={16} /> Ny øvelse
         </h2>
-        <form action={opprettOvelse} className="flex flex-col gap-4">
-          <div>
-            <Label htmlFor="navn">Navn på øvelsen</Label>
-            <Input
-              id="navn"
-              name="navn"
-              required
-              placeholder="F.eks. Stikkball, Bridge-turnering, Sekkeløp"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <Label htmlFor="lokasjon">Lokasjon (valgfritt)</Label>
-              <Input
-                id="lokasjon"
-                name="lokasjon"
-                placeholder="F.eks. i hagen"
-              />
-            </div>
-            <div>
-              <Label htmlFor="lagFormat">Lagformat (for lagøvelser)</Label>
-              <Select id="lagFormat" name="lagFormat" defaultValue="PAR">
-                {lagFormatValg.map((v) => (
-                  <option key={v.verdi} value={v.verdi}>
-                    {v.tittel} — {v.hint}
-                  </option>
-                ))}
-              </Select>
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="beskrivelse">Beskrivelse (valgfritt)</Label>
-            <Textarea id="beskrivelse" name="beskrivelse" rows={2} />
-          </div>
-
-          <fieldset>
-            <legend className="mb-1.5 block text-[11px] font-medium tracking-widest text-fg-dim uppercase">
-              Type øvelse
-            </legend>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <label className="has-checked:border-accent-2 has-checked:bg-accent-2/10 flex cursor-pointer items-center gap-2.5 rounded-xl border border-line bg-white/[0.03] px-3.5 py-2.5 text-sm text-fg transition-colors">
-                <input
-                  type="radio"
-                  name="type"
-                  value="INDIVIDUELL"
-                  defaultChecked
-                  className="accent-accent-2"
-                />
-                Individuell
-              </label>
-              <label className="has-checked:border-accent-2 has-checked:bg-accent-2/10 flex cursor-pointer items-center gap-2.5 rounded-xl border border-line bg-white/[0.03] px-3.5 py-2.5 text-sm text-fg transition-colors">
-                <input
-                  type="radio"
-                  name="type"
-                  value="LAG"
-                  className="accent-accent-2"
-                />
-                Lagøvelse
-              </label>
-            </div>
-          </fieldset>
-
-          <fieldset>
-            <legend className="mb-1.5 block text-[11px] font-medium tracking-widest text-fg-dim uppercase">
-              Hvilke egenskaper tester leken? (valgfritt)
-            </legend>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {kvalitetValg.map((k) => (
-                <label
-                  key={k.verdi}
-                  className="has-checked:border-accent-2 has-checked:bg-accent-2/10 flex cursor-pointer items-center gap-2 rounded-xl border border-line bg-white/[0.03] px-3 py-2 text-sm text-fg transition-colors"
-                >
-                  <input
-                    type="checkbox"
-                    name="kvaliteter"
-                    value={k.verdi}
-                    className="h-4 w-4 accent-accent-2"
-                  />
-                  <k.Ikon size={15} className="shrink-0 text-accent-2" />
-                  <span>{k.tittel}</span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
-
-          <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-line bg-white/[0.03] px-3.5 py-3 text-sm text-fg">
-            <input
-              type="checkbox"
-              name="fellesLek"
-              className="h-4 w-4 accent-accent-3"
-            />
-            <span>
-              <span className="font-medium">Felles lek</span> — alle er med, også
-              du (ingen fast vert)
-            </span>
-          </label>
-
-          <Button type="submit" className="mt-1 self-start">
-            Opprett øvelse
-          </Button>
-        </form>
+        <NyOvelseForm stillingTopp8={stillingTopp8} />
       </Card>
 
       <section className="mt-10">

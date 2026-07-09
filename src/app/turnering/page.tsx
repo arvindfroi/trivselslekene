@@ -2,15 +2,13 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
-import { hentStilling } from "@/lib/stilling";
-import { opprettTurnering, slettTurnering } from "@/lib/actions/turnering";
+import { slettTurnering } from "@/lib/actions/turnering";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
-import { Input, Label, Select } from "@/components/ui/Field";
 import Badge from "@/components/ui/Badge";
 import DeltakerSlideshow from "@/components/DeltakerSlideshow";
 import TurneringsBracket, { type TurneringMedData } from "@/components/TurneringsBracket";
-import { Plus, Trophy, Trash2 } from "lucide-react";
+import { Trophy, Trash2 } from "lucide-react";
 
 const statusBadge: Record<string, "planlagt" | "pagaar" | "fullfort"> = {
   PLANLAGT: "planlagt",
@@ -29,7 +27,6 @@ export default async function TurneringSide() {
   if (!session?.user) redirect("/bli-med");
 
   const sesong = await sikreAktivSesong();
-  const stilling = await hentStilling(sesong.id);
 
   const turneringer = await prisma.turnering.findMany({
     where: { sesongId: sesong.id },
@@ -53,9 +50,6 @@ export default async function TurneringSide() {
     orderBy: { createdAt: "desc" },
   });
 
-  // Topp 8 på stillingen for forhåndsutfylling
-  const topp8 = stilling.slice(0, 8);
-
   return (
     <>
       <DeltakerSlideshow />
@@ -72,66 +66,17 @@ export default async function TurneringSide() {
           </div>
         </div>
 
-        {/* Ny turnering */}
-        <Card className="mt-8" padding="p-5 sm:p-6">
-          <h2 className="mb-4 flex items-center gap-2 text-sm font-medium tracking-widest text-fg-dim uppercase">
-            <Plus size={16} /> Ny turnering
-          </h2>
-          <form action={opprettTurnering} className="flex flex-col gap-4">
-            <div>
-              <Label htmlFor="navn">Navn på turnering</Label>
-              <Input
-                id="navn"
-                name="navn"
-                required
-                placeholder="F.eks. Trivselslekene Cup 2026"
-              />
-            </div>
-
-            <div>
-              <Label>Deltagere (seed 1–8)</Label>
-              <p className="mb-2 text-xs text-fg-faint">
-                Forhåndsutfylt fra stillingen. Bytt ut ved å velge andre deltagere.
-              </p>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                {[1, 2, 3, 4, 5, 6, 7, 8].map((seed) => (
-                  <div key={seed}>
-                    <Label htmlFor={`seed${seed}`} className="text-xs">
-                      Seed #{seed}
-                    </Label>
-                    <Select
-                      id={`seed${seed}`}
-                      name={`seed${seed}`}
-                      required
-                      defaultValue={topp8[seed - 1]?.userId ?? ""}
-                    >
-                      <option value="">Velg deltager</option>
-                      {stilling.map((r) => (
-                        <option key={r.userId} value={r.userId}>
-                          {r.navn}
-                        </option>
-                      ))}
-                    </Select>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <Button type="submit" className="self-start">
-              Opprett turnering
-            </Button>
-          </form>
-        </Card>
-
         {/* Turneringer */}
-        <section className="mt-10">
+        <section className="mt-8">
           <h2 className="mb-3 text-sm font-medium tracking-widest text-fg-dim uppercase">
             Turneringer
           </h2>
 
           {turneringer.length === 0 ? (
             <p className="text-sm text-fg-dim">
-              Ingen turneringer er opprettet ennå.
+              Ingen turneringer er opprettet ennå. Gå til{" "}
+              <a href="/profil" className="text-accent-2 underline">Profil</a> for
+              å opprette en.
             </p>
           ) : (
             <div className="flex flex-col gap-10">

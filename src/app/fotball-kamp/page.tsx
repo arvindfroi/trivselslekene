@@ -3,8 +3,6 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
 import { registrerVinner, slettFotballKamp } from "@/lib/actions/fotballkamp";
-import { opprettTestdeltakere, slettTestdeltakere } from "@/lib/actions/testdeltakere";
-import NyFotballKampForm from "@/components/NyFotballKampForm";
 import Card from "@/components/ui/Card";
 import Button, { LinkButton } from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
@@ -52,32 +50,17 @@ export default async function FotballKampSide() {
           </div>
         </div>
 
-        {/* Ny kamp */}
-        <NyFotballKampForm />
-
-        {/* Testdeltakere */}
-        <div className="mt-4 flex flex-wrap gap-2">
-          <form action={opprettTestdeltakere}>
-            <Button type="submit" variant="outline" className="px-3 py-1.5 text-xs">
-              Opprett testdeltakere (D1–D9)
-            </Button>
-          </form>
-          <form action={slettTestdeltakere}>
-            <Button type="submit" variant="danger" className="px-3 py-1.5 text-xs">
-              Slett testdeltakere + kamper
-            </Button>
-          </form>
-        </div>
-
         {/* Kampliste */}
-        <section className="mt-10">
+        <section className="mt-8">
           <h2 className="mb-3 text-sm font-medium tracking-widest text-fg-dim uppercase">
             Kamper
           </h2>
 
           {kamper.length === 0 ? (
             <p className="text-sm text-fg-dim">
-              Ingen fotballkamper er opprettet ennå.
+              Ingen lagkamper er opprettet ennå. Gå til{" "}
+              <a href="/profil" className="text-accent-2 underline">Profil</a> for
+              å opprette en.
             </p>
           ) : (
             <div className="flex flex-col gap-6">

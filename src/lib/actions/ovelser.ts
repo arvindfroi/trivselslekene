@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
+import { hentStilling } from "@/lib/stilling";
 import type { Kvalitet, LagFormat, OvelseStatus, OvelseType } from "@prisma/client";
 import { ALLE_KVALITETER } from "@/lib/ovelseLabels";
 
@@ -29,12 +30,132 @@ async function krevVert(ovelseId: string) {
   return bruker;
 }
 
-export async function opprettOvelse(formData: FormData) {
+export async function opprettOvelse(
+  prev: unknown,
+  formData: FormData,
+) {
   const bruker = await krevInnloggetBruker();
-
+  const sesong = await sikreAktivSesong();
   const navn = String(formData.get("navn") ?? "").trim();
-  const beskrivelse = String(formData.get("beskrivelse") ?? "").trim();
+  if (!navn) return { error: "Navn er påkrevd" };
+
+  const opprettType = String(formData.get("opprettType") ?? "ovelse");
   const lokasjon = String(formData.get("lokasjon") ?? "").trim();
+
+  // ─── Turnering ────────────────────────────────────────────────
+  if (opprettType === "turnering") {
+    const deltagerIder: string[] = [];
+    for (let i = 1; i <= 8; i++) {
+      const id = String(formData.get(`seed${i}`) ?? "").trim();
+      if (!id || deltagerIder.includes(id)) continue;
+      deltagerIder.push(id);
+    }
+    if (deltagerIder.length !== 8) return { error: "Velg 8 ulike deltagere" };
+
+    const slots = bracketSlots();
+
+    await prisma.turnering.create({
+      data: {
+        navn,
+        sesongId: sesong.id,
+        status: "PLANLAGT",
+        deltagere: {
+          create: deltagerIder.map((userId, i) => ({
+            userId,
+            seed: i + 1,
+          })),
+        },
+        kamper: {
+          create: slots.map((s) => ({
+            bracket: s.bracket,
+            runde: s.runde,
+            posisjon: s.posisjon,
+            status: "VENTER",
+          })),
+        },
+      },
+    });
+
+    // Plasser seeds i WR1
+    const turnering = await prisma.turnering.findFirst({
+      where: { sesongId: sesong.id, navn },
+      include: { deltagere: true, kamper: true },
+      orderBy: { createdAt: "desc" },
+    });
+    if (turnering) {
+      const deltagerMap = new Map(turnering.deltagere.map((d) => [d.seed, d.id]));
+      const wr1Par: [number, number, number][] = [
+        [1, 8, 1], [4, 5, 2], [3, 6, 3], [2, 7, 4],
+      ];
+      for (const [s1, s2, pos] of wr1Par) {
+        const d1 = deltagerMap.get(s1);
+        const d2 = deltagerMap.get(s2);
+        if (!d1 || !d2) continue;
+        const kamp = turnering.kamper.find(
+          (k) => k.bracket === "W" && k.runde === 1 && k.posisjon === pos,
+        );
+        if (!kamp) continue;
+        await prisma.turneringsKamp.update({
+          where: { id: kamp.id },
+          data: { deltager1Id: d1, deltager2Id: d2, status: "KLAR" },
+        });
+      }
+    }
+
+    revalidatePath("/turnering");
+    revalidatePath("/profil");
+    redirect("/turnering");
+  }
+
+  // ─── Lagkamp ──────────────────────────────────────────────────
+  if (opprettType === "lagkamp") {
+    const antallDeltakere = parseInt(String(formData.get("antallDeltakere") ?? "0"));
+    const antallLag = parseInt(String(formData.get("antallLag") ?? "0"));
+
+    if (!antallDeltakere || antallDeltakere < 2) return { error: "Minst 2 deltakere" };
+    if (!antallLag || antallLag < 2) return { error: "Minst 2 lag" };
+    if (antallLag > antallDeltakere) return { error: "Flere lag enn deltakere" };
+
+    const stilling = await hentStilling(sesong.id);
+    const topp = stilling.slice(0, antallDeltakere);
+
+    const base = Math.floor(antallDeltakere / antallLag);
+    const rest = antallDeltakere % antallLag;
+    const lagStorrelser = Array.from({ length: antallLag }, (_, i) =>
+      i < rest ? base + 1 : base,
+    );
+
+    const lagenesMedlemmer: string[][] = lagStorrelser.map(() => []);
+    topp.forEach((r, i) => {
+      lagenesMedlemmer[i % antallLag].push(r.userId);
+    });
+
+    const ovelse = await prisma.ovelse.create({
+      data: {
+        navn,
+        lokasjon: lokasjon || null,
+        type: "LAG",
+        lagFormat: "ANNET",
+        kvaliteter: ["LAGSPILL", "UTHOLDENHET", "TAKTIKK"],
+        sesongId: sesong.id,
+        vertId: bruker.id,
+        lag: {
+          create: lagenesMedlemmer.map((medlemmer, i) => ({
+            navn: `Lag ${i + 1}`,
+            medlemmer: { create: medlemmer.map((userId) => ({ userId })) },
+          })),
+        },
+      },
+    });
+
+    revalidatePath("/fotball-kamp");
+    revalidatePath("/profil");
+    revalidatePath("/ovelser");
+    redirect(`/ovelser/${ovelse.id}`);
+  }
+
+  // ─── Vanlig øvelse ────────────────────────────────────────────
+  const beskrivelse = String(formData.get("beskrivelse") ?? "").trim();
   const type = formData.get("type") as OvelseType;
   const lagFormat = formData.get("lagFormat") as LagFormat | null;
   const fellesLek = formData.get("fellesLek") === "on";
@@ -42,10 +163,6 @@ export async function opprettOvelse(formData: FormData) {
     .getAll("kvaliteter")
     .map(String)
     .filter((k): k is Kvalitet => (ALLE_KVALITETER as string[]).includes(k));
-
-  if (!navn) return;
-
-  const sesong = await sikreAktivSesong();
 
   const ovelse = await prisma.ovelse.create({
     data: {
@@ -64,6 +181,35 @@ export async function opprettOvelse(formData: FormData) {
   revalidatePath("/ovelser");
   revalidatePath("/profil");
   redirect(`/ovelser/${ovelse.id}`);
+}
+
+// ─── Bracket-generator for 8 deltagere (dobbel-eliminering) ───
+
+type KampSlot = {
+  bracket: "W" | "L" | "G";
+  runde: number;
+  posisjon: number;
+};
+
+function bracketSlots(): KampSlot[] {
+  const slots: KampSlot[] = [];
+
+  for (let r = 1; r <= 3; r++) {
+    const antall = Math.pow(2, 3 - r);
+    for (let p = 1; p <= antall; p++) {
+      slots.push({ bracket: "W", runde: r, posisjon: p });
+    }
+  }
+
+  slots.push({ bracket: "L", runde: 1, posisjon: 1 });
+  slots.push({ bracket: "L", runde: 1, posisjon: 2 });
+  slots.push({ bracket: "L", runde: 2, posisjon: 1 });
+  slots.push({ bracket: "L", runde: 2, posisjon: 2 });
+  slots.push({ bracket: "L", runde: 3, posisjon: 1 });
+  slots.push({ bracket: "L", runde: 4, posisjon: 1 });
+  slots.push({ bracket: "G", runde: 1, posisjon: 1 });
+
+  return slots;
 }
 
 export async function slettOvelse(ovelseId: string) {
