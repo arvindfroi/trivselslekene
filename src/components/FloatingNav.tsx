@@ -92,7 +92,7 @@ export default function FloatingNav({ loggedIn }: { loggedIn: boolean }) {
   };
 
   return (
-    <div className="fixed top-4 left-1/2 z-50 -translate-x-1/2 sm:top-5">
+    <div className="fixed left-1/2 z-50 -translate-x-1/2" style={{ top: `calc(1rem + env(safe-area-inset-top, 0px))` }}>
       <motion.nav
         initial={false}
         animate={isExpanded ? "expanded" : "collapsed"}

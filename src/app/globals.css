@@ -37,6 +37,8 @@
 html {
   scroll-behavior: smooth;
   background-color: var(--bg);
+  /* Prevent iOS text size adjustment on rotation */
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -44,6 +46,28 @@ body {
   color: var(--fg);
   font-family: var(--font-roboto-flex), ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  /* Kill the iOS tap highlight flash */
+  -webkit-tap-highlight-color: transparent;
+  /* Disable double-tap zoom and 300ms tap delay */
+  touch-action: manipulation;
+  /* Prevent accidental overscroll/bounce that can interfere with UI */
+  overscroll-behavior-y: none;
+  /* Full screen height accounting for iOS URL bar */
+  min-height: 100dvh;
+}
+
+/* ---- Safe-area utilities for notched iPhones ---- */
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.safe-left {
+  padding-left: env(safe-area-inset-left, 0px);
+}
+.safe-right {
+  padding-right: env(safe-area-inset-right, 0px);
 }
 
 /* Signaturgradient: grønn og lilla i endene, lyseblå som en myk kobling.
@@ -175,6 +199,7 @@ input,
 select,
 textarea {
   color-scheme: dark;
+  font-size: 16px; /* iOS won't zoom if font-size >= 16px */
 }
 
 option {

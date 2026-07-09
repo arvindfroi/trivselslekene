@@ -24,6 +24,18 @@ export const metadata: Metadata = {
     template: "%s · Trivselslekene 2026",
   },
   description: "Organiser, registrer og følg med på Trivselslekene",
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Trivselslekene",
+  },
+  other: {
+    "format-detection": "telephone=no",
+  },
   openGraph: {
     type: "website",
     siteName: "Trivselslekene",
@@ -35,6 +47,9 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
   themeColor: "#060608",
 };
 
