@@ -69,10 +69,10 @@ export async function slettTestdeltakere() {
     where: { user: { navn: { startsWith: "D" } } },
   });
   await prisma.resultatLag.deleteMany({
-    where: { lag: { ovelse: { navn: { startsWith: "Fotballkamp" } } } },
+    where: { lag: { ovelse: { lagFormat: "ANNET" } } },
   });
   await prisma.lag.deleteMany({
-    where: { ovelse: { navn: { startsWith: "Fotballkamp" } } },
+    where: { ovelse: { lagFormat: "ANNET" } },
   });
   await prisma.resultatIndividuell.deleteMany({
     where: { user: { navn: { startsWith: "D" } } },

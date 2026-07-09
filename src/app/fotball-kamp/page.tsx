@@ -20,7 +20,10 @@ export default async function FotballKampSide() {
   const sesong = await sikreAktivSesong();
 
   const kamper = await prisma.ovelse.findMany({
-    where: { sesongId: sesong.id, lagFormat: "FIRE_MOT_FEM" },
+    where: {
+      sesongId: sesong.id,
+      lagFormat: { in: ["FIRE_MOT_FEM", "TRE_MOT_TRE_MOT_TRE", "TO_MOT_TO_MOT_TO_MOT_TO", "ANNET"] },
+    },
     include: {
       vert: true,
       lag: {
@@ -136,9 +139,6 @@ export default async function FotballKampSide() {
                     {/* Lag-oppstilling */}
                     <div className={`mt-4 grid grid-cols-1 gap-3 ${kamp.lag.length >= 4 ? "sm:grid-cols-4" : kamp.lag.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
                       {kamp.lag.map((lag) => {
-                        // Parse max spillere fra lagnavn: "Lag 1 (4)" → 4
-                        const maxMatch = lag.navn.match(/\((\d+)\)/);
-                        const maxSpillere = maxMatch ? parseInt(maxMatch[1]) : lag.medlemmer.length;
                         const erVinner = erFerdig && lag.resultat?.plassering === 1;
                         const erTaper = erFerdig && lag.resultat?.plassering !== 1 && lag.resultat !== null;
 
@@ -161,7 +161,7 @@ export default async function FotballKampSide() {
                             <div className="flex items-center justify-between mb-2">
                               <span className="text-sm font-medium text-fg">{lag.navn}</span>
                               <span className="text-xs text-fg-faint">
-                                {lag.medlemmer.length}/{maxSpillere} spillere
+                                {lag.medlemmer.length} spillere
                               </span>
                             </div>
 

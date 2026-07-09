@@ -6,19 +6,6 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
 import { hentStilling } from "@/lib/stilling";
-import type { LagFormat } from "@prisma/client";
-
-type FormatDef = {
-  teams: number;
-  sizes: number[];
-  label: string;
-};
-
-const FORMATER: Record<string, FormatDef> = {
-  FIRE_MOT_FEM: { teams: 2, sizes: [4, 5], label: "4 mot 5" },
-  TRE_MOT_TRE_MOT_TRE: { teams: 3, sizes: [3, 3, 3], label: "3 mot 3 mot 3" },
-  TO_MOT_TO_MOT_TO_MOT_TO: { teams: 4, sizes: [2, 2, 2, 2], label: "2 mot 2 mot 2 mot 2" },
-};
 
 export async function opprettLagkamp(prev: unknown, formData: FormData) {
   const session = await auth();
@@ -26,22 +13,29 @@ export async function opprettLagkamp(prev: unknown, formData: FormData) {
 
   const navn = String(formData.get("navn") ?? "").trim();
   const lokasjon = String(formData.get("lokasjon") ?? "").trim();
-  const formatKey = (formData.get("format") as string) || "FIRE_MOT_FEM";
+  const antallDeltakere = parseInt(String(formData.get("antallDeltakere") ?? "0"));
+  const antallLag = parseInt(String(formData.get("antallLag") ?? "0"));
 
   if (!navn) return { error: "Navn er påkrevd" };
-
-  const fmt = FORMATER[formatKey];
-  if (!fmt) return { error: "Ugyldig format" };
+  if (!antallDeltakere || antallDeltakere < 2) return { error: "Minst 2 deltakere" };
+  if (!antallLag || antallLag < 2) return { error: "Minst 2 lag" };
+  if (antallLag > antallDeltakere) return { error: "Flere lag enn deltakere" };
 
   const sesong = await sikreAktivSesong();
   const stilling = await hentStilling(sesong.id);
-  const totalSpillere = fmt.sizes.reduce((a, b) => a + b, 0);
-  const topp = stilling.slice(0, totalSpillere);
+  const topp = stilling.slice(0, antallDeltakere);
 
-  // Snake draft: fordel spillere på lag
-  const lagenesMedlemmer: string[][] = fmt.sizes.map(() => []);
+  // Fordel spillere jevnt på lag: base = floor(deltakere / lag), resten får +1
+  const base = Math.floor(antallDeltakere / antallLag);
+  const rest = antallDeltakere % antallLag;
+  const lagStorrelser = Array.from({ length: antallLag }, (_, i) =>
+    i < rest ? base + 1 : base,
+  );
+
+  // Snake draft
+  const lagenesMedlemmer: string[][] = lagStorrelser.map(() => []);
   topp.forEach((r, i) => {
-    lagenesMedlemmer[i % fmt.teams].push(r.userId);
+    lagenesMedlemmer[i % antallLag].push(r.userId);
   });
 
   await prisma.ovelse.create({
@@ -49,13 +43,13 @@ export async function opprettLagkamp(prev: unknown, formData: FormData) {
       navn,
       lokasjon: lokasjon || null,
       type: "LAG",
-      lagFormat: formatKey as LagFormat,
+      lagFormat: "ANNET",
       kvaliteter: ["LAGSPILL", "UTHOLDENHET", "TAKTIKK"],
       sesongId: sesong.id,
       vertId: session.user.id,
       lag: {
         create: lagenesMedlemmer.map((medlemmer, i) => ({
-          navn: `Lag ${i + 1} (${fmt.sizes[i]})`,
+          navn: `Lag ${i + 1}`,
           medlemmer: { create: medlemmer.map((userId) => ({ userId })) },
         })),
       },
