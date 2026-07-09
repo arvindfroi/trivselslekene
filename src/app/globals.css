@@ -106,8 +106,6 @@ body {
   border: 1px solid var(--line);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  /* iPhone-style continuous (squircle) corners — convex, concentric */
-  clip-path: url(#squircle);
 }
 
 /* Mobile Safari: backdrop-filter er dyrt. Surface er allerede 95% opak
@@ -189,24 +187,24 @@ body {
   will-change: transform, opacity;
 }
 
-/* ── Slide page transitions ── */
-/* Forward (swiping left → next page): old exits left, new enters from right */
+/* ── Slide page transitions (iOS-style push/pop) ── */
+/* Forward (swiping left → next page): old exits left, new slides in from right over it */
 @keyframes slide-out-forward {
-  from { opacity: 1; transform: translateX(0) translateZ(0); }
-  to   { opacity: 0.3; transform: translateX(-30%) translateZ(0); }
+  from { transform: translateX(0) translateZ(0); }
+  to   { transform: translateX(-100%) translateZ(0); }
 }
 @keyframes slide-in-forward {
-  from { opacity: 0; transform: translateX(30%) translateZ(0); }
-  to   { opacity: 1; transform: translateX(0) translateZ(0); }
+  from { transform: translateX(100%) translateZ(0); }
+  to   { transform: translateX(0) translateZ(0); }
 }
-/* Backward (swiping right → prev page): old exits right, new enters from left */
+/* Backward (swiping right → prev page): old exits right, new slides in from left over it */
 @keyframes slide-out-backward {
-  from { opacity: 1; transform: translateX(0) translateZ(0); }
-  to   { opacity: 0.3; transform: translateX(30%) translateZ(0); }
+  from { transform: translateX(0) translateZ(0); }
+  to   { transform: translateX(100%) translateZ(0); }
 }
 @keyframes slide-in-backward {
-  from { opacity: 0; transform: translateX(-30%) translateZ(0); }
-  to   { opacity: 1; transform: translateX(0) translateZ(0); }
+  from { transform: translateX(-100%) translateZ(0); }
+  to   { transform: translateX(0) translateZ(0); }
 }
 
 @keyframes pulse-dot {
