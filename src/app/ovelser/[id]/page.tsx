@@ -17,7 +17,6 @@ import KvalitetChip from "@/components/KvalitetChip";
 import FaseNavigator from "@/components/FaseNavigator";
 import LiveRefresh from "@/components/LiveRefresh";
 import PoengForslag from "@/components/PoengForslag";
-import FullfortKonfetti from "@/components/FullfortKonfetti";
 import Card from "@/components/ui/Card";
 import { LinkButton } from "@/components/ui/Button";
 import SubmitButton from "@/components/ui/SubmitButton";
@@ -128,8 +127,6 @@ export default async function OvelseSide({
       <LiveRefresh aktiv={ovelse.status === "PAAGAAR" && !erVert} />
       {/* Poengforslag: autofyller poeng basert på plassering */}
       <PoengForslag />
-      {/* Konfetti når øvelsen fullføres */}
-      <FullfortKonfetti status={ovelse.status} />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs tracking-[0.2em] text-accent-2 uppercase">

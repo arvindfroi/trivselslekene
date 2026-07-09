@@ -3,7 +3,6 @@ import { LinkButton } from "@/components/ui/Button";
 import NavigateButton from "@/components/NavigateButton";
 import PrismaticBurst from "@/components/PrismaticBurst";
 import InteractiveTitle from "@/components/InteractiveTitle";
-import ParticipantOrbit from "@/components/ParticipantOrbit";
 import { ArrowRight } from "lucide-react";
 
 export default async function Hjemmeside() {
@@ -21,9 +20,6 @@ export default async function Hjemmeside() {
         rayCount={0}
         mixBlendMode="none"
       />
-
-      {/* Deltaker-bilder i bane */}
-      <ParticipantOrbit />
 
       {/* Mørk vignett så teksten er lesbar over bakgrunnen */}
       <div className="pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(ellipse_at_center,rgba(6,6,8,0.12)_0%,rgba(6,6,8,0.55)_72%,#060608_100%)]" />
