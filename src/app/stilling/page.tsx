@@ -103,7 +103,7 @@ export default async function StillingSide() {
         <section className="mt-10">
           <h2 className="mb-3 text-sm font-medium tracking-widest text-fg-dim uppercase">Beste innen hver egenskap</h2>
           <div className={BENTO_GRID}>
-            {kvalitetsledere.map(({ kvalitet, leder: best, topp3 }, i) => {
+            {kvalitetsledere.map(({ kvalitet, leder: best }, i) => {
               const Ikon = kvalitetIkon[kvalitet];
               const s = erStor(i);
               return (

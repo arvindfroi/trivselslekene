@@ -14,12 +14,21 @@ const alleBilder = [
   "/deltakere/deltaker-9.webp",
 ];
 
+/**
+ * Antall samtidige bilder:
+ * 1 på små mobiler (<640px)
+ * 2 på nettbrett/mellomstore skjermer (640–1024px)
+ * 3 på desktop (≥1024px)
+ */
 function useGruppeStorrelse() {
-  const [gruppe, setGruppe] = useState(3);
+  const [gruppe, setGruppe] = useState<number | null>(null);
 
   useEffect(() => {
     function oppdater() {
-      setGruppe(window.innerWidth < 640 ? 1 : 3);
+      const w = window.innerWidth;
+      if (w < 640) setGruppe(1);
+      else if (w < 1024) setGruppe(2);
+      else setGruppe(3);
     }
     oppdater();
     window.addEventListener("resize", oppdater);
@@ -31,44 +40,63 @@ function useGruppeStorrelse() {
 
 export default function DeltakerSlideshow() {
   const gruppe = useGruppeStorrelse();
-  const antallGrupper = Math.ceil(alleBilder.length / gruppe);
-  const [indeks, setIndeks] = useState(0);
+  const antallGrupper = gruppe ? Math.ceil(alleBilder.length / gruppe) : 0;
+  const [aktivGruppe, setAktivGruppe] = useState(0);
 
   useEffect(() => {
+    if (!gruppe) return;
     const timer = setInterval(() => {
-      setIndeks((prev) => (prev + 1) % antallGrupper);
-    }, 4000);
+      setAktivGruppe((prev) => (prev + 1) % antallGrupper);
+    }, 4500);
     return () => clearInterval(timer);
-  }, [antallGrupper]);
+  }, [antallGrupper, gruppe]);
+
+  // Ikke rendr før vi vet skjermbredden — unngår flash av feil antall bilder
+  if (gruppe === null) return null;
 
   return (
     <div className="fixed inset-0 z-0 overflow-hidden">
+      {/* Alle bilder ligger i DOM med opacity-transition for jevn crossfade.
+          pointer-events: none på inaktive så de ikke blokkerer touch. */}
       {Array.from({ length: antallGrupper }).map((_, gi) => {
-        const aktiv = gi === indeks;
         const start = gi * gruppe;
         const bilder = alleBilder.slice(start, start + gruppe);
         const bredde = `${100 / gruppe}%`;
-        return bilder.map((src, i) => (
-          <div
-            key={src}
-            className="absolute top-0 h-full"
-            style={{
-              width: bredde,
-              left: `${i * (100 / gruppe)}%`,
-              opacity: aktiv ? 1 : 0,
-              transition: "opacity 1.5s ease",
-              zIndex: aktiv ? 1 : 0,
-            }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={src}
-              alt="Deltaker"
-              className="h-full w-full object-cover"
-              style={{ objectPosition: "50% 30%", filter: "brightness(0.65)" }}
-            />
-          </div>
-        ));
+
+        return bilder.map((src, i) => {
+          const aktiv = gi === aktivGruppe;
+
+          return (
+            <div
+              key={src}
+              className="absolute top-0 h-full"
+              style={{
+                width: bredde,
+                left: `${i * (100 / gruppe)}%`,
+                opacity: aktiv ? 1 : 0,
+                // Lengre, jevnere overgang — 2s med ease-in-out gir myk inn/ut
+                transition: `opacity ${aktiv ? "2s ease-out" : "1.8s ease-in"}`,
+                // Inaktive bilder skal ikke fange touch/klikk
+                pointerEvents: aktiv ? "auto" : "none",
+              }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={src}
+                alt="Deltaker"
+                className="h-full w-full object-cover"
+                style={{
+                  objectPosition: "50% 30%",
+                  filter: "brightness(0.7)",
+                  // Hindre at bildet blinker hvitt under lasting på iPhone
+                  WebkitUserSelect: "none",
+                  userSelect: "none",
+                }}
+                loading="lazy"
+              />
+            </div>
+          );
+        });
       })}
 
       {/* Mørkt overlay så innholdet er lesbart */}

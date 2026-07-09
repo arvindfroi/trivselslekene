@@ -146,7 +146,7 @@ export default function OvelseGrid({ spill }: { spill: SpillKort[] }) {
                 <Link
                   href={`/ovelser/${s.id}`}
                   onClick={(e) => e.stopPropagation()}
-                  className="mt-3 inline-flex items-center gap-1 text-sm text-accent-2 hover:text-fg"
+                  className="mt-3 inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-accent-2 hover:text-fg active:bg-white/5 min-h-[44px]"
                 >
                   Åpne og administrer <ArrowRight size={14} />
                 </Link>

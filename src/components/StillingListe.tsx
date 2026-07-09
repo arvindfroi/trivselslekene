@@ -90,7 +90,7 @@ export default function StillingListe({
             {er && d && (
               <div className="animate-fade-up overflow-hidden">
                 <div className="px-4 pb-4 sm:px-5">
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     <MiniStat label="Kamper" verdi={String(d.kamper)} />
                     <MiniStat label="Seire" verdi={String(d.seire)} />
                     <MiniStat
