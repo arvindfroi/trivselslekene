@@ -16,12 +16,15 @@ import { bildeUrlFor } from "@/lib/bilde";
 import KvalitetChip from "@/components/KvalitetChip";
 import FaseNavigator from "@/components/FaseNavigator";
 import LiveRefresh from "@/components/LiveRefresh";
+import PoengForslag from "@/components/PoengForslag";
+import FullfortKonfetti from "@/components/FullfortKonfetti";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
+import { LinkButton } from "@/components/ui/Button";
 import SubmitButton from "@/components/ui/SubmitButton";
 import Badge from "@/components/ui/Badge";
 import { Input, Label, Select } from "@/components/ui/Field";
-import { MapPin, Users, X, Trash2 } from "lucide-react";
+import { MapPin, Users, X, Trash2, Monitor } from "lucide-react";
 
 export default async function OvelseSide({
   params,
@@ -123,6 +126,10 @@ export default async function OvelseSide({
     <div className="mx-auto max-w-4xl px-4 pt-28 pb-12">
       {/* Tilskuere følger fasebytter og nye resultater live mens øvelsen pågår */}
       <LiveRefresh aktiv={ovelse.status === "PAAGAAR" && !erVert} />
+      {/* Poengforslag: autofyller poeng basert på plassering */}
+      <PoengForslag />
+      {/* Konfetti når øvelsen fullføres */}
+      <FullfortKonfetti status={ovelse.status} />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs tracking-[0.2em] text-accent-2 uppercase">
@@ -225,6 +232,13 @@ export default async function OvelseSide({
               <Trash2 size={14} /> Slett øvelse
             </Button>
           </form>
+          <LinkButton
+            href={`/ovelser/${ovelseId}/live`}
+            variant="secondary"
+            className="px-3 py-2 text-xs"
+          >
+            <Monitor size={14} /> Storskjerm
+          </LinkButton>
         </div>
       ) : (
         <p className="mt-5 rounded-xl border border-line bg-white/[0.03] px-4 py-2.5 text-sm text-fg-dim">
