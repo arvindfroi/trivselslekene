@@ -28,10 +28,15 @@ export default function MainShell({ children }: MainShellProps) {
   const currentIndex = RUTER.indexOf(pathname as (typeof RUTER)[number]);
 
   // ── Page transition state ──
-  const prevStore = useRef<{ children: ReactNode; pathname: string } | null>(null);
+  const prevStore = useRef<{
+    children: ReactNode;
+    pathname: string;
+    maxWidth: string;
+  } | null>(null);
   const [prevPage, setPrevPage] = useState<{
     children: ReactNode;
     pathname: string;
+    maxWidth: string;
   } | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
@@ -63,8 +68,8 @@ export default function MainShell({ children }: MainShellProps) {
       }, 400);
       return () => clearTimeout(timer);
     }
-    prevStore.current = { children, pathname };
-  }, [pathname, children]);
+    prevStore.current = { children, pathname, maxWidth };
+  }, [pathname, children, maxWidth]);
 
   const showExit = isTransitioning && prevPage && prevPage.pathname !== pathname;
 
@@ -156,13 +161,6 @@ export default function MainShell({ children }: MainShellProps) {
   );
 
   // ── Derived values for indicators ──
-  const swipingToward =
-    dragX > SWIPE_THRESHOLD && currentIndex > 0
-      ? currentIndex - 1
-      : dragX < -SWIPE_THRESHOLD && currentIndex < RUTER.length - 1
-        ? currentIndex + 1
-        : currentIndex;
-
   const dragProgress = Math.min(Math.abs(dragX) / SWIPE_THRESHOLD, 1);
 
   const peekName =
@@ -191,29 +189,6 @@ export default function MainShell({ children }: MainShellProps) {
         <AnimatedGradientBackground Breathing breathingRange={6} />
       </div>
 
-      {/* Page indicator dots — iOS-style */}
-      {currentIndex >= 0 && (
-        <div className="pointer-events-none fixed bottom-20 left-1/2 z-30 flex -translate-x-1/2 gap-2">
-          {RUTER.map((_, i) => {
-            const isActive = i === currentIndex;
-            const isTarget = i === swipingToward && isDragging;
-            const width = isActive ? 24 : isTarget ? 6 + dragProgress * 18 : 6;
-            const bg = isActive
-              ? "var(--accent)"
-              : isTarget
-                ? `color-mix(in srgb, var(--accent) ${Math.round(dragProgress * 70)}%, var(--line) ${Math.round(100 - dragProgress * 70)}%)`
-                : "var(--line)";
-            return (
-              <div
-                key={i}
-                className="rounded-full transition-all duration-200"
-                style={{ width, height: 6, backgroundColor: bg }}
-              />
-            );
-          })}
-        </div>
-      )}
-
       {/* Page peek label during swipe */}
       {peekName && isDragging && (
         <div
@@ -229,28 +204,29 @@ export default function MainShell({ children }: MainShellProps) {
         </div>
       )}
 
-      {/* ── Content stack with exit / enter animations ── */}
+      {/* ── Content stack with iOS-style push/pop transitions ── */}
       <div className="relative z-10">
-        {/* Exiting (previous) page */}
+        {/* Exiting (previous) page — behind the entering page */}
         {showExit && prevPage && (
           <div
             aria-hidden
-            className="absolute inset-0"
+            className="absolute inset-0 z-0"
             style={{
-              animation: `slide-out-${navDir} 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards`,
+              animation: `slide-out-${navDir} 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards`,
             }}
           >
-            <div className={`mx-auto ${maxWidth} px-4 pt-6 pb-28`}>
+            <div className={`mx-auto ${prevPage.maxWidth} px-4 pt-6 pb-28`}>
               {prevPage.children}
             </div>
           </div>
         )}
 
-        {/* Current page — only apply dragX transform when NOT transitioning */}
+        {/* Current page — slides over the exit page */}
         <div
+          className="relative z-10"
           style={{
             animation: isTransitioning
-              ? `slide-in-${navDir} 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards`
+              ? `slide-in-${navDir} 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards`
               : undefined,
             transform:
               !isTransitioning && (isDragging || committing) && dragX !== 0
