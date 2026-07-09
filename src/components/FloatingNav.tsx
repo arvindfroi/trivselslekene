@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useScroll, useMotionValueEvent } from "framer-motion";
 import { Home, Swords, BarChart3, User } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -14,8 +14,12 @@ const navItems = [
   { name: "Profil", href: "/profil", icon: User },
 ];
 
+const RUTER = navItems.map((item) => item.href);
+const SWIPE_THRESHOLD = 50;
+
 export default function FloatingNav({ loggedIn }: { loggedIn: boolean }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [visible, setVisible] = React.useState(true);
   const { scrollY } = useScroll();
   const lastScrollY = React.useRef(0);
@@ -32,6 +36,40 @@ export default function FloatingNav({ loggedIn }: { loggedIn: boolean }) {
     lastScrollY.current = latest;
   });
 
+  // ── Toolbar swipe ──
+  const touchStart = React.useRef<{ x: number; y: number } | null>(null);
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (!touchStart.current) return;
+    const dx = Math.abs(e.touches[0].clientX - touchStart.current.x);
+    const dy = Math.abs(e.touches[0].clientY - touchStart.current.y);
+    if (dx > dy && dx > 8) {
+      e.preventDefault();
+    }
+  };
+
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStart.current) return;
+    const dx = e.changedTouches[0].clientX - touchStart.current.x;
+    const dy = e.changedTouches[0].clientY - touchStart.current.y;
+    touchStart.current = null;
+
+    const absDx = Math.abs(dx);
+    const currentIndex = RUTER.indexOf(pathname);
+
+    if (absDx < SWIPE_THRESHOLD || Math.abs(dy) > absDx * 0.6 || currentIndex < 0) return;
+
+    if (dx > 0 && currentIndex > 0) {
+      router.push(RUTER[currentIndex - 1]);
+    } else if (dx < 0 && currentIndex < RUTER.length - 1) {
+      router.push(RUTER[currentIndex + 1]);
+    }
+  };
+
   const hidden =
     !loggedIn || pathname === "/" || pathname.startsWith("/bli-med");
   if (hidden) return null;
@@ -45,6 +83,10 @@ export default function FloatingNav({ loggedIn }: { loggedIn: boolean }) {
       style={{ bottom: `calc(1rem + env(safe-area-inset-bottom, 0px))` }}
     >
       <nav
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        style={{ touchAction: "none" }}
         className={cn(
           "flex h-12 items-center gap-0.5 overflow-hidden rounded-full border border-line bg-bg-elev/95 px-2 shadow-[0_-10px_40px_-12px_rgba(0,0,0,0.8)] backdrop-blur-xl",
         )}
