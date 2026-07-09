@@ -8,7 +8,6 @@ import Card from "@/components/ui/Card";
 import { LinkButton } from "@/components/ui/Button";
 import SubmitButton from "@/components/ui/SubmitButton";
 import Badge from "@/components/ui/Badge";
-import AnimatedGradientBackground from "@/components/AnimatedGradientBackground";
 import Avatar from "@/components/Avatar";
 import { statusTekst, statusVariant } from "@/lib/ovelseLabels";
 import { MapPin, Swords, Trash2, Trophy } from "lucide-react";
@@ -41,11 +40,7 @@ export default async function FotballKampSide() {
   });
 
   return (
-    <div className="relative isolate min-h-dvh">
-      <div className="pointer-events-none fixed inset-0 z-0">
-        <AnimatedGradientBackground Breathing breathingRange={6} />
-      </div>
-      <div className="relative z-10 mx-auto max-w-4xl px-4 pt-28 pb-12">
+    <div className="mx-auto max-w-4xl px-4 pt-28 pb-12">
         <div className="flex items-end justify-between gap-3">
           <div>
             <p className="text-xs tracking-[0.3em] text-accent-2 uppercase">
@@ -197,7 +192,6 @@ export default async function FotballKampSide() {
             </div>
           )}
         </section>
-      </div>
     </div>
   );
 }

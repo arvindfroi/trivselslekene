@@ -10,7 +10,7 @@ import { LinkButton } from "@/components/ui/Button";
 import StatCard from "@/components/ui/StatCard";
 import RankBadge from "@/components/ui/RankBadge";
 import Avatar from "@/components/Avatar";
-import AnimatedGradientBackground from "@/components/AnimatedGradientBackground";
+import MainShell from "@/components/MainShell";
 import { ArrowRight, BarChart3, Swords, User } from "lucide-react";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -35,11 +35,7 @@ export default async function HjemSide() {
   const topp = stilling.slice(0, 3);
 
   return (
-    <div className="relative isolate min-h-dvh">
-      <div className="pointer-events-none fixed inset-0 z-0">
-        <AnimatedGradientBackground Breathing breathingRange={6} />
-      </div>
-      <div className="relative z-10 mx-auto max-w-4xl px-4 pt-28 pb-12">
+    <MainShell>
       <p className="animate-fade-up text-xs tracking-[0.3em] text-accent-2 uppercase">
         {sesong.navn}
       </p>
@@ -111,7 +107,6 @@ export default async function HjemSide() {
           <User size={18} /> Profil
         </LinkButton>
       </section>
-      </div>
-    </div>
+    </MainShell>
   );
 }

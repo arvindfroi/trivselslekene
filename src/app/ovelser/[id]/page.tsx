@@ -205,7 +205,7 @@ export default async function OvelseSide({
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <form
             action={endreStatus}
-            className="inline-flex flex-wrap gap-0 overflow-hidden rounded-full border border-line-strong"
+            className="inline-flex gap-0 overflow-hidden rounded-full border border-line-strong"
           >
             {(["PLANLAGT", "PAAGAAR", "FULLFORT"] as OvelseStatus[]).map(
               (s, i) => (
@@ -214,7 +214,7 @@ export default async function OvelseSide({
                   type="submit"
                   name="status"
                   value={s}
-                  className={`px-4 py-2 text-xs font-medium tracking-wide uppercase transition-colors ${
+                  className={`min-h-[44px] px-4 py-3 text-xs font-medium tracking-wide uppercase transition-colors ${
                     i > 0 ? "border-l border-line" : ""
                   } ${
                     ovelse.status === s

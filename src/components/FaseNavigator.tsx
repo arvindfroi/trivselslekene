@@ -77,7 +77,7 @@ export default function FaseNavigator({
             <Button
               type="button"
               variant="outline"
-              className="px-2.5 py-1.5 text-xs"
+              className="px-3 py-2 text-xs"
               disabled={visFase <= 1}
               onClick={() => gaaTil(visFase - 1)}
             >
@@ -86,7 +86,7 @@ export default function FaseNavigator({
             <Button
               type="button"
               variant="outline"
-              className="px-2.5 py-1.5 text-xs"
+              className="px-3 py-2 text-xs"
               disabled={visFase >= totalFaser}
               onClick={() => gaaTil(visFase + 1)}
             >

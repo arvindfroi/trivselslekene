@@ -15,7 +15,7 @@ import { BENTO_GRID, bentoSpenn, erStor } from "@/lib/bento";
 import Card from "@/components/ui/Card";
 import StatCard from "@/components/ui/StatCard";
 import StillingListe from "@/components/StillingListe";
-import AnimatedGradientBackground from "@/components/AnimatedGradientBackground";
+import MainShell from "@/components/MainShell";
 import Avatar from "@/components/Avatar";
 import {
   CloudRain,
@@ -72,11 +72,7 @@ export default async function StillingSide() {
   const leder = stilling.find((s) => s.totalPoeng > 0);
 
   return (
-    <div className="relative isolate min-h-dvh">
-      <div className="pointer-events-none fixed inset-0 z-0">
-        <AnimatedGradientBackground Breathing breathingRange={6} />
-      </div>
-      <div className="relative z-10 mx-auto max-w-5xl px-4 pt-28 pb-12">
+    <MainShell maxWidth="max-w-5xl">
         <p className="text-xs tracking-[0.3em] text-accent-2 uppercase">
           {sesong.navn}
         </p>
@@ -162,7 +158,6 @@ export default async function StillingSide() {
             })}
           </div>
         </section>
-      </div>
-    </div>
+    </MainShell>
   );
 }

@@ -16,7 +16,7 @@ import SubmitButton from "@/components/ui/SubmitButton";
 import Badge from "@/components/ui/Badge";
 import NyOvelseForm from "@/components/NyOvelseForm";
 import ProfilRediger from "@/components/ProfilRediger";
-import AnimatedGradientBackground from "@/components/AnimatedGradientBackground";
+import MainShell from "@/components/MainShell";
 import { MapPin, Users, Settings2, Trash2, Plus } from "lucide-react";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -65,11 +65,7 @@ export default async function ProfilSide({
   }
 
   return (
-    <div className="relative isolate min-h-dvh">
-      <div className="pointer-events-none fixed inset-0 z-0">
-        <AnimatedGradientBackground Breathing breathingRange={6} />
-      </div>
-      <div className="relative z-10 mx-auto max-w-4xl px-4 pt-28 pb-12">
+    <MainShell>
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-xs tracking-[0.3em] text-accent-2 uppercase">
@@ -174,7 +170,6 @@ export default async function ProfilSide({
           </ul>
         )}
       </section>
-    </div>
-    </div>
+    </MainShell>
   );
 }

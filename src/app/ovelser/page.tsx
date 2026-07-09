@@ -7,7 +7,7 @@ import { opprettTestdeltakere, slettTestdeltakere } from "@/lib/actions/testdelt
 import Card from "@/components/ui/Card";
 import Button, { LinkButton } from "@/components/ui/Button";
 import OvelseGrid, { type SpillKort } from "@/components/OvelseGrid";
-import AnimatedGradientBackground from "@/components/AnimatedGradientBackground";
+import MainShell from "@/components/MainShell";
 import { Plus } from "lucide-react";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -71,11 +71,7 @@ export default async function OvelserSide() {
   });
 
   return (
-    <div className="relative isolate min-h-dvh">
-      <div className="pointer-events-none fixed inset-0 z-0">
-        <AnimatedGradientBackground Breathing breathingRange={6} />
-      </div>
-      <div className="relative z-10 mx-auto max-w-5xl px-4 pt-28 pb-12">
+    <MainShell maxWidth="max-w-5xl">
         <div className="flex items-end justify-between gap-3">
           <div>
             <p className="text-xs tracking-[0.3em] text-accent-2 uppercase">
@@ -87,7 +83,7 @@ export default async function OvelserSide() {
               egenskaper og deltakere.
             </p>
           </div>
-          <div className="hidden shrink-0 items-center gap-2 sm:flex">
+          <div className="flex shrink-0 items-center gap-2">
             <form action={opprettTestdeltakere}>
               <Button type="submit" variant="outline" className="px-3 py-2 text-xs">
                 Testdeltakere
@@ -125,7 +121,6 @@ export default async function OvelserSide() {
           <OvelseGrid spill={spill} />
         </div>
       )}
-    </div>
-    </div>
+    </MainShell>
   );
 }
