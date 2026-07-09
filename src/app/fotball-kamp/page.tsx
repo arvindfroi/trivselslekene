@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
 import { registrerVinner, slettFotballKamp } from "@/lib/actions/fotballkamp";
+import { opprettTestdeltakere, slettTestdeltakere } from "@/lib/actions/testdeltakere";
 import NyFotballKampForm from "@/components/NyFotballKampForm";
 import Card from "@/components/ui/Card";
 import Button, { LinkButton } from "@/components/ui/Button";
@@ -50,6 +51,20 @@ export default async function FotballKampSide() {
 
         {/* Ny kamp */}
         <NyFotballKampForm />
+
+        {/* Testdeltakere */}
+        <div className="mt-4 flex flex-wrap gap-2">
+          <form action={opprettTestdeltakere}>
+            <Button type="submit" variant="outline" className="px-3 py-1.5 text-xs">
+              Opprett testdeltakere (D1–D9)
+            </Button>
+          </form>
+          <form action={slettTestdeltakere}>
+            <Button type="submit" variant="danger" className="px-3 py-1.5 text-xs">
+              Slett testdeltakere + kamper
+            </Button>
+          </form>
+        </div>
 
         {/* Kampliste */}
         <section className="mt-10">
