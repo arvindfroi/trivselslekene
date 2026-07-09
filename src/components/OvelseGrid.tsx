@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, ChevronDown, MapPin, Users } from "lucide-react";
+import { ArrowRight, ChevronDown, MapPin, Trash2, Users } from "lucide-react";
 import type { Kvalitet, OvelseStatus, OvelseType } from "@prisma/client";
 import { kvalitetIkon, statusTekst, statusVariant } from "@/lib/ovelseLabels";
 import { BENTO_GRID, bentoSpenn } from "@/lib/bento";
+import { slettOvelse } from "@/lib/actions/ovelser";
 import Avatar from "@/components/Avatar";
 import Badge from "@/components/ui/Badge";
+import SubmitButton from "@/components/ui/SubmitButton";
 import KvalitetChip from "@/components/KvalitetChip";
 import { cn } from "@/lib/utils";
 
@@ -24,7 +26,13 @@ export type SpillKort = {
   deltakere: { id: string; navn: string }[];
 };
 
-export default function OvelseGrid({ spill }: { spill: SpillKort[] }) {
+export default function OvelseGrid({
+  spill,
+  currentUserId,
+}: {
+  spill: SpillKort[];
+  currentUserId: string;
+}) {
   const [apen, setApen] = useState<string | null>(null);
 
   return (
@@ -150,6 +158,22 @@ export default function OvelseGrid({ spill }: { spill: SpillKort[] }) {
                 >
                   Åpne og administrer <ArrowRight size={14} />
                 </Link>
+
+                {s.vertId === currentUserId && (
+                  <form
+                    action={slettOvelse.bind(null, s.id)}
+                    className="mt-2"
+                    onSubmit={(e) => e.stopPropagation()}
+                  >
+                    <SubmitButton
+                      variant="danger"
+                      className="px-3 py-2 text-xs"
+                      pendingText="Sletter…"
+                    >
+                      <Trash2 size={14} /> Slett øvelse
+                    </SubmitButton>
+                  </form>
+                )}
               </div>
             )}
           </button>

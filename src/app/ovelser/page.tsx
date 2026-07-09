@@ -83,7 +83,7 @@ export default async function OvelserSide() {
               egenskaper og deltakere.
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="hidden sm:flex shrink-0 items-center gap-2">
             <form action={opprettTestdeltakere}>
               <Button type="submit" variant="outline" className="px-3 py-2 text-xs">
                 Testdeltakere
@@ -118,7 +118,7 @@ export default async function OvelserSide() {
         </Card>
       ) : (
         <div className="mt-8">
-          <OvelseGrid spill={spill} />
+          <OvelseGrid spill={spill} currentUserId={session.user.id} />
         </div>
       )}
     </MainShell>

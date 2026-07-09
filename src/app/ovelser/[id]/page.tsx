@@ -19,7 +19,6 @@ import LiveRefresh from "@/components/LiveRefresh";
 import PoengForslag from "@/components/PoengForslag";
 import FullfortKonfetti from "@/components/FullfortKonfetti";
 import Card from "@/components/ui/Card";
-import Button from "@/components/ui/Button";
 import { LinkButton } from "@/components/ui/Button";
 import SubmitButton from "@/components/ui/SubmitButton";
 import Badge from "@/components/ui/Badge";
@@ -228,9 +227,9 @@ export default async function OvelseSide({
             )}
           </form>
           <form action={slettOvelse.bind(null, ovelseId)}>
-            <Button type="submit" variant="danger" className="px-3 py-2 text-xs">
+            <SubmitButton variant="danger" className="px-3 py-2 text-xs" pendingText="Sletter…">
               <Trash2 size={14} /> Slett øvelse
-            </Button>
+            </SubmitButton>
           </form>
           <LinkButton
             href={`/ovelser/${ovelseId}/live`}
