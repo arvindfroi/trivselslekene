@@ -92,7 +92,7 @@ export default function LoadingOrbit() {
                   }}
                 >
                   <motion.div
-                    className="overflow-hidden rounded-full shadow-lg shadow-black/40"
+                    className="overflow-hidden rounded-full"
                     style={{
                       width: IMG_SIZE,
                       height: IMG_SIZE,
