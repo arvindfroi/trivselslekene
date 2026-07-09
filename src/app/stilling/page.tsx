@@ -14,7 +14,6 @@ import {
   type SpillerDetalj,
 } from "@/lib/stilling";
 import { kvalitetIkon, kvalitetTekst } from "@/lib/ovelseLabels";
-import { BENTO_GRID, bentoSpenn, erStor } from "@/lib/bento";
 import Card from "@/components/ui/Card";
 import StatCard from "@/components/ui/StatCard";
 import StatFlis from "@/components/StatFlis";
@@ -39,7 +38,6 @@ export default async function StillingSide() {
   const stilling = hentStilling(sesongData);
   const detaljer: Record<string, SpillerDetalj> = hentSpillerdetaljer(sesongData);
   const kvalitetsledere: KvalitetsLeder[] = hentKvalitetsledere(sesongData);
-  const utmerkelser: Utmerkelse[] = hentUtmerkelser(sesongData);
   const toppPoeng = Math.max(1, ...stilling.map((s) => s.totalPoeng));
   const leder = stilling.find((s) => s.totalPoeng > 0);
 
@@ -84,17 +82,15 @@ export default async function StillingSide() {
         </Card>
       </section>
 
-      {/* TEST: Kun kvalitetsledere (ikke utmerkelser) */}
+      {/* TEST: StatFlis i et enkelt grid (ikke bento) */}
       <section className="mt-10">
         <h2 className="mb-3 text-sm font-medium tracking-widest text-fg-dim uppercase">
           Beste innen hver egenskap
         </h2>
-        <div className={BENTO_GRID}>
-          {kvalitetsledere.map(({ kvalitet, leder: best, topp3 }, i) => (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {kvalitetsledere.map(({ kvalitet, leder: best, topp3 }) => (
             <StatFlis
               key={kvalitet}
-              className={bentoSpenn(i)}
-              stor={erStor(i)}
               Ikon={kvalitetIkon[kvalitet]}
               tittel={kvalitetTekst[kvalitet]}
               leder={
@@ -112,20 +108,6 @@ export default async function StillingSide() {
                 verdi: String(t.poeng),
               }))}
             />
-          ))}
-        </div>
-      </section>
-
-      {/* DEBUG: vis utmerkelser-data uten StatFlis */}
-      <section className="mt-10">
-        <h2 className="mb-3 text-sm font-medium tracking-widest text-fg-dim uppercase">
-          Rekorder og utmerkelser (debug)
-        </h2>
-        <div className="surface rounded-2xl p-4">
-          {utmerkelser.map((u) => (
-            <p key={u.key} className="text-xs text-fg-dim">
-              {u.key}: leder={u.leder?.navn ?? "null"}, topp3={u.topp3.length}
-            </p>
           ))}
         </div>
       </section>
