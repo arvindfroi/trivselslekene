@@ -25,6 +25,8 @@ export default function MainShell({ children }: MainShellProps) {
   const maxWidth =
     pathname === "/ovelser" || pathname === "/stilling" ? "max-w-5xl" : "max-w-4xl";
 
+  const currentIndex = RUTER.indexOf(pathname as (typeof RUTER)[number]);
+
   // ── Page transition state ──
   const prevStore = useRef<{ children: ReactNode; pathname: string } | null>(null);
   const [prevPage, setPrevPage] = useState<{
@@ -33,11 +35,28 @@ export default function MainShell({ children }: MainShellProps) {
   } | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
+  // ── Swipe / touch tracking state ──
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const [dragX, setDragX] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isCommitting, setIsCommitting] = useState(false);
+
+  // ── Preload adjacent routes for instant swipes ──
+  useEffect(() => {
+    if (currentIndex > 0) router.prefetch(RUTER[currentIndex - 1]);
+    if (currentIndex < RUTER.length - 1) router.prefetch(RUTER[currentIndex + 1]);
+  }, [currentIndex, router]);
+
+  // ── Track pathname changes for exit/enter animations ──
   useEffect(() => {
     const prev = prevStore.current;
     if (prev && prev.pathname !== pathname) {
       setPrevPage(prev);
       setIsTransitioning(true);
+      // Reset swipe state so the new page starts clean (no leftover dragX transform)
+      setDragX(0);
+      setIsCommitting(false);
+      setIsDragging(false);
       const timer = setTimeout(() => {
         setIsTransitioning(false);
         setPrevPage(null);
@@ -56,14 +75,7 @@ export default function MainShell({ children }: MainShellProps) {
   const navDir: "forward" | "backward" =
     oldIdx !== -1 && newIdx !== -1 && newIdx > oldIdx ? "forward" : "backward";
 
-  // ── Swipe / touch tracking ──
-  const touchStart = useRef<{ x: number; y: number } | null>(null);
-  const [dragX, setDragX] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const [isCommitting, setIsCommitting] = useState(false);
-
-  const currentIndex = RUTER.indexOf(pathname as (typeof RUTER)[number]);
-
+  // ── Touch handlers ──
   const onTouchStart = useCallback(
     (e: React.TouchEvent) => {
       if (isTransitioning) return;
@@ -127,16 +139,14 @@ export default function MainShell({ children }: MainShellProps) {
         setDragX(window.innerWidth);
         setTimeout(() => {
           router.push(RUTER[currentIndex - 1]);
-          setDragX(0);
-          setIsCommitting(false);
+          // dragX / isCommitting cleared in useEffect when pathname changes
         }, 280);
       } else if (isSwipe && dx < 0 && currentIndex < RUTER.length - 1) {
         setIsCommitting(true);
         setDragX(-window.innerWidth);
         setTimeout(() => {
           router.push(RUTER[currentIndex + 1]);
-          setDragX(0);
-          setIsCommitting(false);
+          // dragX / isCommitting cleared in useEffect when pathname changes
         }, 280);
       } else {
         setDragX(0);
@@ -183,7 +193,7 @@ export default function MainShell({ children }: MainShellProps) {
 
       {/* Page indicator dots — iOS-style */}
       {currentIndex >= 0 && (
-        <div className="pointer-events-none fixed top-4 left-1/2 z-30 flex -translate-x-1/2 gap-2">
+        <div className="pointer-events-none fixed bottom-20 left-1/2 z-30 flex -translate-x-1/2 gap-2">
           {RUTER.map((_, i) => {
             const isActive = i === currentIndex;
             const isTarget = i === swipingToward && isDragging;
@@ -230,21 +240,20 @@ export default function MainShell({ children }: MainShellProps) {
               animation: `slide-out-${navDir} 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards`,
             }}
           >
-            <div className={`mx-auto ${maxWidth} px-4 pt-28 pb-12`}>
+            <div className={`mx-auto ${maxWidth} px-4 pt-6 pb-28`}>
               {prevPage.children}
             </div>
           </div>
         )}
 
-        {/* Current page */}
+        {/* Current page — only apply dragX transform when NOT transitioning */}
         <div
           style={{
             animation: isTransitioning
               ? `slide-in-${navDir} 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards`
               : undefined,
-            transform: isDragging
-              ? `translateX(${dragX}px)`
-              : committing
+            transform:
+              !isTransitioning && (isDragging || committing) && dragX !== 0
                 ? `translateX(${dragX}px)`
                 : undefined,
             transition:
@@ -255,7 +264,7 @@ export default function MainShell({ children }: MainShellProps) {
                   : undefined,
           }}
         >
-          <div className={`mx-auto ${maxWidth} px-4 pt-28 pb-12`}>
+          <div className={`mx-auto ${maxWidth} px-4 pt-6 pb-28`}>
             {children}
           </div>
         </div>

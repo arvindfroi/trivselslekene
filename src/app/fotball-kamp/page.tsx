@@ -40,7 +40,7 @@ export default async function FotballKampSide() {
   });
 
   return (
-    <div className="mx-auto max-w-4xl px-4 pt-28 pb-12">
+    <div className="mx-auto max-w-4xl px-4 pt-6 pb-28">
         <div className="flex items-end justify-between gap-3">
           <div>
             <p className="text-xs tracking-[0.3em] text-accent-2 uppercase">

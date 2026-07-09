@@ -122,7 +122,7 @@ export default async function OvelseSide({
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 pt-28 pb-12">
+    <div className="mx-auto max-w-4xl px-4 pt-6 pb-28">
       {/* Tilskuere følger fasebytter og nye resultater live mens øvelsen pågår */}
       <LiveRefresh aktiv={ovelse.status === "PAAGAAR" && !erVert} />
       {/* Poengforslag: autofyller poeng basert på plassering */}

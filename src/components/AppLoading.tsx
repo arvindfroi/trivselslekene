@@ -1,7 +1,7 @@
 // Vises umiddelbart mens en side lastes, så navigasjonen føles rask.
 export default function AppLoading() {
   return (
-    <div className="mx-auto max-w-4xl px-4 pt-28 pb-12">
+    <div className="mx-auto max-w-4xl px-4 pt-6 pb-28">
       <div className="animate-pulse">
         <div className="h-3 w-40 rounded-full bg-white/10" />
         <div className="mt-3 h-9 w-64 rounded-lg bg-white/[0.08]" />
