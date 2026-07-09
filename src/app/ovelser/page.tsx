@@ -7,7 +7,7 @@ import { opprettTestdeltakere, slettTestdeltakere } from "@/lib/actions/testdelt
 import Card from "@/components/ui/Card";
 import Button, { LinkButton } from "@/components/ui/Button";
 import OvelseGrid, { type SpillKort } from "@/components/OvelseGrid";
-import DeltakerSlideshow from "@/components/DeltakerSlideshow";
+import AnimatedGradientBackground from "@/components/AnimatedGradientBackground";
 import { Plus } from "lucide-react";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -71,8 +71,10 @@ export default async function OvelserSide() {
   });
 
   return (
-    <>
-      <DeltakerSlideshow />
+    <div className="relative isolate min-h-dvh">
+      <div className="pointer-events-none fixed inset-0 z-0">
+        <AnimatedGradientBackground Breathing breathingRange={6} />
+      </div>
       <div className="relative z-10 mx-auto max-w-5xl px-4 pt-28 pb-12">
         <div className="flex items-end justify-between gap-3">
           <div>
@@ -85,7 +87,7 @@ export default async function OvelserSide() {
               egenskaper og deltakere.
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="hidden shrink-0 items-center gap-2 sm:flex">
             <form action={opprettTestdeltakere}>
               <Button type="submit" variant="outline" className="px-3 py-2 text-xs">
                 Testdeltakere
@@ -96,10 +98,17 @@ export default async function OvelserSide() {
                 Slett testdata
               </Button>
             </form>
-            <LinkButton href="/profil" className="hidden shrink-0 px-4 sm:inline-flex">
+            <LinkButton href="/profil" className="shrink-0 px-4">
               <Plus size={16} /> Ny øvelse
             </LinkButton>
           </div>
+        </div>
+
+        {/* Mobil: Ny øvelse — primær CTA, alltid synlig */}
+        <div className="mt-4 sm:hidden">
+          <LinkButton href="/profil" className="w-full justify-center px-4">
+            <Plus size={18} /> Ny øvelse
+          </LinkButton>
         </div>
 
       {ovelser.length === 0 ? (
@@ -117,6 +126,6 @@ export default async function OvelserSide() {
         </div>
       )}
     </div>
-    </>
+    </div>
   );
 }

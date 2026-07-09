@@ -7,7 +7,7 @@ import { slettTurnering } from "@/lib/actions/turnering";
 import Card from "@/components/ui/Card";
 import SubmitButton from "@/components/ui/SubmitButton";
 import Badge from "@/components/ui/Badge";
-import DeltakerSlideshow from "@/components/DeltakerSlideshow";
+import AnimatedGradientBackground from "@/components/AnimatedGradientBackground";
 import TurneringsBracket, { type TurneringMedData } from "@/components/TurneringsBracket";
 import { Trophy, Trash2 } from "lucide-react";
 
@@ -67,8 +67,10 @@ export default async function TurneringSide() {
   }));
 
   return (
-    <>
-      <DeltakerSlideshow />
+    <div className="relative isolate min-h-dvh">
+      <div className="pointer-events-none fixed inset-0 z-0">
+        <AnimatedGradientBackground Breathing breathingRange={6} />
+      </div>
       <div className="relative z-10 mx-auto max-w-6xl px-4 pt-28 pb-12">
         <div className="flex items-end justify-between gap-3">
           <div>
@@ -151,6 +153,6 @@ export default async function TurneringSide() {
           )}
         </section>
       </div>
-    </>
+    </div>
   );
 }

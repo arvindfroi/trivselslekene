@@ -16,7 +16,7 @@ import SubmitButton from "@/components/ui/SubmitButton";
 import Badge from "@/components/ui/Badge";
 import NyOvelseForm from "@/components/NyOvelseForm";
 import ProfilRediger from "@/components/ProfilRediger";
-import DeltakerSlideshow from "@/components/DeltakerSlideshow";
+import AnimatedGradientBackground from "@/components/AnimatedGradientBackground";
 import { MapPin, Users, Settings2, Trash2, Plus } from "lucide-react";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -65,8 +65,10 @@ export default async function ProfilSide({
   }
 
   return (
-    <>
-      <DeltakerSlideshow />
+    <div className="relative isolate min-h-dvh">
+      <div className="pointer-events-none fixed inset-0 z-0">
+        <AnimatedGradientBackground Breathing breathingRange={6} />
+      </div>
       <div className="relative z-10 mx-auto max-w-4xl px-4 pt-28 pb-12">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -173,6 +175,6 @@ export default async function ProfilSide({
         )}
       </section>
     </div>
-    </>
+    </div>
   );
 }
