@@ -8,6 +8,7 @@ import {
   leggTilLagmedlem,
   opprettLag,
   settOvelseStatus,
+  settAktivFase,
   slettOvelse,
 } from "@/lib/actions/ovelser";
 import type { OvelseStatus } from "@prisma/client";
@@ -17,7 +18,7 @@ import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import { Input, Label, Select } from "@/components/ui/Field";
-import { MapPin, Users, X, Trash2 } from "lucide-react";
+import { MapPin, Users, X, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 
 export default async function OvelseSide({
   params,
@@ -34,6 +35,7 @@ export default async function OvelseSide({
     include: {
       vert: true,
       sesong: true,
+      faser: { orderBy: { rekkefolge: "asc" } },
       individuelleResultater: { include: { user: true }, orderBy: { poeng: "desc" } },
       lag: {
         include: {
@@ -52,6 +54,11 @@ export default async function OvelseSide({
     ? alleBrukere
     : alleBrukere.filter((b) => b.id !== ovelse.vertId);
   const erVert = session.user.id === ovelse.vertId;
+  const harFaser = ovelse.faser.length > 0;
+  const aktivFase = harFaser
+    ? ovelse.faser[ovelse.aktivFase - 1] ?? null
+    : null;
+  const totalFaser = ovelse.faser.length;
 
   async function endreStatus(formData: FormData) {
     "use server";
@@ -101,7 +108,120 @@ export default async function OvelseSide({
               {ovelse.beskrivelse}
             </p>
           )}
-          {ovelse.bildeUrl && (
+
+          {/* ─── Fase-navigator ──────────────────────────────────── */}
+          {harFaser && (
+            <div className="mt-4">
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Faseindikator */}
+                <div className="flex items-center gap-1">
+                  {ovelse.faser.map((f) => (
+                    <div
+                      key={f.id}
+                      className={`h-2 w-2 rounded-full transition-colors ${
+                        ovelse.aktivFase === f.rekkefolge
+                          ? "bg-accent-2"
+                          : f.rekkefolge < ovelse.aktivFase
+                            ? "bg-fg-dim"
+                            : "bg-line"
+                      }`}
+                    />
+                  ))}
+                </div>
+                <span className="text-sm tabular-nums text-fg-dim">
+                  {ovelse.aktivFase > 0
+                    ? `Fase ${ovelse.aktivFase} av ${totalFaser}`
+                    : `${totalFaser} faser · ikke startet`}
+                </span>
+                {erVert && (
+                  <div className="flex items-center gap-1">
+                    <form
+                      action={async () => {
+                        "use server";
+                        await settAktivFase(
+                          ovelseId,
+                          Math.max(0, ovelse.aktivFase - 1)
+                        );
+                      }}
+                    >
+                      <Button
+                        type="submit"
+                        variant="outline"
+                        className="px-2 py-1 text-xs"
+                        disabled={ovelse.aktivFase <= 1}
+                      >
+                        <ChevronLeft size={14} />
+                      </Button>
+                    </form>
+                    <form
+                      action={async () => {
+                        "use server";
+                        await settAktivFase(
+                          ovelseId,
+                          Math.min(totalFaser, ovelse.aktivFase + 1)
+                        );
+                      }}
+                    >
+                      <Button
+                        type="submit"
+                        variant="outline"
+                        className="px-2 py-1 text-xs"
+                        disabled={ovelse.aktivFase >= totalFaser}
+                      >
+                        <ChevronRight size={14} />
+                      </Button>
+                    </form>
+                  </div>
+                )}
+              </div>
+
+              {/* Vis aktuell fase */}
+              {aktivFase && (
+                <div className="mt-3 overflow-hidden rounded-xl border border-line">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={aktivFase.bildeUrl ?? ovelse.bildeUrl ?? ""}
+                    alt={aktivFase.tittel ?? `Fase ${aktivFase.rekkefolge}`}
+                    className="max-h-96 w-full object-contain bg-black/20"
+                  />
+                  {aktivFase.tittel && (
+                    <div className="border-t border-line bg-white/[0.03] px-4 py-2.5">
+                      <p className="text-sm font-medium text-fg">
+                        {aktivFase.tittel}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Forhåndsvis alle faser (bare for vert) */}
+              {erVert && ovelse.aktivFase === 0 && (
+                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {ovelse.faser.map((f) => (
+                    <div
+                      key={f.id}
+                      className="overflow-hidden rounded-lg border border-line bg-white/[0.02]"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={f.bildeUrl ?? ""}
+                        alt={f.tittel ?? `Fase ${f.rekkefolge}`}
+                        className="h-32 w-full object-cover bg-black/20"
+                      />
+                      <div className="px-2.5 py-1.5">
+                        <p className="text-xs font-medium text-fg">
+                          {f.tittel || `Fase ${f.rekkefolge}`}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Fallback — enkeltbilde for øvelser uten faser */}
+          {!harFaser && ovelse.bildeUrl && (
             <div className="mt-4 overflow-hidden rounded-xl border border-line">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -111,6 +231,7 @@ export default async function OvelseSide({
               />
             </div>
           )}
+
           {ovelse.kvaliteter.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-1.5">
               {ovelse.kvaliteter.map((k) => (

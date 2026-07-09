@@ -8,7 +8,7 @@ import {
 } from "@/lib/ovelseLabels";
 import Button from "@/components/ui/Button";
 import { Input, Label, Select, Textarea } from "@/components/ui/Field";
-import { ImageIcon, X } from "lucide-react";
+import { ImageIcon, Plus, Trash2, X } from "lucide-react";
 
 // Skalerer bildet ned til maks 1024px og komprimerer til JPEG data-URL
 function skalerBilde(file: File): Promise<string> {
@@ -48,13 +48,24 @@ type Props = {
 
 type OpprettType = "ovelse" | "lagkamp" | "turnering";
 
+type LokalFase = {
+  id: number; // lokal ID for React keys
+  tittel: string;
+  bildeUrl: string | null;
+};
+
+let nesteFaseId = 1;
+
 export default function NyOvelseForm({ stillingTopp8 }: Props) {
   const [opprettType, setOpprettType] = useState<OpprettType>("ovelse");
   const [ovelseType, setOvelseType] = useState<"INDIVIDUELL" | "LAG">("INDIVIDUELL");
   const [bildeUrl, setBildeUrl] = useState<string | null>(null);
+  const [faser, setFaser] = useState<LokalFase[]>([]);
   const [, formAction, isPending] = useActionState(opprettOvelse, null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const faseFileRefs = useRef<Map<number, HTMLInputElement>>(new Map());
 
+  // ─── Enkeltbilde ───────────────────────────────────────────────────
   const velgFil = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -63,17 +74,59 @@ export default function NyOvelseForm({ stillingTopp8 }: Props) {
       const dataUrl = await skalerBilde(file);
       setBildeUrl(dataUrl);
     } catch {
-      // ignorer – brukeren kan prøve på nytt
+      // ignorer
     }
   };
 
   const fjernBilde = () => setBildeUrl(null);
+
+  // ─── Faser ─────────────────────────────────────────────────────────
+  const leggTilFase = () => {
+    setFaser((prev) => [...prev, { id: nesteFaseId++, tittel: "", bildeUrl: null }]);
+  };
+
+  const fjernFase = (faseId: number) => {
+    setFaser((prev) => prev.filter((f) => f.id !== faseId));
+    faseFileRefs.current.delete(faseId);
+  };
+
+  const oppdaterFaseTittel = (faseId: number, tittel: string) => {
+    setFaser((prev) =>
+      prev.map((f) => (f.id === faseId ? { ...f, tittel } : f))
+    );
+  };
+
+  const velgFaseBilde = async (faseId: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    try {
+      const dataUrl = await skalerBilde(file);
+      setFaser((prev) =>
+        prev.map((f) => (f.id === faseId ? { ...f, bildeUrl: dataUrl } : f))
+      );
+    } catch {
+      // ignorer
+    }
+  };
+
+  const fjernFaseBilde = (faseId: number) => {
+    setFaser((prev) =>
+      prev.map((f) => (f.id === faseId ? { ...f, bildeUrl: null } : f))
+    );
+  };
+
+  // Serialiser faser til hidden JSON-felt
+  const faserJson = JSON.stringify(
+    faser.map((f) => ({ tittel: f.tittel, bildeUrl: f.bildeUrl }))
+  );
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
       {/* Skjult felt så server-action vet hva som skal opprettes */}
       <input type="hidden" name="opprettType" value={opprettType} />
       <input type="hidden" name="bildeUrl" value={bildeUrl ?? ""} />
+      <input type="hidden" name="faser" value={faserJson} />
 
       {/* Navn */}
       <div>
@@ -191,7 +244,7 @@ export default function NyOvelseForm({ stillingTopp8 }: Props) {
             <Textarea id="beskrivelse" name="beskrivelse" rows={2} />
           </div>
 
-          {/* Bilde (kart/illustrasjon) */}
+          {/* Bilde (kart/illustrasjon) — enkeltbilde for øvelser uten faser */}
           <div>
             <Label>Kart / illustrasjon (valgfritt)</Label>
             <input
@@ -227,6 +280,100 @@ export default function NyOvelseForm({ stillingTopp8 }: Props) {
                 <ImageIcon size={18} />
                 Last opp kart eller illustrasjon
               </button>
+            )}
+          </div>
+
+          {/* ─── Faser ───────────────────────────────────────────────── */}
+          <div className="rounded-xl border border-line bg-white/[0.02] p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-fg">
+                  Faser (valgfritt)
+                </p>
+                <p className="mt-0.5 text-xs text-fg-faint">
+                  Legg til flere deler med hvert sitt bilde. Verten kan
+                  navigere mellom fasene under gjennomføring.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="shrink-0 px-3 py-1.5 text-xs"
+                onClick={leggTilFase}
+              >
+                <Plus size={14} /> Legg til fase
+              </Button>
+            </div>
+
+            {faser.length > 0 && (
+              <div className="mt-4 flex flex-col gap-3">
+                {faser.map((fase, i) => (
+                  <div
+                    key={fase.id}
+                    className="flex flex-col gap-2 rounded-lg border border-line bg-white/[0.03] p-3 sm:flex-row sm:items-start"
+                  >
+                    <span className="shrink-0 pt-1 text-xs font-medium tabular-nums text-fg-dim">
+                      Fase {i + 1}
+                    </span>
+                    <div className="flex-1 space-y-2">
+                      <Input
+                        placeholder="Tittel (valgfritt, f.eks. «Hele hagen»)"
+                        value={fase.tittel}
+                        onChange={(e) =>
+                          oppdaterFaseTittel(fase.id, e.target.value)
+                        }
+                      />
+                      <input
+                        ref={(el) => {
+                          if (el) faseFileRefs.current.set(fase.id, el);
+                          else faseFileRefs.current.delete(fase.id);
+                        }}
+                        type="file"
+                        accept="image/*"
+                        hidden
+                        onChange={(e) => velgFaseBilde(fase.id, e)}
+                      />
+                      {fase.bildeUrl ? (
+                        <div className="relative overflow-hidden rounded-lg border border-line">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={fase.bildeUrl}
+                            alt={`Forhåndsvisning fase ${i + 1}`}
+                            className="max-h-40 w-full object-contain bg-black/20"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => fjernFaseBilde(fase.id)}
+                            className="absolute top-1.5 right-1.5 rounded-full bg-black/60 p-1 text-white backdrop-blur transition-colors hover:bg-red-600"
+                            aria-label="Fjern bilde"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            faseFileRefs.current.get(fase.id)?.click()
+                          }
+                          className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-line bg-white/[0.02] px-3 py-4 text-xs text-fg-dim transition-colors hover:border-accent-2 hover:text-accent-2"
+                        >
+                          <ImageIcon size={14} />
+                          Last opp bilde for fase {i + 1}
+                        </button>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => fjernFase(fase.id)}
+                      className="shrink-0 self-end rounded-lg p-1.5 text-fg-faint transition-colors hover:bg-red-600/10 hover:text-red-400 sm:self-start"
+                      aria-label={`Fjern fase ${i + 1}`}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
 

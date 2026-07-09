@@ -85,8 +85,9 @@ model Ovelse {
   lagFormat   LagFormat?
   kvaliteter  Kvalitet[]
   fellesLek   Boolean      @default(false)
-  bildeUrl    String?      /// Data-URL for kart/illustrasjon til øvelsen
+  bildeUrl    String?      /// Data-URL for kart/illustrasjon til øvelsen (brukes som fallback hvis ingen faser)
   status      OvelseStatus @default(PLANLAGT)
+  aktivFase   Int          @default(0) /// 0 = ingen aktiv fase; 1..N = fasenummer
   createdAt   DateTime     @default(now())
 
   sesongId String
@@ -98,6 +99,20 @@ model Ovelse {
   lag                    Lag[]
   individuelleResultater ResultatIndividuell[]
   lagResultater          ResultatLag[]
+  faser                  OvelseFase[]
+}
+
+/// En fase i en øvelse med flere deler. Hver fase kan ha eget bilde/kart
+/// og tittel. Verten navigerer mellom faser under gjennomføring.
+model OvelseFase {
+  id         String @id @default(cuid())
+  ovelseId   String
+  ovelse     Ovelse @relation(fields: [ovelseId], references: [id], onDelete: Cascade)
+  rekkefolge Int    /// 1, 2, 3, ...
+  tittel     String? /// Valgfri tittel for fasen (f.eks. "Hele hagen")
+  bildeUrl   String? /// Data-URL for denne fasens kart/illustrasjon
+
+  @@unique([ovelseId, rekkefolge])
 }
 
 /// Et lag i en lag-øvelse (par, trio eller flere-lag-format som bridge/fotball)

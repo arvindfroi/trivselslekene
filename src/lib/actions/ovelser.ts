@@ -19,6 +19,13 @@ const ovelseInputSchema = z.object({
   beskrivelse: z.string().max(500, "Beskrivelse kan maks være 500 tegn").optional(),
 });
 
+const faseSchema = z.object({
+  tittel: z.string().max(100).optional(),
+  bildeUrl: z.string().optional(),
+});
+
+const faserSchema = z.array(faseSchema).max(20, "Maks 20 faser");
+
 // ─── Auth-hjelpere ────────────────────────────────────────────────────────
 
 async function krevInnloggetBruker() {
@@ -97,6 +104,20 @@ export async function opprettOvelse(
     .map(String)
     .filter((k): k is Kvalitet => (ALLE_KVALITETER as string[]).includes(k));
 
+  // ─── Les faser fra skjult JSON-felt ─────────────────────────────
+  let faser: { tittel?: string; bildeUrl?: string }[] = [];
+  const faserRaw = String(formData.get("faser") ?? "").trim();
+  if (faserRaw) {
+    try {
+      const parsedFaser = faserSchema.safeParse(JSON.parse(faserRaw));
+      if (parsedFaser.success) {
+        faser = parsedFaser.data.filter((f) => f.bildeUrl); // kun faser med bilde
+      }
+    } catch {
+      // ugyldig JSON — ignorer
+    }
+  }
+
   const ovelse = await prisma.ovelse.create({
     data: {
       navn: parsed.data.navn,
@@ -109,6 +130,15 @@ export async function opprettOvelse(
       bildeUrl: bildeUrl?.startsWith("data:image/") ? bildeUrl : null,
       sesongId: sesong.id,
       vertId: bruker.id,
+      faser: faser.length > 0
+        ? {
+            create: faser.map((f, i) => ({
+              rekkefolge: i + 1,
+              tittel: f.tittel?.trim() || null,
+              bildeUrl: f.bildeUrl?.startsWith("data:image/") ? f.bildeUrl : null,
+            })),
+          }
+        : undefined,
     },
   });
 
@@ -140,6 +170,21 @@ export async function settOvelseStatus(ovelseId: string, status: OvelseStatus) {
   await prisma.ovelse.update({ where: { id: ovelseId }, data: { status } });
   revalidatePath(`/ovelser/${ovelseId}`);
   revalidatePath("/ovelser");
+}
+
+export async function settAktivFase(ovelseId: string, fase: number) {
+  const bruker = await krevInnloggetBruker();
+  const ovelse = await prisma.ovelse.findUnique({
+    where: { id: ovelseId },
+    select: { vertId: true, faser: { select: { rekkefolge: true } } },
+  });
+  if (!ovelse || ovelse.vertId !== bruker.id) {
+    redirect(`/ovelser/${ovelseId}`);
+  }
+  const maksFase = ovelse.faser.length;
+  if (fase < 0 || fase > maksFase) return; // 0 = skjul faser, 1..maksFase = vis fase
+  await prisma.ovelse.update({ where: { id: ovelseId }, data: { aktivFase: fase } });
+  revalidatePath(`/ovelser/${ovelseId}`);
 }
 
 export async function opprettLag(ovelseId: string, formData: FormData) {
