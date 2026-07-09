@@ -16,7 +16,6 @@ import {
 import { kvalitetIkon, kvalitetTekst } from "@/lib/ovelseLabels";
 import Card from "@/components/ui/Card";
 import StatCard from "@/components/ui/StatCard";
-import StatFlis from "@/components/StatFlis";
 import StillingListe from "@/components/StillingListe";
 import DeltakerSlideshow from "@/components/DeltakerSlideshow";
 
@@ -82,34 +81,18 @@ export default async function StillingSide() {
         </Card>
       </section>
 
-      {/* TEST: StatFlis i et enkelt grid (ikke bento) */}
-      <section className="mt-10">
-        <h2 className="mb-3 text-sm font-medium tracking-widest text-fg-dim uppercase">
-          Beste innen hver egenskap
-        </h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {kvalitetsledere.map(({ kvalitet, leder: best, topp3 }) => (
-            <StatFlis
-              key={kvalitet}
-              Ikon={kvalitetIkon[kvalitet]}
-              tittel={kvalitetTekst[kvalitet]}
-              leder={
-                best
-                  ? {
-                      navn: best.navn,
-                      bildeUrl: best.bildeUrl,
-                      verdi: String(best.poeng),
-                    }
-                  : null
-              }
-              topp3={topp3.map((t) => ({
-                navn: t.navn,
-                bildeUrl: t.bildeUrl,
-                verdi: String(t.poeng),
-              }))}
-            />
-          ))}
-        </div>
+      {/* TEST: Kun tekst, ingen komponenter */}
+      <section className="mt-10 surface rounded-2xl p-4">
+        <h2 className="text-sm font-medium">Debug kvalitetsledere:</h2>
+        {kvalitetsledere.map((k) => {
+          const ikonNavn = kvalitetIkon[k.kvalitet] ? kvalitetIkon[k.kvalitet].name : "MANGLER IKON!";
+          const tekst = kvalitetTekst[k.kvalitet] ?? "MANGLER TEKST!";
+          return (
+            <p key={k.kvalitet} className="text-xs text-fg-dim mt-1">
+              {k.kvalitet} / {tekst} / Ikon: {ikonNavn} / leder: {k.leder?.navn ?? "null"} / topp3: {k.topp3.length}
+            </p>
+          );
+        })}
       </section>
     </div>
     </>
