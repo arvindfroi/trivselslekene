@@ -22,11 +22,13 @@ export default async function HjemSide() {
   if (!session?.user) redirect("/bli-med");
 
   const sesong = await sikreAktivSesong();
-  const alleData = await hentAlleSesongData(sesong.id);
+  const [alleData, dineOvelser] = await Promise.all([
+    hentAlleSesongData(sesong.id),
+    prisma.ovelse.count({
+      where: { sesongId: sesong.id, vertId: session.user.id },
+    }),
+  ]);
   const stilling = hentStilling(alleData);
-  const dineOvelser = await prisma.ovelse.count({
-    where: { sesongId: sesong.id, vertId: session.user.id },
-  });
 
   const minIndex = stilling.findIndex((s) => s.userId === session.user!.id);
   const min = minIndex >= 0 ? stilling[minIndex] : null;

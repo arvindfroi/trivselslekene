@@ -8,18 +8,20 @@ import {
   leggTilLagmedlem,
   opprettLag,
   settOvelseStatus,
-  settAktivFase,
   slettOvelse,
 } from "@/lib/actions/ovelser";
 import type { OvelseStatus } from "@prisma/client";
 import { lagFormatTekst, statusTekst, statusVariant } from "@/lib/ovelseLabels";
+import { bildeUrlFor } from "@/lib/bilde";
 import KvalitetChip from "@/components/KvalitetChip";
+import FaseNavigator from "@/components/FaseNavigator";
+import LiveRefresh from "@/components/LiveRefresh";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import SubmitButton from "@/components/ui/SubmitButton";
 import Badge from "@/components/ui/Badge";
 import { Input, Label, Select } from "@/components/ui/Field";
-import { MapPin, Users, X, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { MapPin, Users, X, Trash2 } from "lucide-react";
 
 export default async function OvelseSide({
   params,
@@ -31,7 +33,9 @@ export default async function OvelseSide({
   const session = await auth();
   if (!session?.user) redirect("/bli-med");
 
-  const ovelse = await prisma.ovelse.findUnique({
+  // De to spørringene er uavhengige — kjør dem parallelt.
+  const [ovelse, alleBrukere] = await Promise.all([
+    prisma.ovelse.findUnique({
     where: { id },
     select: {
       id: true,
@@ -73,24 +77,31 @@ export default async function OvelseSide({
         },
       },
     },
-  });
+    }),
+    prisma.user.findMany({
+      select: { id: true, navn: true },
+      orderBy: { navn: "asc" },
+    }),
+  ]);
 
   if (!ovelse) notFound();
 
   const ovelseId = ovelse.id;
-  const alleBrukere = await prisma.user.findMany({
-    select: { id: true, navn: true },
-    orderBy: { navn: "asc" },
-  });
   const deltakere = ovelse.fellesLek
     ? alleBrukere
     : alleBrukere.filter((b) => b.id !== ovelse.vertId);
   const erVert = session.user.id === ovelse.vertId;
   const harFaser = ovelse.faser.length > 0;
-  const aktivFase = harFaser
-    ? ovelse.faser[ovelse.aktivFase - 1] ?? null
-    : null;
-  const totalFaser = ovelse.faser.length;
+
+  // Bilder sendes som små URL-er (cachebare via /api/bilde) i stedet for å
+  // inline base64 i payloaden — dette var hovedårsaken til trege knapper.
+  const ovelseBilde = bildeUrlFor("ovelse", ovelse);
+  const faserMedBilde = ovelse.faser.map((f) => ({
+    id: f.id,
+    rekkefolge: f.rekkefolge,
+    tittel: f.tittel,
+    bildeSrc: bildeUrlFor("fase", f),
+  }));
 
   async function endreStatus(formData: FormData) {
     "use server";
@@ -110,6 +121,8 @@ export default async function OvelseSide({
 
   return (
     <div className="mx-auto max-w-4xl px-4 pt-28 pb-12">
+      {/* Tilskuere følger fasebytter og nye resultater live mens øvelsen pågår */}
+      <LiveRefresh aktiv={ovelse.status === "PAAGAAR" && !erVert} />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs tracking-[0.2em] text-accent-2 uppercase">
@@ -141,123 +154,23 @@ export default async function OvelseSide({
             </p>
           )}
 
-          {/* ─── Fase-navigator ──────────────────────────────────── */}
+          {/* ─── Fase-navigator (klient, optimistisk — fasebytter er umiddelbare) ─── */}
           {harFaser && (
-            <div className="mt-4">
-              <div className="flex flex-wrap items-center gap-3">
-                {/* Faseindikator */}
-                <div className="flex items-center gap-1">
-                  {ovelse.faser.map((f) => (
-                    <div
-                      key={f.id}
-                      className={`h-2 w-2 rounded-full transition-colors ${
-                        ovelse.aktivFase === f.rekkefolge
-                          ? "bg-accent-2"
-                          : f.rekkefolge < ovelse.aktivFase
-                            ? "bg-fg-dim"
-                            : "bg-line"
-                      }`}
-                    />
-                  ))}
-                </div>
-                <span className="text-sm tabular-nums text-fg-dim">
-                  {ovelse.aktivFase > 0
-                    ? `Fase ${ovelse.aktivFase} av ${totalFaser}`
-                    : `${totalFaser} faser · ikke startet`}
-                </span>
-                {erVert && (
-                  <div className="flex items-center gap-1">
-                    <form
-                      action={async () => {
-                        "use server";
-                        await settAktivFase(
-                          ovelseId,
-                          Math.max(0, ovelse.aktivFase - 1)
-                        );
-                      }}
-                    >
-                      <Button
-                        type="submit"
-                        variant="outline"
-                        className="px-2 py-1 text-xs"
-                        disabled={ovelse.aktivFase <= 1}
-                      >
-                        <ChevronLeft size={14} />
-                      </Button>
-                    </form>
-                    <form
-                      action={async () => {
-                        "use server";
-                        await settAktivFase(
-                          ovelseId,
-                          Math.min(totalFaser, ovelse.aktivFase + 1)
-                        );
-                      }}
-                    >
-                      <Button
-                        type="submit"
-                        variant="outline"
-                        className="px-2 py-1 text-xs"
-                        disabled={ovelse.aktivFase >= totalFaser}
-                      >
-                        <ChevronRight size={14} />
-                      </Button>
-                    </form>
-                  </div>
-                )}
-              </div>
-
-              {/* Vis aktuell fase */}
-              {aktivFase && (
-                <div className="mt-3 overflow-hidden rounded-xl border border-line">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={aktivFase.bildeUrl ?? ovelse.bildeUrl ?? ""}
-                    alt={aktivFase.tittel ?? `Fase ${aktivFase.rekkefolge}`}
-                    className="max-h-96 w-full object-contain bg-black/20"
-                  />
-                  {aktivFase.tittel && (
-                    <div className="border-t border-line bg-white/[0.03] px-4 py-2.5">
-                      <p className="text-sm font-medium text-fg">
-                        {aktivFase.tittel}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Forhåndsvis alle faser (bare for vert) */}
-              {erVert && ovelse.aktivFase === 0 && (
-                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  {ovelse.faser.map((f) => (
-                    <div
-                      key={f.id}
-                      className="overflow-hidden rounded-lg border border-line bg-white/[0.02]"
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={f.bildeUrl ?? ""}
-                        alt={f.tittel ?? `Fase ${f.rekkefolge}`}
-                        className="h-32 w-full object-cover bg-black/20"
-                      />
-                      <div className="px-2.5 py-1.5">
-                        <p className="text-xs font-medium text-fg">
-                          {f.tittel || `Fase ${f.rekkefolge}`}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <FaseNavigator
+              ovelseId={ovelseId}
+              faser={faserMedBilde}
+              aktivFase={ovelse.aktivFase}
+              erVert={erVert}
+              fallbackBilde={ovelseBilde}
+            />
           )}
 
           {/* Fallback — enkeltbilde for øvelser uten faser */}
-          {!harFaser && ovelse.bildeUrl && (
+          {!harFaser && ovelseBilde && (
             <div className="mt-4 overflow-hidden rounded-xl border border-line">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={ovelse.bildeUrl}
+                src={ovelseBilde}
                 alt={`Kart for ${ovelse.navn}`}
                 className="max-h-96 w-full object-contain bg-black/20"
               />

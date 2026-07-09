@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
+import { bildeUrlFor } from "@/lib/bilde";
 import { slettTurnering } from "@/lib/actions/turnering";
 import Card from "@/components/ui/Card";
 import SubmitButton from "@/components/ui/SubmitButton";
@@ -50,6 +51,21 @@ export default async function TurneringSide() {
     orderBy: { createdAt: "desc" },
   });
 
+  // Send små bilde-URL-er til klienten i stedet for base64-blobber.
+  const lettBruker = <B extends { id: string; navn: string; bildeUrl: string | null }>(u: B) => ({
+    ...u,
+    bildeUrl: bildeUrlFor("bruker", u),
+  });
+  const turneringerMedLetteBilder = turneringer.map((t) => ({
+    ...t,
+    deltagere: t.deltagere.map((d) => ({ ...d, user: lettBruker(d.user) })),
+    kamper: t.kamper.map((k) => ({
+      ...k,
+      deltager1: k.deltager1 ? { ...k.deltager1, user: lettBruker(k.deltager1.user) } : k.deltager1,
+      deltager2: k.deltager2 ? { ...k.deltager2, user: lettBruker(k.deltager2.user) } : k.deltager2,
+    })),
+  }));
+
   return (
     <>
       <DeltakerSlideshow />
@@ -72,7 +88,7 @@ export default async function TurneringSide() {
             Turneringer
           </h2>
 
-          {turneringer.length === 0 ? (
+          {turneringerMedLetteBilder.length === 0 ? (
             <p className="text-sm text-fg-dim">
               Ingen turneringer er opprettet ennå. Gå til{" "}
               <a href="/profil" className="text-accent-2 underline">Profil</a> for
@@ -80,7 +96,7 @@ export default async function TurneringSide() {
             </p>
           ) : (
             <div className="flex flex-col gap-10">
-              {turneringer.map((t) => (
+              {turneringerMedLetteBilder.map((t) => (
                 <Card key={t.id} padding="p-5 sm:p-6">
                   {/* Header */}
                   <div className="flex flex-wrap items-start justify-between gap-3 mb-6">

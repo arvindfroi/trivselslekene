@@ -4,6 +4,7 @@ import { auth, signOut } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
 import { hentAlleSesongData, hentStilling } from "@/lib/stilling";
+import { bildeUrlFor } from "@/lib/bilde";
 import { slettOvelse } from "@/lib/actions/ovelser";
 import {
   statusTekst,
@@ -88,7 +89,10 @@ export default async function ProfilSide({
           <div className="shrink-0">
             <ProfilRediger
               navn={bruker?.navn ?? session.user.name ?? ""}
-              bildeUrl={bruker?.bildeUrl ?? null}
+              bildeUrl={bildeUrlFor("bruker", {
+                id: session.user.id,
+                bildeUrl: bruker?.bildeUrl ?? null,
+              })}
               navnFeil={navnfeil}
             />
           </div>

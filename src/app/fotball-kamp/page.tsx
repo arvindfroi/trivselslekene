@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
+import { bildeUrlFor } from "@/lib/bilde";
 import { registrerVinner, slettFotballKamp } from "@/lib/actions/fotballkamp";
 import Card from "@/components/ui/Card";
 import { LinkButton } from "@/components/ui/Button";
@@ -24,10 +25,14 @@ export default async function FotballKampSide() {
       lagFormat: { in: ["FIRE_MOT_FEM", "TRE_MOT_TRE_MOT_TRE", "TO_MOT_TO_MOT_TO_MOT_TO", "ANNET"] },
     },
     include: {
-      vert: true,
+      // Eksplisitte selects: unngår å dra passordHash og base64-bilder
+      // ut av databasen for hver render.
+      vert: { select: { id: true, navn: true } },
       lag: {
         include: {
-          medlemmer: { include: { user: true } },
+          medlemmer: {
+            include: { user: { select: { id: true, navn: true, bildeUrl: true } } },
+          },
           resultat: true,
         },
       },
@@ -155,7 +160,7 @@ export default async function FotballKampSide() {
                               <ul className="flex flex-col gap-1.5">
                                 {lag.medlemmer.map((m) => (
                                   <li key={m.id} className="flex items-center gap-2 text-sm text-fg">
-                                    <Avatar navn={m.user.navn} bildeUrl={m.user.bildeUrl} size={24} />
+                                    <Avatar navn={m.user.navn} bildeUrl={bildeUrlFor("bruker", m.user)} size={24} />
                                     <span>{m.user.navn}</span>
                                     {erFerdig && lag.resultat && (
                                       <span className="ml-auto text-xs tabular-nums text-accent-2">

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import type { Kvalitet } from "@prisma/client";
 import { ALLE_KVALITETER } from "@/lib/ovelseLabels";
+import { bildeUrlFor } from "@/lib/bilde";
 
 // ─── Typer ───────────────────────────────────────────────────────
 
@@ -119,7 +120,15 @@ export async function hentAlleSesongData(sesongId: string): Promise<SesongData> 
     }),
   ]);
 
-  return { brukere, vertPerOvelse };
+  // Bytt ut base64-blobber med små, cachebare URL-er før dataene når
+  // sidene — ellers inlines hvert profilbilde i payloaden på nytt ved
+  // hver render av dashboard/stilling/profil.
+  const brukereMedLetteBilder = brukere.map((b) => ({
+    ...b,
+    bildeUrl: bildeUrlFor("bruker", b),
+  }));
+
+  return { brukere: brukereMedLetteBilder, vertPerOvelse };
 }
 
 // ─── Analysefunksjoner (rene transformasjoner, ingen DB-kall) ────

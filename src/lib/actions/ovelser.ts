@@ -149,15 +149,12 @@ export async function opprettOvelse(
 
 export async function slettOvelse(ovelseId: string) {
   const bruker = await krevInnloggetBruker();
-  const ovelse = await prisma.ovelse.findUnique({
-    where: { id: ovelseId },
-    select: { vertId: true },
+  // Én betinget sletting: treffer kun hvis innlogget bruker er vert.
+  // Erstatter les-så-skriv (to DB-rundturer) med én.
+  const slettet = await prisma.ovelse.deleteMany({
+    where: { id: ovelseId, vertId: bruker.id },
   });
-  // Kun verten kan slette sin egen øvelse.
-  if (!ovelse || ovelse.vertId !== bruker.id) {
-    redirect("/profil");
-  }
-  await prisma.ovelse.delete({ where: { id: ovelseId } });
+  if (slettet.count === 0) redirect("/profil");
   revalidatePath("/ovelser");
   revalidatePath("/profil");
   revalidatePath("/dashboard");
@@ -165,25 +162,38 @@ export async function slettOvelse(ovelseId: string) {
   redirect("/profil");
 }
 
+const GYLDIGE_STATUSER: readonly OvelseStatus[] = [
+  "PLANLAGT",
+  "PAAGAAR",
+  "FULLFORT",
+];
+
 export async function settOvelseStatus(ovelseId: string, status: OvelseStatus) {
-  await krevVert(ovelseId);
-  await prisma.ovelse.update({ where: { id: ovelseId }, data: { status } });
+  const bruker = await krevInnloggetBruker();
+  if (!GYLDIGE_STATUSER.includes(status)) return;
+  // Vert-sjekken ligger i where-betingelsen — én rundtur, atomisk autorisert.
+  await prisma.ovelse.updateMany({
+    where: { id: ovelseId, vertId: bruker.id },
+    data: { status },
+  });
   revalidatePath(`/ovelser/${ovelseId}`);
   revalidatePath("/ovelser");
 }
 
 export async function settAktivFase(ovelseId: string, fase: number) {
   const bruker = await krevInnloggetBruker();
-  const ovelse = await prisma.ovelse.findUnique({
-    where: { id: ovelseId },
-    select: { vertId: true, faser: { select: { rekkefolge: true } } },
+  if (!Number.isInteger(fase) || fase < 0) return;
+  // Én betinget oppdatering: treffer kun hvis brukeren er vert og fasen
+  // faktisk finnes (fase 0 = "skjul faser" er alltid lov). Erstatter den
+  // gamle les-valider-skriv-flyten som brukte to sekvensielle rundturer.
+  await prisma.ovelse.updateMany({
+    where: {
+      id: ovelseId,
+      vertId: bruker.id,
+      ...(fase > 0 ? { faser: { some: { rekkefolge: fase } } } : {}),
+    },
+    data: { aktivFase: fase },
   });
-  if (!ovelse || ovelse.vertId !== bruker.id) {
-    redirect(`/ovelser/${ovelseId}`);
-  }
-  const maksFase = ovelse.faser.length;
-  if (fase < 0 || fase > maksFase) return; // 0 = skjul faser, 1..maksFase = vis fase
-  await prisma.ovelse.update({ where: { id: ovelseId }, data: { aktivFase: fase } });
   revalidatePath(`/ovelser/${ovelseId}`);
 }
 
@@ -218,8 +228,14 @@ export async function leggTilLagmedlem(
 }
 
 export async function fjernLagmedlem(ovelseId: string, lagmedlemId: string) {
-  await krevVert(ovelseId);
-  await prisma.lagMedlem.delete({ where: { id: lagmedlemId } });
+  const bruker = await krevInnloggetBruker();
+  // Vert-sjekken uttrykkes som relasjonsfilter — én rundtur i stedet for to.
+  await prisma.lagMedlem.deleteMany({
+    where: {
+      id: lagmedlemId,
+      lag: { ovelse: { id: ovelseId, vertId: bruker.id } },
+    },
+  });
   revalidatePath(`/ovelser/${ovelseId}`);
 }
 
