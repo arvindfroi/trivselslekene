@@ -3,7 +3,6 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useScroll, useMotionValueEvent } from "framer-motion";
 import { Home, Swords, BarChart3, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -20,21 +19,6 @@ const SWIPE_THRESHOLD = 50;
 export default function FloatingNav({ loggedIn }: { loggedIn: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [visible, setVisible] = React.useState(true);
-  const { scrollY } = useScroll();
-  const lastScrollY = React.useRef(0);
-  const hidePos = React.useRef(0);
-
-  useMotionValueEvent(scrollY, "change", (latest) => {
-    const prev = lastScrollY.current;
-    if (visible && latest > prev && latest > 200) {
-      setVisible(false);
-      hidePos.current = latest;
-    } else if (!visible && prev - latest > 60) {
-      setVisible(true);
-    }
-    lastScrollY.current = latest;
-  });
 
   // ── Toolbar swipe (native listeners for reliable passive:false) ──
   const navRef = React.useRef<HTMLElement>(null);
@@ -92,10 +76,7 @@ export default function FloatingNav({ loggedIn }: { loggedIn: boolean }) {
 
   return (
     <div
-      className={cn(
-        "fixed left-1/2 z-50 -translate-x-1/2 transition-transform duration-300 ease-out",
-        visible ? "translate-y-0" : "translate-y-[calc(100%+2rem)]",
-      )}
+      className="fixed left-1/2 z-50 -translate-x-1/2"
       style={{ bottom: `calc(1rem + env(safe-area-inset-bottom, 0px))` }}
     >
       <nav
