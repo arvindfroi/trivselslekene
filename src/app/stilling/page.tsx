@@ -11,7 +11,8 @@ import {
 import { kvalitetIkon, kvalitetTekst } from "@/lib/ovelseLabels";
 import { BENTO_GRID, bentoSpenn, erStor } from "@/lib/bento";
 import Card from "@/components/ui/Card";
-import StatFlis from "@/components/StatFlis";
+import StatCard from "@/components/ui/StatCard";
+import StatFlis from "@/components/ui/StatFlis";
 import StillingListe from "@/components/StillingListe";
 import {
   CloudRain,
@@ -42,17 +43,6 @@ const UTMERKELSER: {
   { key: "uheldig", tittel: "Uflaks-magneten", tekst: "Flest sisteplasser", Ikon: CloudRain },
   { key: "trost", tittel: "Trøstepremien", tekst: "Lavest poengsnitt", Ikon: HeartCrack },
 ];
-
-function StatCard({ label, verdi }: { label: string; verdi: string }) {
-  return (
-    <Card padding="p-4 sm:p-5">
-      <p className="text-[11px] tracking-widest text-fg-faint uppercase">
-        {label}
-      </p>
-      <p className="mt-1 font-display text-2xl text-fg sm:text-3xl">{verdi}</p>
-    </Card>
-  );
-}
 
 export default async function StillingSide() {
   const session = await auth();

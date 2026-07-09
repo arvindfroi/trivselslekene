@@ -11,19 +11,13 @@ import {
   slettOvelse,
 } from "@/lib/actions/ovelser";
 import type { OvelseStatus } from "@prisma/client";
-import { lagFormatTekst } from "@/lib/ovelseLabels";
+import { lagFormatTekst, statusTekst, statusVariant } from "@/lib/ovelseLabels";
 import KvalitetChip from "@/components/KvalitetChip";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Badge, { type BadgeVariant } from "@/components/ui/Badge";
 import { Input, Label, Select } from "@/components/ui/Field";
 import { MapPin, Users, X, Trash2 } from "lucide-react";
-
-const statusVariant: Record<OvelseStatus, BadgeVariant> = {
-  FULLFORT: "fullfort",
-  PAAGAAR: "pagaar",
-  PLANLAGT: "planlagt",
-};
 
 export default async function OvelseSide({
   params,
@@ -74,12 +68,6 @@ export default async function OvelseSide({
     "use server";
     await lagreResultatIndividuell(ovelseId, formData);
   }
-
-  const statusTekst: Record<OvelseStatus, string> = {
-    PLANLAGT: "Planlagt",
-    PAAGAAR: "Pågår",
-    FULLFORT: "Fullført",
-  };
 
   return (
     <div className="mx-auto max-w-4xl px-4 pt-28 pb-12">

@@ -6,21 +6,11 @@ import { sikreAktivSesong } from "@/lib/sesong";
 import { hentStilling } from "@/lib/stilling";
 import Card from "@/components/ui/Card";
 import { LinkButton } from "@/components/ui/Button";
+import StatCard from "@/components/ui/StatCard";
 import RankBadge from "@/components/ui/RankBadge";
 import Avatar from "@/components/Avatar";
 import AnimatedGradientBackground from "@/components/AnimatedGradientBackground";
 import { ArrowRight, BarChart3, Swords, User } from "lucide-react";
-
-function StatCard({ label, verdi }: { label: string; verdi: string }) {
-  return (
-    <Card padding="p-4 sm:p-5">
-      <p className="text-[11px] tracking-widest text-fg-faint uppercase">
-        {label}
-      </p>
-      <p className="mt-1 font-display text-2xl text-fg sm:text-3xl">{verdi}</p>
-    </Card>
-  );
-}
 
 export default async function HjemSide() {
   const session = await auth();
