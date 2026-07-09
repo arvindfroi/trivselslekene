@@ -16,6 +16,19 @@ async function krevInnloggetBruker() {
   return session.user;
 }
 
+/** Sjekker at innlogget bruker er vert for øvelsen. Redirecter ellers. */
+async function krevVert(ovelseId: string) {
+  const bruker = await krevInnloggetBruker();
+  const ovelse = await prisma.ovelse.findUnique({
+    where: { id: ovelseId },
+    select: { vertId: true },
+  });
+  if (!ovelse || ovelse.vertId !== bruker.id) {
+    redirect(`/ovelser/${ovelseId}`);
+  }
+  return bruker;
+}
+
 export async function opprettOvelse(formData: FormData) {
   const bruker = await krevInnloggetBruker();
 
@@ -72,14 +85,14 @@ export async function slettOvelse(ovelseId: string) {
 }
 
 export async function settOvelseStatus(ovelseId: string, status: OvelseStatus) {
-  await krevInnloggetBruker();
+  await krevVert(ovelseId);
   await prisma.ovelse.update({ where: { id: ovelseId }, data: { status } });
   revalidatePath(`/ovelser/${ovelseId}`);
   revalidatePath("/ovelser");
 }
 
 export async function opprettLag(ovelseId: string, formData: FormData) {
-  await krevInnloggetBruker();
+  await krevVert(ovelseId);
   const navn = String(formData.get("navn") ?? "").trim();
   if (!navn) return;
 
@@ -95,7 +108,7 @@ export async function leggTilLagmedlem(
   lagId: string,
   formData: FormData
 ) {
-  await krevInnloggetBruker();
+  await krevVert(ovelseId);
   const userId = String(formData.get("userId") ?? "");
   if (!userId) return;
 
@@ -109,7 +122,7 @@ export async function leggTilLagmedlem(
 }
 
 export async function fjernLagmedlem(ovelseId: string, lagmedlemId: string) {
-  await krevInnloggetBruker();
+  await krevVert(ovelseId);
   await prisma.lagMedlem.delete({ where: { id: lagmedlemId } });
   revalidatePath(`/ovelser/${ovelseId}`);
 }
@@ -118,7 +131,7 @@ export async function lagreResultatIndividuell(
   ovelseId: string,
   formData: FormData
 ) {
-  await krevInnloggetBruker();
+  await krevVert(ovelseId);
   const userId = String(formData.get("userId") ?? "");
   const plasseringRaw = formData.get("plassering");
   const poengRaw = formData.get("poeng");
@@ -144,7 +157,7 @@ export async function lagreResultatLag(
   lagId: string,
   formData: FormData
 ) {
-  await krevInnloggetBruker();
+  await krevVert(ovelseId);
   const plasseringRaw = formData.get("plassering");
   const poengRaw = formData.get("poeng");
 
