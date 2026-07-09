@@ -10,7 +10,8 @@ import {
   statusVariant,
 } from "@/lib/ovelseLabels";
 import Card from "@/components/ui/Card";
-import Button, { LinkButton } from "@/components/ui/Button";
+import { LinkButton } from "@/components/ui/Button";
+import SubmitButton from "@/components/ui/SubmitButton";
 import Badge from "@/components/ui/Badge";
 import NyOvelseForm from "@/components/NyOvelseForm";
 import ProfilRediger from "@/components/ProfilRediger";
@@ -77,9 +78,9 @@ export default async function ProfilSide({
             </p>
           </div>
           <form action={loggUt}>
-            <Button type="submit" variant="secondary" className="px-4 py-2 text-xs">
+            <SubmitButton variant="secondary" className="px-4 py-2 text-xs" pendingText="Logger ut…">
               Logg ut
-            </Button>
+            </SubmitButton>
           </form>
         </div>
 
@@ -153,13 +154,13 @@ export default async function ProfilSide({
                     <Settings2 size={14} /> Administrer
                   </LinkButton>
                   <form action={slettOvelse.bind(null, ovelse.id)}>
-                    <Button
-                      type="submit"
+                    <SubmitButton
                       variant="danger"
                       className="px-3 py-2 text-xs"
+                      pendingText="Sletter…"
                     >
                       <Trash2 size={14} /> Slett
-                    </Button>
+                    </SubmitButton>
                   </form>
                 </div>
               </Card>

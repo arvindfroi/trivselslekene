@@ -16,6 +16,7 @@ import { lagFormatTekst, statusTekst, statusVariant } from "@/lib/ovelseLabels";
 import KvalitetChip from "@/components/KvalitetChip";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
+import SubmitButton from "@/components/ui/SubmitButton";
 import Badge from "@/components/ui/Badge";
 import { Input, Label, Select } from "@/components/ui/Field";
 import { MapPin, Users, X, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
@@ -381,7 +382,7 @@ export default async function OvelseSide({
                   required
                 />
               </div>
-              <Button type="submit">Lagre</Button>
+              <SubmitButton>Lagre</SubmitButton>
             </form>
           )}
         </Card>
@@ -394,7 +395,7 @@ export default async function OvelseSide({
               </h2>
               <form action={opprettLagAction} className="flex gap-3">
                 <Input name="navn" required placeholder="Lagnavn" className="flex-1" />
-                <Button type="submit">Legg til lag</Button>
+                <SubmitButton>Legg til lag</SubmitButton>
               </form>
             </Card>
           )}
@@ -470,9 +471,9 @@ export default async function OvelseSide({
                           ))}
                         </Select>
                       </div>
-                      <Button type="submit" variant="outline">
+                      <SubmitButton variant="outline">
                         Legg til
-                      </Button>
+                      </SubmitButton>
                     </form>
 
                     <form action={lagreResultatAction} className="flex items-end gap-2">
@@ -497,7 +498,7 @@ export default async function OvelseSide({
                           defaultValue={lag.resultat?.poeng ?? undefined}
                         />
                       </div>
-                      <Button type="submit">Lagre</Button>
+                      <SubmitButton>Lagre</SubmitButton>
                     </form>
                   </div>
                 )}

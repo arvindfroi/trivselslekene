@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useTransition } from "react";
 import Avatar from "@/components/Avatar";
 import Badge from "@/components/ui/Badge";
 import { velgVinner } from "@/lib/actions/turnering";
@@ -83,21 +84,37 @@ function KampKort({
   kamp: TurneringMedData["kamper"][number];
   turneringStatus: string;
 }) {
-  const erFerdig = kamp.status === "FULLFORT";
+  const [isPending, startTransition] = useTransition();
+  const [optimistiskVinner, setOptimistiskVinner] = useState<string | null>(null);
+
+  const erFerdigFaktisk = kamp.status === "FULLFORT";
+  const erFerdig = erFerdigFaktisk || optimistiskVinner !== null;
   const erKlar = kamp.status === "KLAR";
-  const kanKlikke = erKlar && turneringStatus !== "FULLFORT";
+  const kanKlikke = erKlar && turneringStatus !== "FULLFORT" && !isPending;
 
-  const erD1Vinner = erFerdig && kamp.vinnerId === kamp.deltager1Id;
-  const erD2Vinner = erFerdig && kamp.vinnerId === kamp.deltager2Id;
+  const erD1Vinner = erFerdig && (
+    (erFerdigFaktisk && kamp.vinnerId === kamp.deltager1Id) ||
+    optimistiskVinner === kamp.deltager1Id
+  );
+  const erD2Vinner = erFerdig && (
+    (erFerdigFaktisk && kamp.vinnerId === kamp.deltager2Id) ||
+    optimistiskVinner === kamp.deltager2Id
+  );
 
-  async function handleVelgVinner(deltagerId: string) {
-    await velgVinner(kamp.id, deltagerId);
+  function handleVelgVinner(deltagerId: string) {
+    if (isPending) return;
+    setOptimistiskVinner(deltagerId);
+    startTransition(async () => {
+      await velgVinner(kamp.id, deltagerId);
+    });
   }
 
   return (
     <div
-      className={`rounded-lg border px-2 py-1.5 min-w-[140px] ${
-        erFerdig
+      className={`rounded-lg border px-2 py-1.5 min-w-[140px] transition-opacity ${
+        isPending ? "opacity-70" : ""
+      } ${
+        erFerdigFaktisk
           ? "border-accent-2/30 bg-accent-2/[0.04]"
           : erKlar
             ? "border-line-strong bg-white/[0.03]"

@@ -4,7 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
 import { registrerVinner, slettFotballKamp } from "@/lib/actions/fotballkamp";
 import Card from "@/components/ui/Card";
-import Button, { LinkButton } from "@/components/ui/Button";
+import { LinkButton } from "@/components/ui/Button";
+import SubmitButton from "@/components/ui/SubmitButton";
 import Badge from "@/components/ui/Badge";
 import DeltakerSlideshow from "@/components/DeltakerSlideshow";
 import Avatar from "@/components/Avatar";
@@ -111,9 +112,9 @@ export default async function FotballKampSide() {
                         </LinkButton>
                         {erVert && (
                           <form action={slettFotballKamp.bind(null, kamp.id)}>
-                            <Button type="submit" variant="danger" className="px-3 py-1.5 text-xs">
+                            <SubmitButton variant="danger" className="px-3 py-1.5 text-xs" pendingText="Sletter…">
                               <Trash2 size={14} /> Slett
-                            </Button>
+                            </SubmitButton>
                           </form>
                         )}
                       </div>
@@ -168,9 +169,9 @@ export default async function FotballKampSide() {
 
                             {erVert && !erFerdig && lag.medlemmer.length > 0 && (
                               <form action={velgVinner} className="mt-3">
-                                <Button type="submit" className="w-full justify-center py-2 text-xs">
+                                <SubmitButton className="w-full justify-center py-2 text-xs" pendingText="Registrerer…">
                                   <Trophy size={14} /> {lag.navn} vant kampen
-                                </Button>
+                                </SubmitButton>
                               </form>
                             )}
 

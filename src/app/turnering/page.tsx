@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
 import { slettTurnering } from "@/lib/actions/turnering";
 import Card from "@/components/ui/Card";
-import Button from "@/components/ui/Button";
+import SubmitButton from "@/components/ui/SubmitButton";
 import Badge from "@/components/ui/Badge";
 import DeltakerSlideshow from "@/components/DeltakerSlideshow";
 import TurneringsBracket, { type TurneringMedData } from "@/components/TurneringsBracket";
@@ -107,9 +107,9 @@ export default async function TurneringSide() {
                           await slettTurnering(t.id);
                         }}
                       >
-                        <Button variant="danger" className="px-3 py-1.5 text-xs">
+                        <SubmitButton variant="danger" className="px-3 py-1.5 text-xs" pendingText="Sletter…">
                           <Trash2 size={14} /> Slett
-                        </Button>
+                        </SubmitButton>
                       </form>
                     )}
                   </div>

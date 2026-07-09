@@ -282,6 +282,7 @@ async function plasserDeltager(
   target: AdvanceTarget,
   deltagerId: string,
 ) {
+  // Hent kampen med begge deltager-felter for å sjekke om den andre allerede er på plass
   const kamp = await prisma.turneringsKamp.findFirst({
     where: {
       turneringId,
@@ -289,35 +290,22 @@ async function plasserDeltager(
       runde: target.runde,
       posisjon: target.posisjon,
     },
+    select: { id: true, deltager1Id: true, deltager2Id: true },
   });
 
   if (!kamp) return;
 
-  const data: Record<string, string> = {};
-  if (target.somDeltager === 1) {
-    data.deltager1Id = deltagerId;
-  } else {
-    data.deltager2Id = deltagerId;
-  }
+  const erDeltager1 = target.somDeltager === 1;
+  const annenErSatt = erDeltager1 ? !!kamp.deltager2Id : !!kamp.deltager1Id;
 
+  // Oppdater + sett KLAR hvis begge deltagere nå er på plass
   await prisma.turneringsKamp.update({
     where: { id: kamp.id },
     data: {
-      ...data,
-      status: kamp.deltager1Id || kamp.deltager2Id ? "KLAR" : kamp.status,
+      [erDeltager1 ? "deltager1Id" : "deltager2Id"]: deltagerId,
+      status: annenErSatt ? "KLAR" : "VENTER",
     },
   });
-
-  // Etter oppdatering: sjekk om begge deltagere er på plass → sett KLAR
-  const oppdatert = await prisma.turneringsKamp.findUnique({
-    where: { id: kamp.id },
-  });
-  if (oppdatert?.deltager1Id && oppdatert?.deltager2Id && oppdatert.status !== "FULLFORT") {
-    await prisma.turneringsKamp.update({
-      where: { id: kamp.id },
-      data: { status: "KLAR" },
-    });
-  }
 }
 
 /** Slett en turnering (bare hvis PLANLAGT) */
