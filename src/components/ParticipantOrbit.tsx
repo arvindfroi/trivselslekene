@@ -44,13 +44,17 @@ function PhysicsOrbitRing({
   const springX = useSpring(x, { stiffness: 80, damping: 18 });
   const springY = useSpring(y, { stiffness: 80, damping: 18 });
 
-  const vx = useRef((Math.random() - 0.5) * 0.6);
-  const vy = useRef((Math.random() - 0.5) * 0.6);
+  const vx = useRef(0);
+  const vy = useRef(0);
   const posX = useRef(0);
   const posY = useRef(0);
   const raf = useRef(0);
 
   useEffect(() => {
+    // Start med tilfeldig retning, men kun i nettleser
+    vx.current = (Math.random() - 0.5) * 0.6;
+    vy.current = (Math.random() - 0.5) * 0.6;
+
     const halfW = viewportW / 2;
     const halfH = viewportH / 2;
     const bounceMargin = radius + imageSize / 2;
