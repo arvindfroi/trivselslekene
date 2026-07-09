@@ -7,7 +7,6 @@ import { opprettTestdeltakere, slettTestdeltakere } from "@/lib/actions/testdelt
 import Card from "@/components/ui/Card";
 import Button, { LinkButton } from "@/components/ui/Button";
 import OvelseGrid, { type SpillKort } from "@/components/OvelseGrid";
-import MainShell from "@/components/MainShell";
 import { Plus } from "lucide-react";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -71,7 +70,7 @@ export default async function OvelserSide() {
   });
 
   return (
-    <MainShell maxWidth="max-w-5xl">
+    <>
         <div className="flex items-end justify-between gap-3">
           <div>
             <p className="text-xs tracking-[0.3em] text-accent-2 uppercase">
@@ -121,6 +120,6 @@ export default async function OvelserSide() {
           <OvelseGrid spill={spill} currentUserId={session.user.id} />
         </div>
       )}
-    </MainShell>
+    </>
   );
 }

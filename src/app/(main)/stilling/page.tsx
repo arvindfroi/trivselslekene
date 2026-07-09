@@ -15,7 +15,6 @@ import { BENTO_GRID, bentoSpenn, erStor } from "@/lib/bento";
 import Card from "@/components/ui/Card";
 import StatCard from "@/components/ui/StatCard";
 import StillingListe from "@/components/StillingListe";
-import MainShell from "@/components/MainShell";
 import Avatar from "@/components/Avatar";
 import {
   CloudRain,
@@ -72,7 +71,7 @@ export default async function StillingSide() {
   const leder = stilling.find((s) => s.totalPoeng > 0);
 
   return (
-    <MainShell maxWidth="max-w-5xl">
+    <>
         <p className="text-xs tracking-[0.3em] text-accent-2 uppercase">
           {sesong.navn}
         </p>
@@ -158,6 +157,6 @@ export default async function StillingSide() {
             })}
           </div>
         </section>
-    </MainShell>
+    </>
   );
 }

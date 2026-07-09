@@ -16,7 +16,6 @@ import SubmitButton from "@/components/ui/SubmitButton";
 import Badge from "@/components/ui/Badge";
 import NyOvelseForm from "@/components/NyOvelseForm";
 import ProfilRediger from "@/components/ProfilRediger";
-import MainShell from "@/components/MainShell";
 import { MapPin, Users, Settings2, Trash2, Plus } from "lucide-react";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -65,7 +64,7 @@ export default async function ProfilSide({
   }
 
   return (
-    <MainShell>
+    <>
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-xs tracking-[0.3em] text-accent-2 uppercase">
@@ -170,6 +169,6 @@ export default async function ProfilSide({
           </ul>
         )}
       </section>
-    </MainShell>
+    </>
   );
 }
