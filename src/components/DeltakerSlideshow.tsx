@@ -54,6 +54,7 @@ export default function DeltakerSlideshow() {
               src={src}
               alt="Deltaker"
               className="h-full w-full object-cover"
+              style={{ objectPosition: "50% 30%" }}
             />
           </motion.div>
         ))}
