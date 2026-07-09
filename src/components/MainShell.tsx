@@ -11,33 +11,20 @@ const SIDE_NAVN: Record<string, string> = {
   "/stilling": "Statistikk",
   "/profil": "Profil",
 };
+const MAX_WIDTHS = ["max-w-4xl", "max-w-5xl", "max-w-5xl", "max-w-4xl"];
 const SWIPE_THRESHOLD = 80;
 
 interface MainShellProps {
-  children: ReactNode;
+  panels: ReactNode[];
 }
 
-export default function MainShell({ children }: MainShellProps) {
+export default function MainShell({ panels }: MainShellProps) {
   const pathname = usePathname();
   const router = useRouter();
-
-  // Wider layout for øvelser and stilling
-  const maxWidth =
-    pathname === "/ovelser" || pathname === "/stilling" ? "max-w-5xl" : "max-w-4xl";
-
   const currentIndex = RUTER.indexOf(pathname as (typeof RUTER)[number]);
 
-  // ── Page transition state ──
-  const prevStore = useRef<{
-    children: ReactNode;
-    pathname: string;
-    maxWidth: string;
-  } | null>(null);
-  const [prevPage, setPrevPage] = useState<{
-    children: ReactNode;
-    pathname: string;
-    maxWidth: string;
-  } | null>(null);
+  // ── Transition state ──
+  const [prevIndex, setPrevIndex] = useState<number | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   // ── Swipe / touch tracking state ──
@@ -46,39 +33,32 @@ export default function MainShell({ children }: MainShellProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [isCommitting, setIsCommitting] = useState(false);
 
-  // ── Preload adjacent routes for instant swipes ──
-  useEffect(() => {
-    if (currentIndex > 0) router.prefetch(RUTER[currentIndex - 1]);
-    if (currentIndex < RUTER.length - 1) router.prefetch(RUTER[currentIndex + 1]);
-  }, [currentIndex, router]);
-
   // ── Track pathname changes for exit/enter animations ──
+  const prevPathname = useRef(pathname);
   useEffect(() => {
-    const prev = prevStore.current;
-    if (prev && prev.pathname !== pathname) {
-      setPrevPage(prev);
-      setIsTransitioning(true);
-      // Reset swipe state so the new page starts clean (no leftover dragX transform)
-      setDragX(0);
-      setIsCommitting(false);
-      setIsDragging(false);
-      const timer = setTimeout(() => {
-        setIsTransitioning(false);
-        setPrevPage(null);
-      }, 400);
-      return () => clearTimeout(timer);
+    if (prevPathname.current !== pathname) {
+      const oldIdx = RUTER.indexOf(prevPathname.current as (typeof RUTER)[number]);
+      if (oldIdx >= 0 && oldIdx !== currentIndex) {
+        setPrevIndex(oldIdx);
+        setIsTransitioning(true);
+        setDragX(0);
+        setIsCommitting(false);
+        setIsDragging(false);
+        const timer = setTimeout(() => {
+          setIsTransitioning(false);
+          setPrevIndex(null);
+        }, 400);
+        prevPathname.current = pathname;
+        return () => clearTimeout(timer);
+      }
     }
-    prevStore.current = { children, pathname, maxWidth };
-  }, [pathname, children, maxWidth]);
+    prevPathname.current = pathname;
+  }, [pathname, currentIndex]);
 
-  const showExit = isTransitioning && prevPage && prevPage.pathname !== pathname;
+  const showExit = isTransitioning && prevIndex !== null;
 
-  const oldIdx = prevPage
-    ? RUTER.indexOf(prevPage.pathname as (typeof RUTER)[number])
-    : -1;
-  const newIdx = RUTER.indexOf(pathname as (typeof RUTER)[number]);
   const navDir: "forward" | "backward" =
-    oldIdx !== -1 && newIdx !== -1 && newIdx > oldIdx ? "forward" : "backward";
+    prevIndex !== null && currentIndex > prevIndex ? "forward" : "backward";
 
   // ── Touch handlers ──
   const onTouchStart = useCallback(
@@ -144,14 +124,12 @@ export default function MainShell({ children }: MainShellProps) {
         setDragX(window.innerWidth);
         setTimeout(() => {
           router.push(RUTER[currentIndex - 1]);
-          // dragX / isCommitting cleared in useEffect when pathname changes
         }, 280);
       } else if (isSwipe && dx < 0 && currentIndex < RUTER.length - 1) {
         setIsCommitting(true);
         setDragX(-window.innerWidth);
         setTimeout(() => {
           router.push(RUTER[currentIndex + 1]);
-          // dragX / isCommitting cleared in useEffect when pathname changes
         }, 280);
       } else {
         setDragX(0);
@@ -160,7 +138,7 @@ export default function MainShell({ children }: MainShellProps) {
     [currentIndex, router],
   );
 
-  // ── Derived values for indicators ──
+  // ── Derived values ──
   const dragProgress = Math.min(Math.abs(dragX) / SWIPE_THRESHOLD, 1);
 
   const peekName =
@@ -176,7 +154,10 @@ export default function MainShell({ children }: MainShellProps) {
       (typeof window !== "undefined" ? window.innerWidth : 375) * 0.8 &&
       !isTransitioning);
 
-  // ── Render ──
+  // Show only the active panel in normal flow (for scrolling)
+  // During transition, show old + new with animations
+  const activeIdx = currentIndex >= 0 ? currentIndex : 0;
+
   return (
     <div
       className="relative isolate min-h-dvh overflow-hidden"
@@ -184,10 +165,39 @@ export default function MainShell({ children }: MainShellProps) {
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
     >
-      {/* Fixed animated background — never remounts */}
+      {/* Fixed animated background */}
       <div className="pointer-events-none fixed inset-0 z-0">
         <AnimatedGradientBackground Breathing breathingRange={6} />
       </div>
+
+      {/* Page indicator dots — iOS-style */}
+      {currentIndex >= 0 && (
+        <div className="pointer-events-none fixed bottom-20 left-1/2 z-30 flex -translate-x-1/2 gap-2">
+          {RUTER.map((_, i) => {
+            const isActive = i === activeIdx;
+            const swipingToward =
+              dragX > SWIPE_THRESHOLD && activeIdx > 0
+                ? activeIdx - 1
+                : dragX < -SWIPE_THRESHOLD && activeIdx < RUTER.length - 1
+                  ? activeIdx + 1
+                  : activeIdx;
+            const isTarget = i === swipingToward && isDragging;
+            const width = isActive ? 24 : isTarget ? 6 + dragProgress * 18 : 6;
+            const bg = isActive
+              ? "var(--accent)"
+              : isTarget
+                ? `color-mix(in srgb, var(--accent) ${Math.round(dragProgress * 70)}%, var(--line) ${Math.round(100 - dragProgress * 70)}%)`
+                : "var(--line)";
+            return (
+              <div
+                key={i}
+                className="rounded-full transition-all duration-200"
+                style={{ width, height: 6, backgroundColor: bg }}
+              />
+            );
+          })}
+        </div>
+      )}
 
       {/* Page peek label during swipe */}
       {peekName && isDragging && (
@@ -204,10 +214,10 @@ export default function MainShell({ children }: MainShellProps) {
         </div>
       )}
 
-      {/* ── Content stack with iOS-style push/pop transitions ── */}
+      {/* ── Content stack ── */}
       <div className="relative z-10">
         {/* Exiting (previous) page — behind the entering page */}
-        {showExit && prevPage && (
+        {showExit && prevIndex !== null && (
           <div
             aria-hidden
             className="absolute inset-0 z-0"
@@ -215,8 +225,8 @@ export default function MainShell({ children }: MainShellProps) {
               animation: `slide-out-${navDir} 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards`,
             }}
           >
-            <div className={`mx-auto ${prevPage.maxWidth} px-4 pt-6 pb-28`}>
-              {prevPage.children}
+            <div className={`mx-auto ${MAX_WIDTHS[prevIndex]} px-4 pt-6 pb-28`}>
+              {panels[prevIndex]}
             </div>
           </div>
         )}
@@ -240,8 +250,8 @@ export default function MainShell({ children }: MainShellProps) {
                   : undefined,
           }}
         >
-          <div className={`mx-auto ${maxWidth} px-4 pt-6 pb-28`}>
-            {children}
+          <div className={`mx-auto ${MAX_WIDTHS[activeIdx]} px-4 pt-6 pb-28`}>
+            {panels[activeIdx]}
           </div>
         </div>
       </div>

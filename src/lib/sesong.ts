@@ -1,7 +1,8 @@
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 
 /** Henter aktiv sesong for inneværende år, og oppretter den hvis den ikke finnes. */
-export async function sikreAktivSesong() {
+export const sikreAktivSesong = cache(async () => {
   const aar = new Date().getFullYear();
 
   const eksisterende = await prisma.sesong.findUnique({ where: { aar } });
@@ -14,4 +15,4 @@ export async function sikreAktivSesong() {
       aktiv: true,
     },
   });
-}
+});

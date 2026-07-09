@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import type { Kvalitet } from "@prisma/client";
 import { ALLE_KVALITETER } from "@/lib/ovelseLabels";
@@ -81,7 +82,7 @@ export type SesongData = {
 };
 
 /** Henter ALL sesong-data i én DB-roundtrip. Brukes av de fire analysefunksjonene. */
-export async function hentAlleSesongData(sesongId: string): Promise<SesongData> {
+export const hentAlleSesongData = cache(async (sesongId: string): Promise<SesongData> => {
   const [brukere, vertPerOvelse] = await Promise.all([
     prisma.user.findMany({
       select: {
@@ -129,7 +130,7 @@ export async function hentAlleSesongData(sesongId: string): Promise<SesongData> 
   }));
 
   return { brukere: brukereMedLetteBilder, vertPerOvelse };
-}
+});
 
 // ─── Analysefunksjoner (rene transformasjoner, ingen DB-kall) ────
 
