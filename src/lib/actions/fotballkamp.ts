@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
-import { hentStilling } from "@/lib/stilling";
+import { hentAlleSesongData, hentStilling } from "@/lib/stilling";
 
 export async function opprettLagkamp(prev: unknown, formData: FormData) {
   const session = await auth();
@@ -20,9 +20,9 @@ export async function opprettLagkamp(prev: unknown, formData: FormData) {
   if (!antallDeltakere || antallDeltakere < 2) return { error: "Minst 2 deltakere" };
   if (!antallLag || antallLag < 2) return { error: "Minst 2 lag" };
   if (antallLag > antallDeltakere) return { error: "Flere lag enn deltakere" };
-
   const sesong = await sikreAktivSesong();
-  const stilling = await hentStilling(sesong.id);
+  const sesongData = await hentAlleSesongData(sesong.id);
+  const stilling = hentStilling(sesongData);
   const topp = stilling.slice(0, antallDeltakere);
 
   // Fordel spillere jevnt på lag: base = floor(deltakere / lag), resten får +1
@@ -38,7 +38,7 @@ export async function opprettLagkamp(prev: unknown, formData: FormData) {
     lagenesMedlemmer[i % antallLag].push(r.userId);
   });
 
-  await prisma.ovelse.create({
+  const ovelse = await prisma.ovelse.create({
     data: {
       navn,
       lokasjon: lokasjon || null,
@@ -57,7 +57,9 @@ export async function opprettLagkamp(prev: unknown, formData: FormData) {
   });
 
   revalidatePath("/fotball-kamp");
-  return { success: true };
+  revalidatePath("/profil");
+  revalidatePath("/ovelser");
+  return { success: true, ovelseId: ovelse.id };
 }
 
 export async function registrerVinner(
