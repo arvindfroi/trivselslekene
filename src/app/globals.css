@@ -188,23 +188,38 @@ body {
 }
 
 /* ── Slide page transitions (iOS-style push/pop) ── */
-/* Forward (swiping left → next page): old exits left, new slides in from right over it */
+/*
+ * Forbedret easing: cubic-bezier(0.32, 0.72, 0, 1) — spring-lignende
+ * decelerasjon som matcher iOS sin standard navigasjons-animasjon.
+ * translateZ(0) + will-change tvinger GPU-compositing for silkemyk 60fps.
+ */
+/* Forward (swiping left → next page): */
 @keyframes slide-out-forward {
-  from { transform: translateX(0) translateZ(0); }
-  to   { transform: translateX(-100%) translateZ(0); }
+  from { transform: translateX(0) translateZ(0); opacity: 1; }
+  to   { transform: translateX(-30%) translateZ(0); opacity: 0.4; }
 }
 @keyframes slide-in-forward {
   from { transform: translateX(100%) translateZ(0); }
   to   { transform: translateX(0) translateZ(0); }
 }
-/* Backward (swiping right → prev page): old exits right, new slides in from left over it */
+/* Backward (swiping right → prev page): */
 @keyframes slide-out-backward {
-  from { transform: translateX(0) translateZ(0); }
-  to   { transform: translateX(100%) translateZ(0); }
+  from { transform: translateX(0) translateZ(0); opacity: 1; }
+  to   { transform: translateX(30%) translateZ(0); opacity: 0.4; }
 }
 @keyframes slide-in-backward {
   from { transform: translateX(-100%) translateZ(0); }
   to   { transform: translateX(0) translateZ(0); }
+}
+
+/* Dark overlay that fades over the exiting page during transition */
+@keyframes slide-overlay-forward {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes slide-overlay-backward {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 @keyframes pulse-dot {
