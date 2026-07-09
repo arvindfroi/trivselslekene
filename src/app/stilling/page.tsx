@@ -9,12 +9,15 @@ import {
   hentUtmerkelser,
 } from "@/lib/stilling";
 import { kvalitetIkon, kvalitetTekst } from "@/lib/ovelseLabels";
+import { BENTO_GRID, bentoSpenn, erStor } from "@/lib/bento";
 import Card from "@/components/ui/Card";
-import Avatar from "@/components/Avatar";
+import StatFlis from "@/components/StatFlis";
 import StillingListe from "@/components/StillingListe";
 import {
+  CloudRain,
   Crown,
   Flame,
+  HeartCrack,
   Medal,
   Shapes,
   Swords,
@@ -36,6 +39,8 @@ const UTMERKELSER: {
   { key: "rekord", tittel: "Rekordholder", tekst: "Høyeste enkeltresultat", Ikon: Flame },
   { key: "allsidig", tittel: "Multitalentet", tekst: "Flest ulike egenskaper", Ikon: Shapes },
   { key: "vert", tittel: "Sjefsarrangør", tekst: "Arrangert flest leker", Ikon: Crown },
+  { key: "uheldig", tittel: "Uflaks-magneten", tekst: "Flest sisteplasser", Ikon: CloudRain },
+  { key: "trost", tittel: "Trøstepremien", tekst: "Lavest poengsnitt", Ikon: HeartCrack },
 ];
 
 function StatCard({ label, verdi }: { label: string; verdi: string }) {
@@ -75,13 +80,13 @@ export default async function StillingSide() {
   const leder = stilling.find((s) => s.totalPoeng > 0);
 
   return (
-    <div className="mx-auto max-w-4xl px-4 pt-28 pb-12">
+    <div className="mx-auto max-w-5xl px-4 pt-28 pb-12">
       <p className="text-xs tracking-[0.3em] text-accent-2 uppercase">
         {sesong.navn}
       </p>
-      <h1 className="mt-1 font-display text-4xl text-fg">Stilling</h1>
+      <h1 className="mt-1 font-display text-4xl text-fg">Statistikk</h1>
       <p className="mt-2 text-sm text-fg-dim">
-        Sammenlagt stilling og statistikk for lekene.
+        Sammenlagt stilling, egenskaper og utmerkelser for lekene.
       </p>
 
       <div className="mt-6 grid grid-cols-3 gap-3 sm:gap-4">
@@ -117,40 +122,24 @@ export default async function StillingSide() {
         <h2 className="mb-3 text-sm font-medium tracking-widest text-fg-dim uppercase">
           Beste innen hver egenskap
         </h2>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {kvalitetsledere.map(({ kvalitet, leder: best }) => (
-            <Card
+        <div className={BENTO_GRID}>
+          {kvalitetsledere.map(({ kvalitet, leder: best }, i) => (
+            <StatFlis
               key={kvalitet}
-              padding="p-4"
-              className="flex items-center gap-3"
-            >
-              {(() => {
-                const Ikon = kvalitetIkon[kvalitet];
-                return (
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.04] text-accent-2">
-                    <Ikon size={18} />
-                  </span>
-                );
-              })()}
-              <div className="min-w-0 flex-1">
-                <p className="text-[11px] tracking-widest text-fg-faint uppercase">
-                  {kvalitetTekst[kvalitet]}
-                </p>
-                {best ? (
-                  <div className="mt-1 flex items-center gap-2">
-                    <Avatar navn={best.navn} bildeUrl={best.bildeUrl} size={24} />
-                    <span className="truncate text-sm font-medium text-fg">
-                      {best.navn}
-                    </span>
-                    <span className="ml-auto shrink-0 font-display tabular-nums text-fg">
-                      {best.poeng}
-                    </span>
-                  </div>
-                ) : (
-                  <p className="mt-1 text-sm text-fg-faint">Ingen ennå</p>
-                )}
-              </div>
-            </Card>
+              className={bentoSpenn(i)}
+              stor={erStor(i)}
+              Ikon={kvalitetIkon[kvalitet]}
+              tittel={kvalitetTekst[kvalitet]}
+              leder={
+                best
+                  ? {
+                      navn: best.navn,
+                      bildeUrl: best.bildeUrl,
+                      verdi: String(best.poeng),
+                    }
+                  : null
+              }
+            />
           ))}
         </div>
       </section>
@@ -159,35 +148,23 @@ export default async function StillingSide() {
         <h2 className="mb-3 text-sm font-medium tracking-widest text-fg-dim uppercase">
           Rekorder og utmerkelser
         </h2>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {UTMERKELSER.map((u) => {
+        <div className={BENTO_GRID}>
+          {UTMERKELSER.map((u, i) => {
             const l = utmerkelser.find((x) => x.key === u.key)?.leder ?? null;
-            const Ikon = u.Ikon;
             return (
-              <Card
+              <StatFlis
                 key={u.key}
-                padding="p-4"
-                className="flex items-center gap-3"
-              >
-                <span className="bg-gradient-accent flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white">
-                  <Ikon size={20} />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-fg">{u.tittel}</p>
-                  <p className="text-[11px] text-fg-faint">{u.tekst}</p>
-                  {l ? (
-                    <div className="mt-1.5 flex items-center gap-2">
-                      <Avatar navn={l.navn} bildeUrl={l.bildeUrl} size={22} />
-                      <span className="truncate text-sm text-fg">{l.navn}</span>
-                      <span className="ml-auto shrink-0 text-xs text-fg-dim">
-                        {l.verdi}
-                      </span>
-                    </div>
-                  ) : (
-                    <p className="mt-1.5 text-sm text-fg-faint">Ingen ennå</p>
-                  )}
-                </div>
-              </Card>
+                className={bentoSpenn(i)}
+                stor={erStor(i)}
+                Ikon={u.Ikon}
+                tittel={u.tittel}
+                tekst={u.tekst}
+                leder={
+                  l
+                    ? { navn: l.navn, bildeUrl: l.bildeUrl, verdi: l.verdi }
+                    : null
+                }
+              />
             );
           })}
         </div>

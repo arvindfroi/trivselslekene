@@ -4,13 +4,13 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, useScroll, useMotionValueEvent } from "framer-motion";
-import { Home, Swords, Trophy, User, Menu } from "lucide-react";
+import { Home, Swords, BarChart3, User, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { name: "Hjem", href: "/dashboard", icon: Home },
   { name: "Øvelser", href: "/ovelser", icon: Swords },
-  { name: "Stilling", href: "/stilling", icon: Trophy },
+  { name: "Statistikk", href: "/stilling", icon: BarChart3 },
   { name: "Profil", href: "/profil", icon: User },
 ];
 

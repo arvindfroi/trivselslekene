@@ -9,7 +9,7 @@ import { LinkButton } from "@/components/ui/Button";
 import RankBadge from "@/components/ui/RankBadge";
 import Avatar from "@/components/Avatar";
 import AnimatedGradientBackground from "@/components/AnimatedGradientBackground";
-import { ArrowRight, Trophy, Swords, User } from "lucide-react";
+import { ArrowRight, BarChart3, Swords, User } from "lucide-react";
 
 function StatCard({ label, verdi }: { label: string; verdi: string }) {
   return (
@@ -106,7 +106,7 @@ export default async function HjemSide() {
 
       <section className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <LinkButton href="/stilling" variant="secondary" className="justify-start">
-          <Trophy size={18} /> Stilling
+          <BarChart3 size={18} /> Statistikk
         </LinkButton>
         <LinkButton href="/ovelser" variant="secondary" className="justify-start">
           <Swords size={18} /> Øvelser

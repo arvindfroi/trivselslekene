@@ -258,6 +258,9 @@ export async function hentUtmerkelser(sesongId: string): Promise<Utmerkelse[]> {
     vertAntall.set(o.vertId, (vertAntall.get(o.vertId) ?? 0) + 1);
   }
 
+  // Alle plasseringer per lek, for å regne ut hvem som endte sist.
+  const perLek = new Map<string, { userId: string; plassering: number | null }[]>();
+
   const rader = brukere.map((b) => {
     const spill = new Set<string>();
     const egenskaper = new Set<Kvalitet>();
@@ -278,6 +281,9 @@ export async function hentUtmerkelser(sesongId: string): Promise<Utmerkelse[]> {
       if (plassering === 1) seire += 1;
       if (plassering !== null && plassering <= 3) pall += 1;
       for (const k of kvaliteter) egenskaper.add(k);
+      const e = perLek.get(ovelseId) ?? [];
+      e.push({ userId: b.id, plassering });
+      perLek.set(ovelseId, e);
     };
 
     for (const r of b.individuelleResultater) {
@@ -306,41 +312,61 @@ export async function hentUtmerkelser(sesongId: string): Promise<Utmerkelse[]> {
       rekord,
       egenskaper: egenskaper.size,
       verter: vertAntall.get(b.id) ?? 0,
+      sisteplasser: 0,
     };
   });
 
-  const utmerkelse = (
-    key: string,
-    verdiAv: (r: (typeof rader)[number]) => number,
-    minst: number,
-    format: (v: number) => string
-  ): Utmerkelse => {
-    let beste: { r: (typeof rader)[number]; v: number } | null = null;
-    for (const r of rader) {
-      const v = verdiAv(r);
-      if (v < minst) continue;
-      if (!beste || v > beste.v) beste = { r, v };
+  // Sisteplasser: i hver lek med minst to plasserte teller den/de med dårligst plassering.
+  const sisteKart = new Map<string, number>();
+  for (const [, poster] of perLek) {
+    const medPlass = poster.filter(
+      (e): e is { userId: string; plassering: number } => e.plassering !== null
+    );
+    if (medPlass.length < 2) continue;
+    const maks = Math.max(...medPlass.map((e) => e.plassering));
+    if (maks <= 1) continue;
+    for (const e of medPlass) {
+      if (e.plassering === maks) {
+        sisteKart.set(e.userId, (sisteKart.get(e.userId) ?? 0) + 1);
+      }
     }
-    return {
-      key,
-      leder: beste
-        ? {
-            userId: beste.r.userId,
-            navn: beste.r.navn,
-            bildeUrl: beste.r.bildeUrl,
-            verdi: format(beste.v),
-          }
-        : null,
-    };
+  }
+  for (const r of rader) r.sisteplasser = sisteKart.get(r.userId) ?? 0;
+
+  type Rad = (typeof rader)[number];
+  const finn = (
+    verdiAv: (r: Rad) => number,
+    gyldig: (r: Rad) => boolean,
+    lavest = false
+  ): { r: Rad; v: number } | null => {
+    let valgt: { r: Rad; v: number } | null = null;
+    for (const r of rader) {
+      if (!gyldig(r)) continue;
+      const v = verdiAv(r);
+      if (!valgt || (lavest ? v < valgt.v : v > valgt.v)) valgt = { r, v };
+    }
+    return valgt;
   };
+  const pakk = (
+    key: string,
+    d: { r: Rad; v: number } | null,
+    format: (v: number) => string
+  ): Utmerkelse => ({
+    key,
+    leder: d
+      ? { userId: d.r.userId, navn: d.r.navn, bildeUrl: d.r.bildeUrl, verdi: format(d.v) }
+      : null,
+  });
 
   return [
-    utmerkelse("seire", (r) => r.seire, 1, (v) => `${v} seire`),
-    utmerkelse("pall", (r) => r.pall, 1, (v) => `${v} pallplasser`),
-    utmerkelse("kamper", (r) => r.kamper, 1, (v) => `${v} kamper`),
-    utmerkelse("snitt", (r) => r.snitt, 0.01, (v) => `${v.toFixed(1)} i snitt`),
-    utmerkelse("rekord", (r) => r.rekord, 1, (v) => `${v} poeng`),
-    utmerkelse("allsidig", (r) => r.egenskaper, 1, (v) => `${v} egenskaper`),
-    utmerkelse("vert", (r) => r.verter, 1, (v) => `${v} leker`),
+    pakk("seire", finn((r) => r.seire, (r) => r.seire >= 1), (v) => `${v} seire`),
+    pakk("pall", finn((r) => r.pall, (r) => r.pall >= 1), (v) => `${v} pallplasser`),
+    pakk("kamper", finn((r) => r.kamper, (r) => r.kamper >= 1), (v) => `${v} kamper`),
+    pakk("snitt", finn((r) => r.snitt, (r) => r.kamper >= 2), (v) => `${v.toFixed(1)} i snitt`),
+    pakk("rekord", finn((r) => r.rekord, (r) => r.rekord >= 1), (v) => `${v} poeng`),
+    pakk("allsidig", finn((r) => r.egenskaper, (r) => r.egenskaper >= 1), (v) => `${v} egenskaper`),
+    pakk("vert", finn((r) => r.verter, (r) => r.verter >= 1), (v) => `${v} leker`),
+    pakk("uheldig", finn((r) => r.sisteplasser, (r) => r.sisteplasser >= 1), (v) => `${v} sisteplasser`),
+    pakk("trost", finn((r) => r.snitt, (r) => r.kamper >= 2, true), (v) => `${v.toFixed(1)} i snitt`),
   ];
 }
