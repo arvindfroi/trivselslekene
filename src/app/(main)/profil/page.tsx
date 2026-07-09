@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { auth, signOut } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
@@ -169,6 +170,13 @@ export default async function ProfilSide({
           </ul>
         )}
       </section>
+
+      <Link
+        href="/admin"
+        className="text-sm text-secondary hover:text-primary transition-colors mt-8 inline-block"
+      >
+        Admin
+      </Link>
     </>
   );
 }

@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import { redirect } from "next/navigation";
 import { finnEllerOpprettBruker } from "@/lib/brukere";
 
 const ETT_AAR = 60 * 60 * 24 * 365;
@@ -43,3 +44,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
   },
 });
+
+export async function krevInnloggetBruker() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    redirect("/bli-med");
+  }
+  return session.user;
+}
