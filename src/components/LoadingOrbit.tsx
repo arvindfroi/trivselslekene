@@ -30,97 +30,89 @@ export default function LoadingOrbit() {
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#060608]">
-      <div
-        className="relative"
-        style={{
-          width: (CIRCLE_RADIUS + IMG_SIZE) * 2,
-          height: (CIRCLE_RADIUS + IMG_SIZE) * 2,
+      {/* Spinnende ring — posisjonert direkte i overlay, uten wrapper-div */}
+      <motion.div
+        className="absolute left-1/2 top-1/2"
+        style={{ width: 0, height: 0 }}
+        animate={{ rotate: 360 }}
+        transition={{
+          duration: SPIN_DURATION,
+          repeat: Infinity,
+          ease: "linear",
         }}
       >
-        {/* Spinnende ring */}
-        <motion.div
-          className="absolute left-1/2 top-1/2"
-          style={{ width: 0, height: 0 }}
-          animate={{ rotate: 360 }}
-          transition={{
-            duration: SPIN_DURATION,
-            repeat: Infinity,
-            ease: "linear",
-          }}
-        >
-          {BILDER.map((src, i) => {
-            const angle = angleStep * i;
-            const start = polar(INITIAL_RADII[i], angle);
-            const end = polar(CIRCLE_RADIUS, angle);
+        {BILDER.map((src, i) => {
+          const angle = angleStep * i;
+          const start = polar(INITIAL_RADII[i], angle);
+          const end = polar(CIRCLE_RADIUS, angle);
 
-            return (
+          return (
+            <motion.div
+              key={src}
+              className="absolute"
+              style={{ width: 0, height: 0 }}
+              initial={{
+                x: start.x,
+                y: start.y,
+                opacity: 0.5,
+                scale: 0.75,
+              }}
+              animate={{
+                x: end.x,
+                y: end.y,
+                opacity: 1,
+                scale: 1,
+              }}
+              transition={{
+                duration: 0.7,
+                ease: [0.22, 1, 0.36, 1],
+                delay: 0.04 * i,
+              }}
+            >
+              {/* Kontrarotasjon så bildene står oppreist */}
               <motion.div
-                key={src}
-                className="absolute"
-                style={{ width: 0, height: 0 }}
-                initial={{
-                  x: start.x,
-                  y: start.y,
-                  opacity: 0.5,
-                  scale: 0.75,
+                style={{
+                  width: IMG_SIZE,
+                  height: IMG_SIZE,
+                  marginLeft: -IMG_SIZE / 2,
+                  marginTop: -IMG_SIZE / 2,
                 }}
-                animate={{
-                  x: end.x,
-                  y: end.y,
-                  opacity: 1,
-                  scale: 1,
-                }}
+                animate={{ rotate: -360 }}
                 transition={{
-                  duration: 0.7,
-                  ease: [0.22, 1, 0.36, 1],
-                  delay: 0.04 * i,
+                  duration: SPIN_DURATION,
+                  repeat: Infinity,
+                  ease: "linear",
                 }}
               >
-                {/* Kontrarotasjon så bildene står oppreist */}
                 <motion.div
+                  className="overflow-hidden rounded-full"
                   style={{
                     width: IMG_SIZE,
                     height: IMG_SIZE,
-                    marginLeft: -IMG_SIZE / 2,
-                    marginTop: -IMG_SIZE / 2,
+                    border: "2px solid rgba(255,255,255,0.15)",
                   }}
-                  animate={{ rotate: -360 }}
+                  animate={{ scale: [1, 1.06, 1] }}
                   transition={{
-                    duration: SPIN_DURATION,
+                    duration: 2.5,
                     repeat: Infinity,
-                    ease: "linear",
+                    ease: "easeInOut",
+                    delay: 0.7 + i * 0.08,
                   }}
                 >
-                  <motion.div
-                    className="overflow-hidden rounded-full"
-                    style={{
-                      width: IMG_SIZE,
-                      height: IMG_SIZE,
-                      border: "2px solid rgba(255,255,255,0.15)",
-                    }}
-                    animate={{ scale: [1, 1.06, 1] }}
-                    transition={{
-                      duration: 2.5,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                      delay: 0.7 + i * 0.08,
-                    }}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={src}
-                      alt=""
-                      className="h-full w-full object-cover"
-                      loading="eager"
-                      draggable={false}
-                    />
-                  </motion.div>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={src}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    loading="eager"
+                    draggable={false}
+                  />
                 </motion.div>
               </motion.div>
-            );
-          })}
-        </motion.div>
-      </div>
+            </motion.div>
+          );
+        })}
+      </motion.div>
 
       {/* Laster-tekst */}
       <motion.p
