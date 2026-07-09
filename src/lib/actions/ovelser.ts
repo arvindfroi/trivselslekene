@@ -10,7 +10,6 @@ import type { Kvalitet, LagFormat, OvelseStatus, OvelseType } from "@prisma/clie
 import { ALLE_KVALITETER } from "@/lib/ovelseLabels";
 import { opprettLagkamp } from "@/lib/actions/fotballkamp";
 import { opprettTurnering } from "@/lib/actions/turnering";
-import { lastOppBilde, slettFraBlob } from "@/lib/blob";
 
 // ─── Zod-skjemaer ──────────────────────────────────────────────────────────
 
@@ -119,21 +118,8 @@ export async function opprettOvelse(
     }
   }
 
-  // ─── Last opp bilder til Vercel Blob ────────────────────────────
-  const blobPrefix = `ovelser/${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const hovedBlobUrl = bildeUrl?.startsWith("data:image/")
-    ? await lastOppBilde(bildeUrl, blobPrefix)
-    : null;
 
-  const faserMedBlob = await Promise.all(
-    faser.map(async (f, i) => ({
-      ...f,
-      bildeUrl: f.bildeUrl?.startsWith("data:image/")
-        ? await lastOppBilde(f.bildeUrl, `${blobPrefix}-fase-${i}`)
-        : null,
-    })),
-  );
-
+  // ─── Opprett øvelse i databasen ─────────────────────────────────
   const ovelse = await prisma.ovelse.create({
     data: {
       navn: parsed.data.navn,
@@ -143,15 +129,15 @@ export async function opprettOvelse(
       lagFormat: type === "LAG" ? lagFormat : null,
       kvaliteter,
       fellesLek,
-      bildeUrl: hovedBlobUrl,
+      bildeUrl: bildeUrl?.startsWith("data:image/") ? bildeUrl : null,
       sesongId: sesong.id,
       vertId: bruker.id,
-      faser: faserMedBlob.length > 0
+      faser: faser.length > 0
         ? {
-            create: faserMedBlob.map((f, i) => ({
+            create: faser.map((f, i) => ({
               rekkefolge: i + 1,
               tittel: f.tittel?.trim() || null,
-              bildeUrl: f.bildeUrl,
+              bildeUrl: f.bildeUrl?.startsWith("data:image/") ? f.bildeUrl : null,
             })),
           }
         : undefined,
@@ -165,22 +151,12 @@ export async function opprettOvelse(
 
 export async function slettOvelse(ovelseId: string) {
   const bruker = await krevInnloggetBruker();
-
-  // Hent bilde-URL-er før sletting så vi kan rydde opp i Blob
-  const ovelse = await prisma.ovelse.findUnique({
+  // Én betinget sletting: treffer kun hvis innlogget bruker er vert.
+  // Bildene ligger i databasen og forsvinner med raden (onDelete: Cascade).
+  const slettet = await prisma.ovelse.deleteMany({
     where: { id: ovelseId, vertId: bruker.id },
-    select: {
-      bildeUrl: true,
-      faser: { select: { bildeUrl: true } },
-    },
   });
-  if (!ovelse) redirect("/profil");
-
-  // Slett bilder fra Vercel Blob (best-effort)
-  await slettFraBlob(ovelse.bildeUrl);
-  await Promise.all(ovelse.faser.map((f) => slettFraBlob(f.bildeUrl)));
-
-  await prisma.ovelse.delete({ where: { id: ovelseId } });
+  if (slettet.count === 0) redirect("/profil");
   revalidatePath("/ovelser");
   revalidatePath("/profil");
   revalidatePath("/dashboard");

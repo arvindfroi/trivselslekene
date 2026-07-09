@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 import { auth, signIn } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { finnBrukerVedNavn, normaliserNavn } from "@/lib/brukere";
-import { lastOppBilde, slettFraBlob } from "@/lib/blob";
 
 async function krevBrukerId() {
   const session = await auth();
@@ -39,29 +38,17 @@ export async function endreNavn(formData: FormData) {
   await signIn("credentials", { navn: nyttNavn, redirectTo: "/profil" });
 }
 
-/** Lagrer et profilbilde via Vercel Blob, eller fjerner det når verdien er tom. */
-export async function oppdaterBilde(dataUrl: string | null) {
+/** Lagrer et profilbilde (data-URL) eller fjerner det når verdien er tom. */
+export async function oppdaterBilde(bildeUrl: string | null) {
   const userId = await krevBrukerId();
 
-  // Hent nåværende bilde for å kunne slette det fra Blob
-  const eksisterende = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { bildeUrl: true },
-  });
-
-  let nyUrl: string | null = null;
-  if (dataUrl && dataUrl.startsWith("data:image/")) {
-    nyUrl = await lastOppBilde(dataUrl, `brukere/${userId}`);
-    if (!nyUrl) return; // opplasting feilet
-  }
+  const verdi =
+    bildeUrl && bildeUrl.startsWith("data:image/") ? bildeUrl : null;
 
   await prisma.user.update({
     where: { id: userId },
-    data: { bildeUrl: nyUrl },
+    data: { bildeUrl: verdi },
   });
-
-  // Slett det gamle bildet fra Blob (best-effort)
-  if (eksisterende?.bildeUrl) await slettFraBlob(eksisterende.bildeUrl);
 
   revalidatePath("/profil");
   revalidatePath("/dashboard");
