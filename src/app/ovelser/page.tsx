@@ -60,7 +60,7 @@ export default async function OvelserSide() {
             egenskaper og deltakere.
           </p>
         </div>
-        <LinkButton href="/profil" className="hidden shrink-0 px-4 sm:inline-flex">
+        <LinkButton href="/registrer" className="hidden shrink-0 px-4 sm:inline-flex">
           <Plus size={16} /> Ny øvelse
         </LinkButton>
       </div>
@@ -69,7 +69,7 @@ export default async function OvelserSide() {
         <Card className="mt-8 text-center" padding="p-10">
           <p className="text-sm text-fg-dim">Ingen øvelser er opprettet ennå.</p>
           <div className="mt-4 flex justify-center">
-            <LinkButton href="/profil">
+            <LinkButton href="/registrer">
               <Plus size={16} /> Opprett den første
             </LinkButton>
           </div>

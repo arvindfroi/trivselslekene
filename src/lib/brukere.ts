@@ -10,10 +10,9 @@ export async function finnBrukerVedNavn(raaNavn: string) {
   const navn = normaliserNavn(raaNavn);
   if (navn.length < 2) return null;
 
-  const alle = await prisma.user.findMany();
-  return (
-    alle.find((u) => u.navn.toLowerCase() === navn.toLowerCase()) ?? null
-  );
+  return prisma.user.findFirst({
+    where: { navn: { equals: navn, mode: "insensitive" } },
+  });
 }
 
 /**
