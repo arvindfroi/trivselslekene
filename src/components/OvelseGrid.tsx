@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ArrowRight, ChevronDown, MapPin, Trash2, Users } from "lucide-react";
 import type { Kvalitet, OvelseStatus, OvelseType } from "@prisma/client";
 import { kvalitetIkon, statusTekst, statusVariant } from "@/lib/ovelseLabels";
-import { BENTO_GRID, bentoSpenn } from "@/lib/bento";
+import { antallFyllCeller, BENTO_GRID, bentoSpenn } from "@/lib/bento";
 import { slettOvelse } from "@/lib/actions/ovelser";
 import Avatar from "@/components/Avatar";
 import Badge from "@/components/ui/Badge";
@@ -36,14 +36,20 @@ export default function OvelseGrid({
 }) {
   const [apen, setApen] = useState<string | null>(null);
 
+  // Regner ut spennet hver flis faktisk bruker akkurat nå (inkludert den
+  // som ev. er utvidet), slik at vi kan fylle ut resten av gridet med
+  // usynlige celler og garantere at mosaikken alltid danner et rektangel.
+  const spennPerFlis = spill.map((s, i) =>
+    apen === s.id ? "col-span-2 row-span-2 sm:col-span-2 sm:row-span-2" : bentoSpenn(i)
+  );
+  const fyllCeller = antallFyllCeller(spennPerFlis);
+
   return (
     <div className={BENTO_GRID}>
       {spill.map((s, i) => {
         const er = apen === s.id;
         const grunn = bentoSpenn(i);
-        const spenn = er
-          ? "col-span-2 row-span-2 sm:col-span-2 sm:row-span-2"
-          : grunn;
+        const spenn = spennPerFlis[i];
         const hero =
           !er && grunn.includes("col-span-2") && grunn.includes("row-span-2");
 
@@ -194,7 +200,7 @@ export default function OvelseGrid({
                     onClick={(e) => e.stopPropagation()}
                     className="mt-3 inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-accent-2 hover:text-fg active:bg-white/5 min-h-[44px]"
                   >
-                    Åpne og administrer <ArrowRight size={14} />
+                    Se mer <ArrowRight size={14} />
                   </Link>
 
                   {s.vertId === currentUserId && (
@@ -218,6 +224,9 @@ export default function OvelseGrid({
           </button>
         );
       })}
+      {Array.from({ length: fyllCeller }).map((_, i) => (
+        <div key={`fyll-${i}`} aria-hidden="true" className="hidden sm:block" />
+      ))}
     </div>
   );
 }

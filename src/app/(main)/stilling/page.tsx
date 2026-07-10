@@ -11,7 +11,7 @@ import {
   hentUtmerkelser,
 } from "@/lib/stilling";
 import { kvalitetIkon, kvalitetTekst } from "@/lib/ovelseLabels";
-import { BENTO_GRID, bentoSpenn, erStor, seededShuffle } from "@/lib/bento";
+import { antallFyllCeller, BENTO_GRID, bentoSpenn, erStor, seededShuffle } from "@/lib/bento";
 import Card from "@/components/ui/Card";
 import StatCard from "@/components/ui/StatCard";
 import StillingListe from "@/components/StillingListe";
@@ -148,6 +148,7 @@ export default async function StillingSide() {
     };
   });
   const bentoFliser = seededShuffle([...egenskapFliser, ...utmerkelseFliser], sesong.id);
+  const fyllCeller = antallFyllCeller(bentoFliser.map((_, i) => bentoSpenn(i)));
 
   return (
     <>
@@ -196,6 +197,9 @@ export default async function StillingSide() {
                 />
               );
             })}
+            {Array.from({ length: fyllCeller }).map((_, i) => (
+              <div key={`fyll-${i}`} aria-hidden="true" className="hidden sm:block" />
+            ))}
           </div>
         </section>
     </>

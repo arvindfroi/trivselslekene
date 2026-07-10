@@ -22,6 +22,24 @@ export function erStor(i: number): boolean {
   return bentoSpenn(i).includes("row-span-2");
 }
 
+/** Antall grid-celler (kolonne × rad) en spenn-klassestreng opptar ved 4 kolonner. */
+export function cellerFraSpenn(spenn: string): number {
+  const kolonner = spenn.includes("col-span-2") ? 2 : 1;
+  const rader = spenn.includes("row-span-2") ? 2 : 1;
+  return kolonner * rader;
+}
+
+/**
+ * Antall usynlige 1×1-fyllceller som må legges til på slutten av gridet for
+ * at totalarealet skal gå opp i hele rader (4 kolonner). Dette garanterer at
+ * mosaikken alltid danner et rektangel — uansett antall fliser, og uansett
+ * om én av dem er utvidet og dermed opptar mer plass enn vanlig.
+ */
+export function antallFyllCeller(spennListe: string[]): number {
+  const brukt = spennListe.reduce((sum, s) => sum + cellerFraSpenn(s), 0);
+  return (4 - (brukt % 4)) % 4;
+}
+
 /**
  * Blander en liste deterministisk ut fra et tekst-frø (Fisher-Yates +
  * mulberry32). Samme frø gir alltid samme rekkefølge — bento-mosaikken
