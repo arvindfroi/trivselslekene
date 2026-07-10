@@ -11,11 +11,11 @@ import {
   hentUtmerkelser,
 } from "@/lib/stilling";
 import { kvalitetIkon, kvalitetTekst } from "@/lib/ovelseLabels";
-import { BENTO_GRID, bentoSpenn, erStor } from "@/lib/bento";
+import { BENTO_GRID, bentoSpenn, erStor, seededShuffle } from "@/lib/bento";
 import Card from "@/components/ui/Card";
 import StatCard from "@/components/ui/StatCard";
 import StillingListe from "@/components/StillingListe";
-import Avatar from "@/components/Avatar";
+import StatFlis from "@/components/StatFlis";
 import {
   CloudRain,
   Crown,
@@ -28,23 +28,77 @@ import {
   Trophy,
   type LucideIcon,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 const UTMERKELSER: {
   key: string;
   tittel: string;
   tekst: string;
+  forklaring: string;
   Ikon: LucideIcon;
 }[] = [
-  { key: "seire", tittel: "Vinnermaskin", tekst: "Flest førsteplasser", Ikon: Trophy },
-  { key: "pall", tittel: "Pallhabitué", tekst: "Flest pallplasser", Ikon: Medal },
-  { key: "kamper", tittel: "Ironman", tekst: "Flest kamper spilt", Ikon: Swords },
-  { key: "snitt", tittel: "Snittkongen", tekst: "Best poengsnitt", Ikon: TrendingUp },
-  { key: "rekord", tittel: "Rekordholder", tekst: "Høyeste enkeltresultat", Ikon: Flame },
-  { key: "allsidig", tittel: "Multitalentet", tekst: "Flest ulike egenskaper", Ikon: Shapes },
-  { key: "vert", tittel: "Sjefsarrangør", tekst: "Arrangert flest leker", Ikon: Crown },
-  { key: "uheldig", tittel: "Uflaks-magneten", tekst: "Flest sisteplasser", Ikon: CloudRain },
-  { key: "trost", tittel: "Trøstepremien", tekst: "Lavest poengsnitt", Ikon: HeartCrack },
+  {
+    key: "seire",
+    tittel: "Vinnermaskin",
+    tekst: "Flest førsteplasser",
+    forklaring: "Rangert etter antall øvelser der du endte på 1. plass.",
+    Ikon: Trophy,
+  },
+  {
+    key: "pall",
+    tittel: "Pallhabitué",
+    tekst: "Flest pallplasser",
+    forklaring: "Rangert etter antall øvelser der du endte blant de tre beste.",
+    Ikon: Medal,
+  },
+  {
+    key: "kamper",
+    tittel: "Ironman",
+    tekst: "Flest kamper spilt",
+    forklaring: "Rangert etter antall øvelser du har deltatt i totalt denne sesongen.",
+    Ikon: Swords,
+  },
+  {
+    key: "snitt",
+    tittel: "Snittkongen",
+    tekst: "Best poengsnitt",
+    forklaring: "Rangert etter gjennomsnittlig poengsum per øvelse. Krever minst to spilte øvelser.",
+    Ikon: TrendingUp,
+  },
+  {
+    key: "rekord",
+    tittel: "Rekordholder",
+    tekst: "Høyeste enkeltresultat",
+    forklaring: "Rangert etter høyeste poengsum oppnådd i en enkelt øvelse.",
+    Ikon: Flame,
+  },
+  {
+    key: "allsidig",
+    tittel: "Multitalentet",
+    tekst: "Flest ulike egenskaper",
+    forklaring: "Rangert etter antall ulike egenskaper du har scoret poeng i.",
+    Ikon: Shapes,
+  },
+  {
+    key: "vert",
+    tittel: "Sjefsarrangør",
+    tekst: "Arrangert flest leker",
+    forklaring: "Rangert etter antall øvelser du har arrangert som vert.",
+    Ikon: Crown,
+  },
+  {
+    key: "uheldig",
+    tittel: "Uflaks-magneten",
+    tekst: "Flest sisteplasser",
+    forklaring: "Rangert etter antall øvelser der du endte sist.",
+    Ikon: CloudRain,
+  },
+  {
+    key: "trost",
+    tittel: "Trøstepremien",
+    tekst: "Lavest poengsnitt",
+    forklaring: "Rangert etter lavest gjennomsnittlig poengsum — en trøst for jevn innsats uansett resultat. Krever minst to spilte øvelser.",
+    Ikon: HeartCrack,
+  },
 ];
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -69,6 +123,31 @@ export default async function StillingSide() {
   const utmerkelser = hentUtmerkelser(sesongData);
   const toppPoeng = Math.max(1, ...stilling.map((s) => s.totalPoeng));
   const leder = stilling.find((s) => s.totalPoeng > 0);
+
+  // Slår sammen "beste innen hver egenskap" og "rekorder og utmerkelser" til
+  // én bento-mosaikk, blandet (ikke gruppert) i en stabil, sesong-seedet rekkefølge.
+  const egenskapFliser = kvalitetsledere.map(({ kvalitet, leder: best, alle }) => ({
+    key: `kval-${kvalitet}`,
+    tittel: kvalitetTekst[kvalitet],
+    tekst: undefined,
+    forklaring: `Rangert etter summen av poeng scoret i øvelser som tester ${kvalitetTekst[kvalitet].toLowerCase()}.`,
+    Ikon: kvalitetIkon[kvalitet],
+    leder: best ? { navn: best.navn, bildeUrl: best.bildeUrl, verdi: String(best.poeng) } : null,
+    alle: alle.map((a) => ({ navn: a.navn, bildeUrl: a.bildeUrl, verdi: String(a.poeng) })),
+  }));
+  const utmerkelseFliser = UTMERKELSER.map((u) => {
+    const l = utmerkelser.find((x) => x.key === u.key);
+    return {
+      key: `utm-${u.key}`,
+      tittel: u.tittel,
+      tekst: u.tekst,
+      forklaring: u.forklaring,
+      Ikon: u.Ikon,
+      leder: l?.leder ? { navn: l.leder.navn, bildeUrl: l.leder.bildeUrl, verdi: l.leder.verdi } : null,
+      alle: l?.alle.map((a) => ({ navn: a.navn, bildeUrl: a.bildeUrl, verdi: a.verdi })) ?? [],
+    };
+  });
+  const bentoFliser = seededShuffle([...egenskapFliser, ...utmerkelseFliser], sesong.id);
 
   return (
     <>
@@ -98,61 +177,23 @@ export default async function StillingSide() {
         </section>
 
         <section className="mt-10">
-          <h2 className="mb-3 text-sm font-medium tracking-widest text-fg-dim uppercase">Beste innen hver egenskap</h2>
-          <div className={BENTO_GRID}>
-            {kvalitetsledere.map(({ kvalitet, leder: best }, i) => {
-              const Ikon = kvalitetIkon[kvalitet];
-              const s = erStor(i);
-              return (
-                <div key={kvalitet} className={cn("surface flex flex-col rounded-2xl p-4", bentoSpenn(i))}>
-                  <span className={cn("bg-gradient-accent flex shrink-0 items-center justify-center rounded-xl text-white", s ? "h-14 w-14" : "h-10 w-10")}>
-                    <Ikon size={s ? 26 : 18} />
-                  </span>
-                  <p className={cn("mt-3 font-medium text-fg", s ? "text-lg" : "text-sm")}>{kvalitetTekst[kvalitet]}</p>
-                  <div className="mt-auto pt-3">
-                    {best ? (
-                      <div className="flex items-center gap-2">
-                        <Avatar navn={best.navn} bildeUrl={best.bildeUrl} size={s ? 28 : 22} />
-                        <span className="truncate text-sm font-medium text-fg">{best.navn}</span>
-                        <span className="ml-auto shrink-0 text-xs text-fg-dim tabular-nums">{best.poeng}</span>
-                      </div>
-                    ) : (
-                      <p className="text-sm text-fg-faint">Ingen ennå</p>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        <section className="mt-10">
           <h2 className="mb-3 text-sm font-medium tracking-widest text-fg-dim uppercase">Rekorder og utmerkelser</h2>
           <div className={BENTO_GRID}>
-            {UTMERKELSER.map((u, i) => {
-              const l = utmerkelser.find((x) => x.key === u.key);
+            {bentoFliser.map((f, i) => {
               const s = erStor(i);
               return (
-                <div key={u.key} className={cn("surface flex flex-col rounded-2xl p-4", bentoSpenn(i))}>
-                  <span className={cn("bg-gradient-accent flex shrink-0 items-center justify-center rounded-xl text-white", s ? "h-14 w-14" : "h-10 w-10")}>
-                    <u.Ikon size={s ? 26 : 18} />
-                  </span>
-                  <div className={cn(s ? "mt-4" : "mt-3")}>
-                    <p className={cn("font-medium text-fg", s ? "text-lg" : "text-sm")}>{u.tittel}</p>
-                    <p className="text-[11px] text-fg-faint">{u.tekst}</p>
-                  </div>
-                  <div className="mt-auto pt-3">
-                    {l?.leder ? (
-                      <div className="flex items-center gap-2">
-                        <Avatar navn={l.leder.navn} bildeUrl={l.leder.bildeUrl} size={s ? 28 : 22} />
-                        <span className="truncate text-sm font-medium text-fg">{l.leder.navn}</span>
-                        <span className="ml-auto shrink-0 text-xs text-fg-dim tabular-nums">{l.leder.verdi}</span>
-                      </div>
-                    ) : (
-                      <p className="text-sm text-fg-faint">Ingen ennå</p>
-                    )}
-                  </div>
-                </div>
+                <StatFlis
+                  key={f.key}
+                  className={bentoSpenn(i)}
+                  stor={s}
+                  ikonKort={<f.Ikon size={s ? 26 : 18} />}
+                  ikonModal={<f.Ikon size={20} />}
+                  tittel={f.tittel}
+                  tekst={f.tekst}
+                  forklaring={f.forklaring}
+                  leder={f.leder}
+                  alle={f.alle}
+                />
               );
             })}
           </div>
