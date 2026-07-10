@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useActionState } from "react";
+import { useRef, useState, useTransition } from "react";
 import { opprettOvelse } from "@/lib/actions/ovelser";
 import {
   kvalitetValg,
@@ -68,7 +68,7 @@ export default function NyOvelseForm({ stillingTopp8, alleDeltagere }: Props) {
   const [bildeUrl, setBildeUrl] = useState<string | null>(null);
   const [faser, setFaser] = useState<LokalFase[]>([]);
   const [valgteDeltagere, setValgteDeltagere] = useState<Set<string>>(new Set());
-  const [, formAction, isPending] = useActionState(opprettOvelse, null);
+  const [isPending, startTransition] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
   const faseFileRefs = useRef<Map<number, HTMLInputElement>>(new Map());
 
@@ -153,8 +153,16 @@ export default function NyOvelseForm({ stillingTopp8, alleDeltagere }: Props) {
     faser.map((f) => ({ tittel: f.tittel, bildeUrl: f.bildeUrl }))
   );
 
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    startTransition(async () => {
+      await opprettOvelse(null, formData);
+    });
+  };
+
   return (
-    <form action={formAction} className="flex flex-col gap-4">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       {/* Skjult felt så server-action vet hva som skal opprettes */}
       <input type="hidden" name="opprettType" value={opprettType} />
       <input type="hidden" name="bildeUrl" value={bildeUrl ?? ""} />
