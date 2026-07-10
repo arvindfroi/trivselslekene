@@ -19,7 +19,7 @@ interface AnimatedGradientBackgroundProps {
  *
  * Originalkomponenten: en radial gradient med en subtil "puste"-effekt.
  * Fargene er Trivselslekenes egne — svart senter, lilla innover og grønn
- * ytterst mot kanten.
+ * ytterst mot kanten, med lyseblå som kobling.
  */
 const AnimatedGradientBackground: React.FC<AnimatedGradientBackgroundProps> = ({
   startingGap = 100,
@@ -27,13 +27,12 @@ const AnimatedGradientBackground: React.FC<AnimatedGradientBackgroundProps> = ({
   gradientColors = [
     "#060608",
     "#2a0e45",
-    "#a855f7",
-    "#7c3aed",
-    "#22c55e",
-    "#2be5a0",
-    "#2be5a0",
+    "#8c27d9",
+    "#65aef7",
+    "#16b823",
+    "#16b823",
   ],
-  gradientStops = [30, 46, 58, 68, 78, 90, 100],
+  gradientStops = [30, 44, 52, 72, 92, 100],
   animationSpeed = 0.02,
   breathingRange = 5,
   containerStyle = {},

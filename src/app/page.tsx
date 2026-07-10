@@ -16,7 +16,7 @@ export default async function Hjemmeside() {
         speed={0.55}
         distort={2}
         animationType="rotate3d"
-        colors={["#2be5a0", "#22c55e", "#c084fc", "#a855f7"]}
+        colors={["#16b823", "#65aef7", "#8c27d9"]}
         rayCount={0}
         mixBlendMode="none"
       />
