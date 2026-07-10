@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback, useTransition } from "react";
-import { motion } from "framer-motion";
+import { useState, useTransition } from "react";
+import { Reorder } from "framer-motion";
 import { GripVertical, X, Save } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { Input } from "@/components/ui/Field";
@@ -65,26 +65,9 @@ export default function RankingRedigering({
 
   // ─── Handlere ──────────────────────────────────────────────────────────
 
-  const flyttRad = useCallback(
-    (fra: number, til: number) => {
-      if (fra === til) return;
-      const ny = [...rader];
-      const [flyttet] = ny.splice(fra, 1);
-      ny.splice(til, 0, flyttet);
-      setRader(ny);
-    },
-    [rader],
-  );
-
-  const handleDragEnd = useCallback(
-    (index: number, _: unknown, info: { offset: { y: number } }) => {
-      const ROW_H = 52; // omtrentlig radhøyde i px
-      const delta = Math.round(info.offset.y / ROW_H);
-      const nyIndex = Math.max(0, Math.min(rader.length - 1, index + delta));
-      flyttRad(index, nyIndex);
-    },
-    [rader.length, flyttRad],
-  );
+  function handleReorder(ny: DeltakerRad[]) {
+    setRader(ny);
+  }
 
   function leggTil(userId: string) {
     const deltaker = alleDeltakere.find((d) => d.id === userId);
@@ -141,16 +124,18 @@ export default function RankingRedigering({
           Ingen deltakere lagt til ennå
         </p>
       ) : (
-        <ul className="flex flex-col">
+        <Reorder.Group
+          axis="y"
+          values={rader}
+          onReorder={handleReorder}
+          className="flex flex-col"
+        >
           {rader.map((rad, i) => {
             const stdPoeng = standardPoengFor(i + 1);
             return (
-              <motion.li
+              <Reorder.Item
                 key={rad.key}
-                drag="y"
-                dragElastic={0}
-                dragMomentum={false}
-                onDragEnd={(_, info) => handleDragEnd(i, _, info)}
+                value={rad}
                 whileDrag={{
                   zIndex: 50,
                   boxShadow: "0 8px 24px rgba(0,0,0,0.3)",
@@ -214,10 +199,10 @@ export default function RankingRedigering({
                 >
                   <X size={15} strokeWidth={2.5} />
                 </button>
-              </motion.li>
+              </Reorder.Item>
             );
           })}
-        </ul>
+        </Reorder.Group>
       )}
 
       {/* Kolonne-headere (kun når det er rader) */}
