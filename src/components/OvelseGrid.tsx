@@ -40,7 +40,9 @@ export default function OvelseGrid({
       {spill.map((s, i) => {
         const er = apen === s.id;
         const grunn = bentoSpenn(i);
-        const spenn = er ? "col-span-2 row-span-2 sm:col-span-2 sm:row-span-2" : grunn;
+        const spenn = er
+          ? "col-span-2 row-span-2 sm:col-span-2 sm:row-span-2"
+          : grunn;
         const hero =
           !er && grunn.includes("col-span-2") && grunn.includes("row-span-2");
 
@@ -50,10 +52,10 @@ export default function OvelseGrid({
             type="button"
             onClick={() => setApen(er ? null : s.id)}
             className={cn(
-              "flex flex-col overflow-hidden rounded-2xl border p-4 text-left transition-all duration-200",
+              "flex flex-col overflow-hidden rounded-2xl border p-4 text-left transition-all duration-300",
               spenn,
               er
-                ? "border-accent-2/60 bg-bg-elev"
+                ? "z-10 border-accent-2/60 bg-bg-elev shadow-lg shadow-black/20"
                 : "surface hover:border-line-strong hover:bg-bg-elev-2"
             )}
           >
@@ -89,8 +91,10 @@ export default function OvelseGrid({
                   />
                 )}
                 <span
-                  className="transition-transform duration-200"
-                  style={{ transform: er ? "rotate(180deg)" : "rotate(0deg)" }}
+                  className="transition-transform duration-300"
+                  style={{
+                    transform: er ? "rotate(180deg)" : "rotate(0deg)",
+                  }}
                 >
                   <ChevronDown size={16} className="text-fg-faint" />
                 </span>
@@ -134,63 +138,70 @@ export default function OvelseGrid({
               </div>
             )}
 
-            {/* Utvidet: full detalj */}
-            {er && (
-              <div className="animate-fade-up mt-3 border-t border-line pt-3">
-                <p className="text-[11px] tracking-widest text-fg-faint uppercase">
-                  Egenskaper leken tester
-                </p>
-                {s.kvaliteter.length > 0 ? (
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {s.kvaliteter.map((k) => (
-                      <KvalitetChip key={k} kvalitet={k} />
-                    ))}
-                  </div>
-                ) : (
-                  <p className="mt-1 text-sm text-fg-faint">
-                    Ingen egenskaper valgt.
+            {/* Utvidet: height-animert detalj */}
+            <div
+              className={cn(
+                "grid transition-[grid-template-rows] duration-300 ease-out",
+                er ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+              )}
+            >
+              <div className="overflow-hidden">
+                <div className="mt-3 border-t border-line pt-3">
+                  <p className="text-[11px] tracking-widest text-fg-faint uppercase">
+                    Egenskaper leken tester
                   </p>
-                )}
+                  {s.kvaliteter.length > 0 ? (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {s.kvaliteter.map((k) => (
+                        <KvalitetChip key={k} kvalitet={k} />
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-1 text-sm text-fg-faint">
+                      Ingen egenskaper valgt.
+                    </p>
+                  )}
 
-                {s.deltakere.length > 0 && (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {s.deltakere.map((d) => (
-                      <span
-                        key={d.id}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white/[0.03] py-0.5 pr-2.5 pl-0.5 text-xs text-fg-dim"
-                      >
-                        <Avatar navn={d.navn} size={20} />
-                        {d.navn}
-                      </span>
-                    ))}
-                  </div>
-                )}
+                  {s.deltakere.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {s.deltakere.map((d) => (
+                        <span
+                          key={d.id}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white/[0.03] py-0.5 pr-2.5 pl-0.5 text-xs text-fg-dim"
+                        >
+                          <Avatar navn={d.navn} size={20} />
+                          {d.navn}
+                        </span>
+                      ))}
+                    </div>
+                  )}
 
-                <Link
-                  href={`/ovelser/${s.id}`}
-                  onClick={(e) => e.stopPropagation()}
-                  className="mt-3 inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-accent-2 hover:text-fg active:bg-white/5 min-h-[44px]"
-                >
-                  Åpne og administrer <ArrowRight size={14} />
-                </Link>
-
-                {s.vertId === currentUserId && (
-                  <form
-                    action={slettOvelse.bind(null, s.id)}
-                    className="mt-2"
-                    onSubmit={(e) => e.stopPropagation()}
+                  <Link
+                    href={`/ovelser/${s.id}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="mt-3 inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-accent-2 hover:text-fg active:bg-white/5 min-h-[44px]"
                   >
-                    <SubmitButton
-                      variant="danger"
-                      className="px-3 py-2 text-xs"
-                      pendingText="Sletter…"
+                    Åpne og administrer <ArrowRight size={14} />
+                  </Link>
+
+                  {s.vertId === currentUserId && (
+                    <form
+                      action={slettOvelse.bind(null, s.id)}
+                      className="mt-2"
+                      onSubmit={(e) => e.stopPropagation()}
                     >
-                      <Trash2 size={14} /> Slett øvelse
-                    </SubmitButton>
-                  </form>
-                )}
+                      <SubmitButton
+                        variant="danger"
+                        className="px-3 py-2 text-xs"
+                        pendingText="Sletter…"
+                      >
+                        <Trash2 size={14} /> Slett øvelse
+                      </SubmitButton>
+                    </form>
+                  )}
+                </div>
               </div>
-            )}
+            </div>
           </button>
         );
       })}
