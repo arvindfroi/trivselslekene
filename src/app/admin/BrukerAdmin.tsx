@@ -9,6 +9,7 @@ export default async function BrukerAdmin() {
       navn: true,
       epost: true,
       bildeUrl: true,
+      farge: true,
       createdAt: true,
       _count: {
         select: { vertFor: true, individuelleResultater: true, lagmedlemskap: true },
@@ -48,6 +49,7 @@ export default async function BrukerAdmin() {
                         id: b.id,
                         bildeUrl: b.bildeUrl,
                       })}
+                      farge={b.farge}
                       size={32}
                     />
                     <span className="text-fg">{b.navn}</span>

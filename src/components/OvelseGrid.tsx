@@ -20,6 +20,7 @@ export type SpillKort = {
   type: OvelseType;
   vertNavn: string;
   vertId: string;
+  vertFarge: string | null;
   lokasjon: string | null;
   fellesLek: boolean;
   kvaliteter: Kvalitet[];
@@ -55,9 +56,21 @@ export default function OvelseGrid({
               "flex flex-col overflow-hidden rounded-2xl border p-4 text-left transition-all duration-300",
               spenn,
               er
-                ? "z-10 border-accent-2/60 bg-bg-elev shadow-lg shadow-black/20"
+                ? "z-10 bg-bg-elev shadow-lg shadow-black/20"
                 : "surface hover:border-line-strong hover:bg-bg-elev-2"
             )}
+            style={
+              s.vertFarge
+                ? er
+                  ? { borderColor: s.vertFarge }
+                  : {
+                      backgroundColor: s.vertFarge,
+                      borderColor: s.vertFarge,
+                    }
+                : er
+                  ? { borderColor: undefined }
+                  : undefined
+            }
           >
             <div className="flex items-start justify-between gap-2">
               <h3

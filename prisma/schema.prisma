@@ -14,6 +14,7 @@ model User {
   epost        String?  @unique
   passordHash  String?
   bildeUrl     String?
+  farge        String?  /// Hex-farge for brukeren (tildelt automatisk)
   createdAt    DateTime @default(now())
 
   vertFor          Ovelse[]          @relation("Vert")

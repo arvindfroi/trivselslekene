@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { tildelFarge } from "@/lib/farger";
 
 /** Trimmer og komprimerer mellomrom, men beholder brukerens egen skrivemåte. */
 export function normaliserNavn(navn: string): string {
@@ -32,5 +33,5 @@ export async function finnEllerOpprettBruker(raaNavn: string) {
   const eksisterende = await finnBrukerVedNavn(navn);
   if (eksisterende) return eksisterende;
 
-  return prisma.user.create({ data: { navn: parsed.data } });
+  return prisma.user.create({ data: { navn: parsed.data, farge: tildelFarge(parsed.data) } });
 }

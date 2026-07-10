@@ -52,7 +52,7 @@ export default function StillingListe({
               className="flex w-full items-center gap-3 px-4 py-3.5 text-left sm:px-5"
             >
               <RankBadge rank={i + 1} />
-              <Avatar navn={rad.navn} bildeUrl={rad.bildeUrl} size={34} />
+              <Avatar navn={rad.navn} bildeUrl={rad.bildeUrl} farge={rad.farge} size={34} />
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline justify-between gap-2">
                   <span className="truncate font-medium text-fg">

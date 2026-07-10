@@ -10,6 +10,7 @@ export type StillingRad = {
   userId: string;
   navn: string;
   bildeUrl: string | null;
+  farge: string | null;
   totalPoeng: number;
   antallOvelser: number;
 };
@@ -60,6 +61,7 @@ type SesongBruker = {
   id: string;
   navn: string;
   bildeUrl: string | null;
+  farge: string | null;
   individuelleResultater: {
     id: string;
     ovelseId: string;
@@ -89,6 +91,7 @@ export const hentAlleSesongData = cache(async (sesongId: string): Promise<Sesong
         id: true,
         navn: true,
         bildeUrl: true,
+        farge: true,
         individuelleResultater: {
           where: { ovelse: { sesongId } },
           select: {
@@ -160,6 +163,7 @@ export function hentStilling(data: SesongData): StillingRad[] {
         userId: bruker.id,
         navn: bruker.navn,
         bildeUrl: bruker.bildeUrl,
+        farge: bruker.farge,
         totalPoeng: poengIndividuelt + poengLag,
         antallOvelser: new Set([...individOvelser, ...lagOvelser]).size,
       };

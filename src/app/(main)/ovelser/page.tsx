@@ -30,7 +30,7 @@ export default async function OvelserSide() {
       lokasjon: true,
       fellesLek: true,
       kvaliteter: true,
-      vert: { select: { id: true, navn: true } },
+      vert: { select: { id: true, navn: true, farge: true } },
       individuelleResultater: {
         select: { user: { select: { id: true, navn: true } } },
       },
@@ -62,6 +62,7 @@ export default async function OvelserSide() {
       type: o.type,
       vertNavn: o.vert.navn,
       vertId: o.vertId,
+      vertFarge: o.vert.farge,
       lokasjon: o.lokasjon,
       fellesLek: o.fellesLek,
       kvaliteter: o.kvaliteter,
