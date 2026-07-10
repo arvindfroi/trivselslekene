@@ -24,10 +24,12 @@ const b = (
     poeng: number;
     kvaliteter: string[];
   }[] = [],
+  farge: string | null = null,
 ): SesongData["brukere"][number] => ({
   id,
   navn,
   bildeUrl,
+  farge,
   individuelleResultater: individuelle.map((i) => ({
     id: `${id}-ind-${i.ovelseId}`,
     ovelseId: i.ovelseId,
