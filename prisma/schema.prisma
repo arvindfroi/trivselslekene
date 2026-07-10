@@ -141,14 +141,15 @@ model LagMedlem {
 
 /// Resultat for en enkeltperson i en individuell øvelse
 model ResultatIndividuell {
-  id        String  @id @default(cuid())
-  ovelseId  String
-  ovelse    Ovelse  @relation(fields: [ovelseId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User    @relation(fields: [userId], references: [id])
+  id         String  @id @default(cuid())
+  ovelseId   String
+  ovelse     Ovelse  @relation(fields: [ovelseId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User    @relation(fields: [userId], references: [id])
   plassering Int?
-  poeng     Float
-  notat     String?
+  poeng      Float
+  bonusPoeng Float   @default(0)
+  notat      String?
 
   @@unique([ovelseId, userId])
   @@index([ovelseId])
@@ -157,14 +158,15 @@ model ResultatIndividuell {
 
 /// Resultat for et lag i en lag-øvelse. Poeng krediteres alle lagmedlemmer.
 model ResultatLag {
-  id        String @id @default(cuid())
-  ovelseId  String
-  ovelse    Ovelse @relation(fields: [ovelseId], references: [id], onDelete: Cascade)
-  lagId     String @unique
-  lag       Lag    @relation(fields: [lagId], references: [id], onDelete: Cascade)
+  id         String @id @default(cuid())
+  ovelseId   String
+  ovelse     Ovelse @relation(fields: [ovelseId], references: [id], onDelete: Cascade)
+  lagId      String @unique
+  lag        Lag    @relation(fields: [lagId], references: [id], onDelete: Cascade)
   plassering Int?
-  poeng     Float
-  notat     String?
+  poeng      Float
+  bonusPoeng Float  @default(0)
+  notat      String?
 
   @@unique([ovelseId, lagId])
   @@index([ovelseId])

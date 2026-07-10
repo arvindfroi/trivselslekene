@@ -3,7 +3,6 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
   fjernLagmedlem,
-  lagreResultatIndividuell,
   lagreResultatLag,
   leggTilLagmedlem,
   opprettLag,
@@ -16,13 +15,13 @@ import { bildeUrlFor } from "@/lib/bilde";
 import KvalitetChip from "@/components/KvalitetChip";
 import FaseNavigator from "@/components/FaseNavigator";
 import LiveRefresh from "@/components/LiveRefresh";
-import PoengForslag from "@/components/PoengForslag";
+import RankingRedigering from "@/components/RankingRedigering";
 import Card from "@/components/ui/Card";
 import { LinkButton } from "@/components/ui/Button";
 import SubmitButton from "@/components/ui/SubmitButton";
 import Badge from "@/components/ui/Badge";
-import { Input, Label, Select } from "@/components/ui/Field";
 import { MapPin, Users, X, Trash2, Monitor, Plus, UserRoundX } from "lucide-react";
+import { Input, Label, Select } from "@/components/ui/Field";
 import { opprettTestdeltakere, slettTestdeltakere } from "@/lib/actions/testdeltakere";
 
 export default async function OvelseSide({
@@ -62,8 +61,10 @@ export default async function OvelseSide({
       individuelleResultater: {
         select: {
           id: true,
+          userId: true,
           plassering: true,
           poeng: true,
+          bonusPoeng: true,
           user: { select: { id: true, navn: true } },
         },
         orderBy: { poeng: "desc" },
@@ -116,17 +117,10 @@ export default async function OvelseSide({
     await opprettLag(ovelseId, formData);
   }
 
-  async function lagreIndividueltAction(formData: FormData) {
-    "use server";
-    await lagreResultatIndividuell(ovelseId, formData);
-  }
-
   return (
     <div className="mx-auto max-w-4xl px-4 pt-6 pb-28">
       {/* Tilskuere følger fasebytter og nye resultater live mens øvelsen pågår */}
       <LiveRefresh aktiv={ovelse.status === "PAAGAAR" && !erVert} />
-      {/* Poengforslag: autofyller poeng basert på plassering */}
-      <PoengForslag />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs tracking-[0.2em] text-accent-2 uppercase">
@@ -245,71 +239,55 @@ export default async function OvelseSide({
       )}
 
       {ovelse.type === "INDIVIDUELL" ? (
-        <Card className="mt-8" padding="p-5 sm:p-6">
-          <h2 className="mb-4 text-sm font-medium tracking-widest text-fg-dim uppercase">
-            Resultater
-          </h2>
+        erVert ? (
+          <Card className="mt-8" padding="p-5 sm:p-6">
+            <RankingRedigering
+              ovelseId={ovelseId}
+              eksisterende={ovelse.individuelleResultater}
+              alleDeltakere={deltakere}
+            />
+          </Card>
+        ) : (
+          <Card className="mt-8" padding="p-5 sm:p-6">
+            <h2 className="mb-4 text-sm font-medium tracking-widest text-fg-dim uppercase">
+              Resultater
+            </h2>
 
-          {ovelse.individuelleResultater.length === 0 ? (
-            <p className="py-4 text-center text-sm text-fg-dim">
-              Ingen resultater registrert ennå
-            </p>
-          ) : (
-            <ul className="flex flex-col">
-              {ovelse.individuelleResultater.map((r, i) => (
-                <li
-                  key={r.id}
-                  className={`flex items-center justify-between gap-3 py-2.5 ${
-                    i !== ovelse.individuelleResultater.length - 1
-                      ? "border-b border-line"
-                      : ""
-                  }`}
-                >
-                  <span className="text-sm text-fg">
-                    <span className="mr-2 tabular-nums text-fg-faint">
-                      {r.plassering ? `${r.plassering}.` : "–"}
+            {ovelse.individuelleResultater.length === 0 ? (
+              <p className="py-4 text-center text-sm text-fg-dim">
+                Ingen resultater registrert ennå
+              </p>
+            ) : (
+              <ul className="flex flex-col">
+                {ovelse.individuelleResultater.map((r, i) => (
+                  <li
+                    key={r.id}
+                    className={`flex items-center justify-between gap-3 py-2.5 ${
+                      i !== ovelse.individuelleResultater.length - 1
+                        ? "border-b border-line"
+                        : ""
+                    }`}
+                  >
+                    <span className="text-sm text-fg">
+                      <span className="mr-2 tabular-nums text-fg-faint">
+                        {r.plassering ? `${r.plassering}.` : "–"}
+                      </span>
+                      {r.user.navn}
                     </span>
-                    {r.user.navn}
-                  </span>
-                  <span className="text-sm tabular-nums text-fg">{r.poeng} p</span>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          {erVert && (
-            <form
-              action={lagreIndividueltAction}
-              className="mt-5 flex flex-wrap items-end gap-3 border-t border-line pt-5"
-            >
-              <div className="min-w-[9rem] flex-1">
-                <Label htmlFor="userId">Deltaker</Label>
-                <Select id="userId" name="userId" required>
-                  {deltakere.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.navn}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div className="w-24">
-                <Label htmlFor="plassering">Plassering</Label>
-                <Input id="plassering" type="number" name="plassering" min={1} />
-              </div>
-              <div className="w-28">
-                <Label htmlFor="poeng">Poeng</Label>
-                <Input
-                  id="poeng"
-                  type="number"
-                  name="poeng"
-                  step="0.5"
-                  required
-                />
-              </div>
-              <SubmitButton>Lagre</SubmitButton>
-            </form>
-          )}
-        </Card>
+                    <span className="flex items-center gap-2 text-sm tabular-nums">
+                      <span className="text-fg">{r.poeng} p</span>
+                      {r.bonusPoeng > 0 && (
+                        <span className="text-xs text-accent-2">
+                          (+{r.bonusPoeng})
+                        </span>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        )
       ) : (
         <div className="mt-8 flex flex-col gap-5">
           {erVert && (

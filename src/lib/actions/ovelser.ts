@@ -284,6 +284,40 @@ export async function lagreResultatIndividuell(
   revalidatePath("/dashboard");
 }
 
+export async function lagreResultaterIndividuellMasse(
+  ovelseId: string,
+  resultater: { userId: string; plassering: number | null; poeng: number; bonusPoeng: number }[],
+) {
+  await krevVert(ovelseId);
+
+  if (resultater.length === 0) return;
+
+  // Kjør alle upserts i én transaksjon
+  await prisma.$transaction(
+    resultater.map((r) =>
+      prisma.resultatIndividuell.upsert({
+        where: { ovelseId_userId: { ovelseId, userId: r.userId } },
+        create: {
+          ovelseId,
+          userId: r.userId,
+          plassering: r.plassering,
+          poeng: r.poeng,
+          bonusPoeng: r.bonusPoeng,
+        },
+        update: {
+          plassering: r.plassering,
+          poeng: r.poeng,
+          bonusPoeng: r.bonusPoeng,
+        },
+      }),
+    ),
+  );
+
+  revalidatePath(`/ovelser/${ovelseId}`);
+  revalidatePath("/dashboard");
+  revalidatePath("/stilling");
+}
+
 export async function lagreResultatLag(
   ovelseId: string,
   lagId: string,
