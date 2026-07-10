@@ -1,7 +1,7 @@
 "use client";
 
 import { useOptimistic, useTransition } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Play } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { settAktivFase } from "@/lib/actions/ovelser";
 
@@ -16,8 +16,7 @@ export type FaseVisning = {
 /**
  * Fase-navigasjon med optimistisk UI: verten ser fasebyttet UMIDDELBART,
  * mens server-oppdateringen (og revalideringen for andre deltakere) skjer i
- * bakgrunnen. Tidligere var hvert klikk en full server-rundtur før noe
- * skjedde på skjermen.
+ * bakgrunnen.
  */
 export default function FaseNavigator({
   ovelseId,
@@ -41,26 +40,26 @@ export default function FaseNavigator({
 
   function gaaTil(fase: number) {
     const neste = Math.min(totalFaser, Math.max(0, fase));
-    if (neste === visFase) return; // allerede på denne fasen
+    if (neste === visFase) return;
 
-    // Optimistisk oppdatering må skje FØR startTransition, ellers
-    // flusher ikke React den synkront på iOS Safari og knappene responderer ikke.
     settVisFase(neste);
     startTransition(async () => {
       try {
         await settAktivFase(ovelseId, neste);
       } catch {
         // Ved feil vil useOptimistic automatisk rulle tilbake
-        // når neste revalidering skjer (server sender gammel verdi)
       }
     });
   }
 
   const aktuell = visFase > 0 ? (faser[visFase - 1] ?? null) : null;
+  const erFerdig = visFase >= totalFaser;
+  const harStartet = visFase > 0;
 
   return (
     <div className="mt-4">
-      <div className="flex flex-wrap items-center gap-3">
+      {/* ─── Navigasjonsrad ─── */}
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
         {/* Faseindikator */}
         <div className="flex items-center gap-1">
           {faser.map((f) => (
@@ -77,30 +76,55 @@ export default function FaseNavigator({
           ))}
         </div>
         <span className="text-sm tabular-nums text-fg-dim">
-          {visFase > 0
+          {harStartet
             ? `Fase ${visFase} av ${totalFaser}`
             : `${totalFaser} faser · ikke startet`}
         </span>
+
+        {/* Vert-navigasjon */}
         {erVert && (
-          <div className="flex items-center gap-1">
-            <Button
-              type="button"
-              variant="outline"
-              className="px-3 py-2 text-xs"
-              disabled={visFase <= 1 || isPending}
-              onClick={() => gaaTil(visFase - 1)}
-            >
-              <ChevronLeft size={14} />
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="px-3 py-2 text-xs"
-              disabled={visFase >= totalFaser || isPending}
-              onClick={() => gaaTil(visFase + 1)}
-            >
-              <ChevronRight size={14} />
-            </Button>
+          <div className="flex items-center gap-1.5">
+            {/* Start / Neste fase — primær CTA */}
+            {!harStartet && (
+              <Button
+                type="button"
+                className="px-4 py-2 text-xs"
+                disabled={isPending}
+                onClick={() => gaaTil(1)}
+              >
+                <Play size={14} />
+                Start faser
+              </Button>
+            )}
+
+            {harStartet && (
+              <>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="px-3 py-2 text-xs"
+                  disabled={visFase <= 1 || isPending}
+                  onClick={() => gaaTil(visFase - 1)}
+                  aria-label="Forrige fase"
+                >
+                  <ChevronLeft size={16} />
+                  <span className="hidden sm:inline">Forrige</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant={erFerdig ? "secondary" : "primary"}
+                  className="px-3 py-2 text-xs"
+                  disabled={erFerdig || isPending}
+                  onClick={() => gaaTil(visFase + 1)}
+                  aria-label={erFerdig ? "Alle faser vist" : "Neste fase"}
+                >
+                  <span className="hidden sm:inline">
+                    {erFerdig ? "Ferdig" : "Neste"}
+                  </span>
+                  <ChevronRight size={16} />
+                </Button>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -147,7 +171,7 @@ export default function FaseNavigator({
         </div>
       )}
 
-      {/* Forhåndslast fasebildene i bakgrunnen så fasebytter føles øyeblikkelige */}
+      {/* Forhåndslast fasebildene */}
       <div aria-hidden className="hidden">
         {faser.map((f) =>
           f.bildeSrc ? (
