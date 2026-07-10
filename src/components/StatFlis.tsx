@@ -67,7 +67,7 @@ export default function StatFlis({
       >
         <span
           className={cn(
-            "bg-accent flex shrink-0 items-center justify-center rounded-xl text-white",
+            "bg-icon-badge flex shrink-0 items-center justify-center rounded-xl text-white",
             stor ? "h-14 w-14" : "h-10 w-10"
           )}
         >
@@ -112,7 +112,7 @@ export default function StatFlis({
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
-                <span className="bg-accent flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white">
+                <span className="bg-icon-badge flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white">
                   {ikonModal}
                 </span>
                 <div>

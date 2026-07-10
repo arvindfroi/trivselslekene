@@ -99,6 +99,16 @@ body {
   );
 }
 
+/* Ikon-badger: grønn, med en svak lilla glød inni så den ikke blir helt flat. */
+.bg-icon-badge {
+  background-color: var(--accent);
+  background-image: radial-gradient(
+    circle at 30% 25%,
+    color-mix(in srgb, var(--accent-3) 55%, transparent) 0%,
+    transparent 65%
+  );
+}
+
 
 /* Frosted surface used for cards and panels over the dark base */
 .surface {
