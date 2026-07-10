@@ -59,6 +59,11 @@ export default async function ProfilSide({
     navn: r.navn,
   }));
 
+  const alleDeltagere = sesongData.brukere.map((b) => ({
+    userId: b.id,
+    navn: b.navn,
+  }));
+
   async function loggUt() {
     "use server";
     await signOut({ redirectTo: "/" });
@@ -100,7 +105,7 @@ export default async function ProfilSide({
         <h2 className="mb-4 flex items-center gap-2 text-sm font-medium tracking-widest text-fg-dim uppercase">
           <Plus size={16} /> Ny øvelse
         </h2>
-        <NyOvelseForm stillingTopp8={stillingTopp8} />
+        <NyOvelseForm stillingTopp8={stillingTopp8} alleDeltagere={alleDeltagere} />
       </Card>
 
       <section className="mt-10">

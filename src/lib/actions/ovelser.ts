@@ -144,6 +144,24 @@ export async function opprettOvelse(
     },
   });
 
+  // ─── Opprett resultater for valgte deltagere (kun individuell) ────
+  if (type === "INDIVIDUELL") {
+    const deltagerIder = formData
+      .getAll("deltagere")
+      .map(String)
+      .filter((id) => id && id !== bruker.id); // verten deltar ikke (med mindre fellesLek)
+
+    if (deltagerIder.length > 0) {
+      await prisma.resultatIndividuell.createMany({
+        data: deltagerIder.map((userId) => ({
+          ovelseId: ovelse.id,
+          userId,
+          poeng: 0,
+        })),
+      });
+    }
+  }
+
   revalidatePath("/ovelser");
   revalidatePath("/profil");
   redirect(`/ovelser/${ovelse.id}`);

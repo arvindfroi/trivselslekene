@@ -42,8 +42,14 @@ type StillingSpiller = {
   navn: string;
 };
 
+type Deltager = {
+  userId: string;
+  navn: string;
+};
+
 type Props = {
   stillingTopp8: StillingSpiller[];
+  alleDeltagere: Deltager[];
 };
 
 type OpprettType = "ovelse" | "lagkamp" | "turnering";
@@ -56,14 +62,40 @@ type LokalFase = {
 
 let nesteFaseId = 1;
 
-export default function NyOvelseForm({ stillingTopp8 }: Props) {
+export default function NyOvelseForm({ stillingTopp8, alleDeltagere }: Props) {
   const [opprettType, setOpprettType] = useState<OpprettType>("ovelse");
   const [ovelseType, setOvelseType] = useState<"INDIVIDUELL" | "LAG">("INDIVIDUELL");
   const [bildeUrl, setBildeUrl] = useState<string | null>(null);
   const [faser, setFaser] = useState<LokalFase[]>([]);
+  const [valgteDeltagere, setValgteDeltagere] = useState<Set<string>>(new Set());
   const [, formAction, isPending] = useActionState(opprettOvelse, null);
   const fileRef = useRef<HTMLInputElement>(null);
   const faseFileRefs = useRef<Map<number, HTMLInputElement>>(new Map());
+
+  // ─── Deltager-avkrysning ──────────────────────────────────────────
+  const toggleDeltager = (userId: string) => {
+    setValgteDeltagere((prev) => {
+      const neste = new Set(prev);
+      if (neste.has(userId)) neste.delete(userId);
+      else neste.add(userId);
+      return neste;
+    });
+  };
+
+  const velgAlle = () => {
+    setValgteDeltagere(new Set(alleDeltagere.map((d) => d.userId)));
+  };
+
+  const fjernAlle = () => {
+    setValgteDeltagere(new Set());
+  };
+
+  // Auto-velg alle når fellesLek aktiveres
+  const handleFellesLekChange = (checked: boolean) => {
+    if (checked) {
+      setValgteDeltagere(new Set(alleDeltagere.map((d) => d.userId)));
+    }
+  };
 
   // ─── Enkeltbilde ───────────────────────────────────────────────────
   const velgFil = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -127,6 +159,9 @@ export default function NyOvelseForm({ stillingTopp8 }: Props) {
       <input type="hidden" name="opprettType" value={opprettType} />
       <input type="hidden" name="bildeUrl" value={bildeUrl ?? ""} />
       <input type="hidden" name="faser" value={faserJson} />
+      {[...valgteDeltagere].map((userId) => (
+        <input key={userId} type="hidden" name="deltagere" value={userId} />
+      ))}
 
       {/* Navn */}
       <div>
@@ -407,12 +442,59 @@ export default function NyOvelseForm({ stillingTopp8 }: Props) {
               type="checkbox"
               name="fellesLek"
               className="h-4 w-4 accent-accent-3"
+              onChange={(e) => handleFellesLekChange(e.target.checked)}
             />
             <span>
               <span className="font-medium">Felles lek</span> — alle er med, også
               du (ingen fast vert)
             </span>
           </label>
+
+          {/* ─── Deltagere ─────────────────────────────────────────── */}
+          <div className="rounded-xl border border-line bg-white/[0.02] p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-fg">
+                  Deltagere
+                </p>
+                <p className="mt-0.5 text-xs text-fg-faint">
+                  {valgteDeltagere.size} av {alleDeltagere.length} valgt
+                </p>
+              </div>
+              <div className="flex gap-1.5">
+                <button
+                  type="button"
+                  onClick={velgAlle}
+                  className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-accent-2 transition-colors hover:bg-accent-2/10"
+                >
+                  Alle
+                </button>
+                <button
+                  type="button"
+                  onClick={fjernAlle}
+                  className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-fg-dim transition-colors hover:bg-white/[0.06]"
+                >
+                  Ingen
+                </button>
+              </div>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+              {alleDeltagere.map((d) => (
+                <label
+                  key={d.userId}
+                  className="has-checked:border-accent-2 has-checked:bg-accent-2/10 flex cursor-pointer items-center gap-2.5 rounded-lg border border-line bg-white/[0.03] px-3 py-2 text-sm text-fg transition-colors"
+                >
+                  <input
+                    type="checkbox"
+                    checked={valgteDeltagere.has(d.userId)}
+                    onChange={() => toggleDeltager(d.userId)}
+                    className="h-4 w-4 accent-accent-2"
+                  />
+                  {d.navn}
+                </label>
+              ))}
+            </div>
+          </div>
         </>
       )}
 
