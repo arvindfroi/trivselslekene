@@ -9,9 +9,9 @@
   --fg-faint: #6a6a77;
   --line: rgba(255, 255, 255, 0.1);
   --line-strong: rgba(255, 255, 255, 0.2);
-  /* Signaturgradient: grønn → lyseblå → vibrant lilla, på svart */
+  /* Signaturgradient: grønn → vibrant lilla, på svart */
   --accent: #2be5a0;
-  --accent-2: #38bdf8;
+  --accent-2: #22c55e;
   --accent-3: #a855f7;
   --gold: #fbbf24;
   --silver: #cbd5e1;
@@ -72,15 +72,14 @@ body {
   padding-right: env(safe-area-inset-right, 0px);
 }
 
-/* Signaturgradient: grønn og lilla i endene, lyseblå som en myk kobling.
-   Brede overganger så den blir jevn og ikke "rufsete". */
+/* Signaturgradient: grønn og lilla i endene, med en jevn, myk overgang
+   mellom dem — ingen egen blåfarge, kun naturlig fargeblanding. */
 .text-gradient {
   background-image: linear-gradient(
     100deg,
     var(--accent) 0%,
-    var(--accent) 14%,
-    var(--accent-2) 50%,
-    var(--accent-3) 86%,
+    var(--accent) 20%,
+    var(--accent-3) 80%,
     var(--accent-3) 100%
   );
   -webkit-background-clip: text;
@@ -92,9 +91,8 @@ body {
   background-image: linear-gradient(
     100deg,
     var(--accent) 0%,
-    var(--accent) 14%,
-    var(--accent-2) 50%,
-    var(--accent-3) 86%,
+    var(--accent) 20%,
+    var(--accent-3) 80%,
     var(--accent-3) 100%
   );
 }

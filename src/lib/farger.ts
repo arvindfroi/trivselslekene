@@ -1,7 +1,7 @@
 /** Fargepalett for automatisk brukertildeling.
  *  Tolv distinkte, mørke farger som fungerer som bakgrunnsfarger
  *  på øvelseskort med hvit tekst over. Valgt for å komplementere
- *  de eksisterende aksentfargene (grønn #2be5a0, blå #38bdf8, lilla #a855f7). */
+ *  de eksisterende aksentfargene (grønn #2be5a0, grønn #22c55e, lilla #a855f7). */
 export const BRUKER_FARGER = [
   "#1b3654", // 1. mørkeblå — hsl(215, 52%, 22%)
   "#561828", // 2. dyp rød — hsl(350, 55%, 22%)

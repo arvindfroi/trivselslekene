@@ -170,7 +170,7 @@ export default function Onboarding({ startNavn = "" }: { startNavn?: string }) {
                 ? {
                     // Én kontinuerlig gradient fordelt over alle delene
                     backgroundImage:
-                      "linear-gradient(90deg, var(--accent) 0%, var(--accent-2) 50%, var(--accent-3) 100%)",
+                      "linear-gradient(90deg, var(--accent) 0%, var(--accent-3) 100%)",
                     backgroundSize: `${total * 100}% 100%`,
                     backgroundPosition: `${(i / (total - 1)) * 100}% 0`,
                   }
