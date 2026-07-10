@@ -31,17 +31,22 @@ export default function StillingListe({
   toppPoeng: number;
 }) {
   const [apen, setApen] = useState<string | null>(null);
+  const [visAlle, setVisAlle] = useState(false);
+
+  const GRENSE = 5;
+  const skalKuttes = rader.length > GRENSE;
+  const synligeRader = visAlle ? rader : rader.slice(0, GRENSE);
 
   return (
     <ul>
-      {rader.map((rad, i) => {
+      {synligeRader.map((rad, i) => {
         const er = apen === rad.userId;
         const d = detaljer[rad.userId];
         return (
           <li
             key={rad.userId}
             className={cn(
-              i !== rader.length - 1 && "border-b border-line",
+              i !== synligeRader.length - 1 && "border-b border-line",
               i === 0 && rad.totalPoeng > 0 && "bg-gold/[0.07]",
               rad.userId === meId && "bg-accent-2/[0.06]"
             )}
@@ -132,6 +137,21 @@ export default function StillingListe({
           </li>
         );
       })}
+      {skalKuttes && (
+        <li className="border-t border-line">
+          <button
+            type="button"
+            onClick={() => setVisAlle((v) => !v)}
+            className="flex w-full items-center justify-center gap-1.5 px-4 py-3 text-sm font-medium text-accent-2 transition hover:bg-white/[0.03]"
+          >
+            {visAlle ? "Vis færre" : `Se resten (${rader.length - GRENSE})`}
+            <ChevronDown
+              size={16}
+              className={cn("transition-transform", visAlle && "rotate-180")}
+            />
+          </button>
+        </li>
+      )}
     </ul>
   );
 }
