@@ -36,16 +36,23 @@ export default function FaseNavigator({
     aktivFase,
     (_naavaerende, neste: number) => neste,
   );
-  const [, startTransition] = useTransition();
+  const [isPending, startTransition] = useTransition();
   const totalFaser = faser.length;
 
   function gaaTil(fase: number) {
     const neste = Math.min(totalFaser, Math.max(0, fase));
-    // Optimistisk oppdatering må skje FØR startTransition/await, ellers
+    if (neste === visFase) return; // allerede på denne fasen
+
+    // Optimistisk oppdatering må skje FØR startTransition, ellers
     // flusher ikke React den synkront på iOS Safari og knappene responderer ikke.
     settVisFase(neste);
-    startTransition(() => {
-      settAktivFase(ovelseId, neste);
+    startTransition(async () => {
+      try {
+        await settAktivFase(ovelseId, neste);
+      } catch {
+        // Ved feil vil useOptimistic automatisk rulle tilbake
+        // når neste revalidering skjer (server sender gammel verdi)
+      }
     });
   }
 
@@ -80,7 +87,7 @@ export default function FaseNavigator({
               type="button"
               variant="outline"
               className="px-3 py-2 text-xs"
-              disabled={visFase <= 1}
+              disabled={visFase <= 1 || isPending}
               onClick={() => gaaTil(visFase - 1)}
             >
               <ChevronLeft size={14} />
@@ -89,7 +96,7 @@ export default function FaseNavigator({
               type="button"
               variant="outline"
               className="px-3 py-2 text-xs"
-              disabled={visFase >= totalFaser}
+              disabled={visFase >= totalFaser || isPending}
               onClick={() => gaaTil(visFase + 1)}
             >
               <ChevronRight size={14} />

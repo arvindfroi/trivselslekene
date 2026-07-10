@@ -111,7 +111,7 @@ export async function opprettOvelse(
     try {
       const parsedFaser = faserSchema.safeParse(JSON.parse(faserRaw));
       if (parsedFaser.success) {
-        faser = parsedFaser.data.filter((f) => f.bildeUrl); // kun faser med bilde
+        faser = parsedFaser.data; // ta med alle faser, også de uten bilde
       }
     } catch {
       // ugyldig JSON — ignorer
@@ -341,4 +341,105 @@ export async function lagreResultatLag(
 
   revalidatePath(`/ovelser/${ovelseId}`);
   revalidatePath("/dashboard");
+}
+
+// ─── Eliminering mellom faser ─────────────────────────────────────────────
+
+/** Marker en deltaker som slått ut i øvelsens nåværende aktive fase. */
+export async function eliminerDeltaker(ovelseId: string, userId: string) {
+  const bruker = await krevInnloggetBruker();
+
+  // Hent aktivFase for å vite hvilken fase deltakeren slås ut i
+  const ovelse = await prisma.ovelse.findUnique({
+    where: { id: ovelseId, vertId: bruker.id },
+    select: { aktivFase: true },
+  });
+  if (!ovelse || ovelse.aktivFase < 1) return; // må ha en aktiv fase
+
+  await prisma.resultatIndividuell.updateMany({
+    where: { ovelseId, userId },
+    data: { utgattFase: ovelse.aktivFase },
+  });
+
+  revalidatePath(`/ovelser/${ovelseId}`);
+}
+
+/** Angre en eliminering — sett deltakeren tilbake til aktiv. */
+export async function angreEliminering(ovelseId: string, userId: string) {
+  const bruker = await krevInnloggetBruker();
+  // Vert-sjekk via deleteMany-mønster: kun vert kan angre
+  const ovelse = await prisma.ovelse.findUnique({
+    where: { id: ovelseId, vertId: bruker.id },
+    select: { id: true },
+  });
+  if (!ovelse) return;
+
+  await prisma.resultatIndividuell.updateMany({
+    where: { ovelseId, userId },
+    data: { utgattFase: null },
+  });
+
+  revalidatePath(`/ovelser/${ovelseId}`);
+}
+
+/**
+ * Beregn automatisk plassering basert på elimineringsrekkefølge.
+ * - Spillere uten utgattFase (overlevde alle faser) får topplasseringer
+ *   i den rekkefølgen de allerede står (manuelt rangert).
+ * - Spillere med utgattFase får bunnplasseringer: sist utslått = best plass,
+ *   først utslått = dårligst plass.
+ * Returnerer en liste med { userId, plassering } som kan brukes til
+ * å oppdatere resultatene, eller null hvis ingen har utgattFase.
+ */
+export async function beregnAutoPlassering(ovelseId: string) {
+  await krevVert(ovelseId);
+
+  const resultater = await prisma.resultatIndividuell.findMany({
+    where: { ovelseId },
+    select: { id: true, userId: true, plassering: true, utgattFase: true },
+    orderBy: [{ plassering: { sort: "asc", nulls: "last" } }, { utgattFase: "asc" }],
+  });
+
+  const harEliminering = resultater.some((r) => r.utgattFase !== null);
+  if (!harEliminering) return;
+
+  // Del opp i overlevende og utslåtte
+  const overlevende = resultater.filter((r) => r.utgattFase === null);
+  // Sorter utslåtte: sist utslått (høyest fase) = best plassering
+  const utslaatte = resultater
+    .filter((r) => r.utgattFase !== null)
+    .sort((a, b) => (b.utgattFase ?? 0) - (a.utgattFase ?? 0));
+
+  const totalt = resultater.length;
+  const oppdateringer: { id: string; plassering: number }[] = [];
+
+  // Overlevende får topplasseringer (1, 2, 3, ...)
+  overlevende.forEach((r, i) => {
+    if (r.plassering !== i + 1) {
+      oppdateringer.push({ id: r.id, plassering: i + 1 });
+    }
+  });
+
+  // Utslåtte får bunnplasseringer (totalt, totalt-1, totalt-2, ...)
+  utslaatte.forEach((r, i) => {
+    const plass = totalt - i;
+    if (r.plassering !== plass) {
+      oppdateringer.push({ id: r.id, plassering: plass });
+    }
+  });
+
+  if (oppdateringer.length === 0) return;
+
+  await prisma.$transaction(
+    oppdateringer.map((o) =>
+      prisma.resultatIndividuell.update({
+        where: { id: o.id },
+        data: { plassering: o.plassering },
+      }),
+    ),
+  );
+
+  revalidatePath(`/ovelser/${ovelseId}`);
+  revalidatePath("/dashboard");
+  revalidatePath("/stilling");
 }

@@ -149,6 +149,7 @@ model ResultatIndividuell {
   plassering Int?
   poeng      Float
   bonusPoeng Float   @default(0)
+  utgattFase Int?    /// null = fortsatt med; 1..N = slått ut i denne fasen
   notat      String?
 
   @@unique([ovelseId, userId])

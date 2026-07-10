@@ -8,12 +8,14 @@ import {
   opprettLag,
   settOvelseStatus,
   slettOvelse,
+  beregnAutoPlassering,
 } from "@/lib/actions/ovelser";
 import type { OvelseStatus } from "@prisma/client";
 import { lagFormatTekst, statusTekst, statusVariant } from "@/lib/ovelseLabels";
 import { bildeUrlFor } from "@/lib/bilde";
 import KvalitetChip from "@/components/KvalitetChip";
 import FaseNavigator from "@/components/FaseNavigator";
+import ElimineringsPanel from "@/components/ElimineringsPanel";
 import LiveRefresh from "@/components/LiveRefresh";
 import RankingRedigering from "@/components/RankingRedigering";
 import Card from "@/components/ui/Card";
@@ -65,6 +67,7 @@ export default async function OvelseSide({
           plassering: true,
           poeng: true,
           bonusPoeng: true,
+          utgattFase: true,
           user: { select: { id: true, navn: true } },
         },
         orderBy: { poeng: "desc" },
@@ -110,6 +113,10 @@ export default async function OvelseSide({
     "use server";
     const status = formData.get("status") as OvelseStatus;
     await settOvelseStatus(ovelseId, status);
+    // Ved FULLFORT: beregn automatisk plassering basert på elimineringsrekkefølge
+    if (status === "FULLFORT") {
+      await beregnAutoPlassering(ovelseId);
+    }
   }
 
   async function opprettLagAction(formData: FormData) {
@@ -160,6 +167,22 @@ export default async function OvelseSide({
               aktivFase={ovelse.aktivFase}
               erVert={erVert}
               fallbackBilde={ovelseBilde}
+            />
+          )}
+
+          {/* ─── Elimineringspanel (kun for vert under PAAGAAR med faser) ─── */}
+          {ovelse.type === "INDIVIDUELL" && (
+            <ElimineringsPanel
+              ovelseId={ovelseId}
+              deltakere={ovelse.individuelleResultater.map((r) => ({
+                userId: r.userId,
+                navn: r.user.navn,
+                utgattFase: r.utgattFase ?? null,
+              }))}
+              aktivFase={ovelse.aktivFase}
+              erVert={erVert}
+              status={ovelse.status}
+              harFaser={harFaser}
             />
           )}
 
@@ -268,11 +291,16 @@ export default async function OvelseSide({
                         : ""
                     }`}
                   >
-                    <span className="text-sm text-fg">
+                    <span className={`text-sm ${r.utgattFase ? "text-fg-faint line-through" : "text-fg"}`}>
                       <span className="mr-2 tabular-nums text-fg-faint">
                         {r.plassering ? `${r.plassering}.` : "–"}
                       </span>
                       {r.user.navn}
+                      {r.utgattFase && (
+                        <span className="ml-1.5 text-xs text-fg-faint">
+                          (ut i fase {r.utgattFase})
+                        </span>
+                      )}
                     </span>
                     <span className="flex items-center gap-2 text-sm tabular-nums">
                       <span className="text-fg">{r.poeng} p</span>
