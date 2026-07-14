@@ -19,6 +19,7 @@ import NyOvelseForm from "@/components/NyOvelseForm";
 import ProfilRediger from "@/components/ProfilRediger";
 import KollapsSeksjon from "@/components/KollapsSeksjon";
 import { MapPin, Users, Settings2, Trash2 } from "lucide-react";
+import LiveRefresh from "@/components/LiveRefresh";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: "Profil" };
@@ -72,6 +73,7 @@ export default async function ProfilSide({
 
   return (
     <>
+        <LiveRefresh aktiv />
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-xs tracking-[0.3em] text-accent-2 uppercase">

@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { Reorder } from "framer-motion";
-import { GripVertical, X, Save } from "lucide-react";
-import Button from "@/components/ui/Button";
+import { GripVertical, X } from "lucide-react";
 import { Input } from "@/components/ui/Field";
 import { lagreResultaterIndividuellMasse } from "@/lib/actions/ovelser";
+import { autoLagreTekst, useAutoLagre } from "@/lib/useAutoLagre";
 
 // Standard poeng for plassering 1–8+. Utover 8. plass = 0 poeng.
 const STANDARD_POENG = [10, 8, 6, 5, 4, 3, 2, 1];
@@ -57,7 +57,25 @@ export default function RankingRedigering({
     })),
   );
 
-  const [isPending, startTransition] = useTransition();
+  // Auto-lagring: hver endring (rekkefølge, bonus, legg til/fjern) lagres
+  // automatisk kort tid etter siste endring — ingen Lagre-knapp.
+  const lagreStatus = useAutoLagre(
+    rader,
+    async (r) => {
+      const resultater = r.map((rad, i) => {
+        const plassering = i + 1;
+        const stdPoeng = standardPoengFor(plassering);
+        return {
+          userId: rad.userId,
+          plassering,
+          poeng: stdPoeng + rad.bonusPoeng,
+          bonusPoeng: rad.bonusPoeng,
+        };
+      });
+      await lagreResultaterIndividuellMasse(ovelseId, resultater);
+    },
+    { aktiv: rader.length > 0 },
+  );
 
   // Finn brukere som ikke allerede er i listen
   const radIder = new Set(rader.map((r) => r.userId));
@@ -93,30 +111,27 @@ export default function RankingRedigering({
     );
   }
 
-  function handleLagre() {
-    const resultater = rader.map((r, i) => {
-      const plassering = i + 1;
-      const stdPoeng = standardPoengFor(plassering);
-      return {
-        userId: r.userId,
-        plassering,
-        poeng: stdPoeng + r.bonusPoeng,
-        bonusPoeng: r.bonusPoeng,
-      };
-    });
-
-    startTransition(async () => {
-      await lagreResultaterIndividuellMasse(ovelseId, resultater);
-    });
-  }
-
   // ─── Render ────────────────────────────────────────────────────────────
 
   return (
     <div className="mt-6">
-      <h2 className="mb-4 text-sm font-medium tracking-widest text-fg-dim uppercase">
-        Ranger deltakere
-      </h2>
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <h2 className="text-sm font-medium tracking-widest text-fg-dim uppercase">
+          Ranger deltakere
+        </h2>
+        <span
+          aria-live="polite"
+          className={`text-xs ${
+            lagreStatus === "feil"
+              ? "text-red-400"
+              : lagreStatus === "lagret"
+                ? "text-accent-2"
+                : "text-fg-faint"
+          }`}
+        >
+          {autoLagreTekst(lagreStatus)}
+        </span>
+      </div>
 
       {/* Rad-liste med drag-and-drop */}
       {rader.length === 0 ? (
@@ -240,29 +255,10 @@ export default function RankingRedigering({
         </div>
       )}
 
-      {/* Lagre-knapp */}
-      <div className="mt-6">
-        <Button
-          type="button"
-          onClick={handleLagre}
-          disabled={rader.length === 0 || isPending}
-          className="w-full"
-        >
-          {isPending ? (
-            "Lagrer…"
-          ) : (
-            <>
-              <Save size={16} />
-              Lagre resultater
-            </>
-          )}
-        </Button>
-      </div>
-
       {/* Poeng-forklaring */}
-      <p className="mt-2 text-center text-[10px] text-fg-faint">
+      <p className="mt-4 text-center text-[10px] text-fg-faint">
         Poeng = standard ({STANDARD_POENG.slice(0, 3).join(", ")}, …) + bonus.
-        Trykk på Lagre for å registrere.
+        Endringer lagres automatisk.
       </p>
     </div>
   );

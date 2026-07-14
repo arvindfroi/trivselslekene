@@ -11,6 +11,7 @@ import StatCard from "@/components/ui/StatCard";
 import RankBadge from "@/components/ui/RankBadge";
 import Avatar from "@/components/Avatar";
 import { ArrowRight, BarChart3, Swords, User } from "lucide-react";
+import LiveRefresh from "@/components/LiveRefresh";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: "Dashboard" };
@@ -35,6 +36,7 @@ export default async function HjemSide() {
 
   return (
     <>
+      <LiveRefresh aktiv />
       <p className="animate-fade-up text-xs tracking-[0.3em] text-accent-2 uppercase">
         {sesong.navn}
       </p>

@@ -28,6 +28,7 @@ import {
   Trophy,
   type LucideIcon,
 } from "lucide-react";
+import LiveRefresh from "@/components/LiveRefresh";
 
 const UTMERKELSER: {
   key: string;
@@ -152,6 +153,7 @@ export default async function StillingSide() {
 
   return (
     <>
+        <LiveRefresh aktiv />
         <p className="text-xs tracking-[0.3em] text-accent-2 uppercase">
           {sesong.navn}
         </p>

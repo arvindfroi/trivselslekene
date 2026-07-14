@@ -11,6 +11,7 @@ import Badge from "@/components/ui/Badge";
 import Avatar from "@/components/Avatar";
 import { statusTekst, statusVariant } from "@/lib/ovelseLabels";
 import { MapPin, Swords, Trash2, Trophy } from "lucide-react";
+import LiveRefresh from "@/components/LiveRefresh";
 
 export default async function FotballKampSide() {
   const session = await auth();
@@ -41,6 +42,7 @@ export default async function FotballKampSide() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 pt-6 pb-28">
+        <LiveRefresh aktiv />
         <div className="flex items-end justify-between gap-3">
           <div>
             <p className="text-xs tracking-[0.3em] text-accent-2 uppercase">
