@@ -9,6 +9,7 @@ import {
   byeSeeds,
   winnersRunder,
   losersRunder,
+  expectedSeedMap,
 } from "./bracket";
 
 describe("bracketSize", () => {
@@ -141,5 +142,61 @@ describe("hjelpere", () => {
     expect(losersRunder(4)).toBe(2);
     expect(losersRunder(8)).toBe(4);
     expect(losersRunder(16)).toBe(6);
+  });
+});
+
+describe("expectedSeedMap", () => {
+  // Hjelpefunksjon for å lese slot
+  const s = (map: ReturnType<typeof expectedSeedMap>, b: string, r: number, p: number) =>
+    map.get(`${b}-${r}-${p}`)!;
+
+  it("WR1 mapping for P=8, N=8", () => {
+    const m = expectedSeedMap(8, 8);
+    // seedRekkefolge(8) = [1,8,4,5,2,7,3,6]
+    expect(s(m, "W", 1, 1)).toEqual({ d1: 1, d2: 8 });
+    expect(s(m, "W", 1, 2)).toEqual({ d1: 4, d2: 5 });
+    expect(s(m, "W", 1, 3)).toEqual({ d1: 2, d2: 7 });
+    expect(s(m, "W", 1, 4)).toEqual({ d1: 3, d2: 6 });
+  });
+
+  it("WR2 for P=8, N=8 — winners advance", () => {
+    const m = expectedSeedMap(8, 8);
+    expect(s(m, "W", 2, 1)).toEqual({ d1: 1, d2: 4 });
+    expect(s(m, "W", 2, 2)).toEqual({ d1: 2, d2: 3 });
+  });
+
+  it("WR3 (final) for P=8, N=8", () => {
+    const m = expectedSeedMap(8, 8);
+    expect(s(m, "W", 3, 1)).toEqual({ d1: 1, d2: 2 });
+  });
+
+  it("LR1 for P=8, N=8 — losers from WR1", () => {
+    const m = expectedSeedMap(8, 8);
+    expect(s(m, "L", 1, 1)).toEqual({ d1: 8, d2: 5 });
+    expect(s(m, "L", 1, 2)).toEqual({ d1: 7, d2: 6 });
+  });
+
+  it("Grand finals for P=8, N=8", () => {
+    const m = expectedSeedMap(8, 8);
+    // W-vinner (1) vs L-vinner (2)
+    expect(s(m, "G", 1, 1)).toEqual({ d1: 1, d2: 2 });
+  });
+
+  it("alle slots har entries", () => {
+    const P = 8;
+    const m = expectedSeedMap(P, 8);
+    const slots = bracketSlots(P);
+    for (const slot of slots) {
+      expect(m.get(`${slot.bracket}-${slot.runde}-${slot.posisjon}`)).toBeDefined();
+    }
+  });
+
+  it("byes i N=5, P=8", () => {
+    const m = expectedSeedMap(8, 5);
+    // seeds: [1,8,4,5,2,7,3,6] — kun 1-5 er reelle
+    expect(s(m, "W", 1, 1)).toEqual({ d1: 1, d2: null }); // seed 8 > 5 → null
+    expect(s(m, "W", 1, 2)).toEqual({ d1: 4, d2: 5 });
+    expect(s(m, "W", 1, 3)).toEqual({ d1: 2, d2: null }); // seed 7 > 5 → null
+    expect(s(m, "W", 1, 4)).toEqual({ d1: 3, d2: null }); // seed 6 > 5 → null
   });
 });
