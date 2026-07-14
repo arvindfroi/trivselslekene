@@ -96,7 +96,7 @@ function PFromKamper(kamper: { bracket: string; runde: number }[]): number {
  * Ikke-2-potens antall håndteres med byes (walkover for toppseedene).
  */
 export async function opprettTurnering(formData: FormData) {
-  await krevInnlogget();
+  const bruker = await krevInnlogget();
   const sesong = await sikreAktivSesong();
 
   const navn = String(formData.get("navn") ?? "").trim();
@@ -218,6 +218,17 @@ export async function opprettTurnering(formData: FormData) {
       data: { deltager1Id: d1, deltager2Id: d2, status: "KLAR" },
     });
   }
+
+  // Opprett Ovelse-rad så turneringen vises i øvelsesgridet
+  await prisma.ovelse.create({
+    data: {
+      navn,
+      type: "TURNERING",
+      sesongId: sesong.id,
+      vertId: bruker.id,
+      turneringId: turnering.id,
+    },
+  });
 
   revalidatePath("/turnering");
   redirect("/turnering");
@@ -355,12 +366,17 @@ async function plasserDeltager(
   });
 }
 
-/** Slett en turnering (bare hvis PLANLAGT) */
+/** Slett en turnering og dens tilknyttede øvelse (kun PLANLAGT og PAAGAAR) */
 export async function slettTurnering(turneringId: string) {
   await krevInnlogget();
   const t = await prisma.turnering.findUnique({ where: { id: turneringId } });
-  if (!t || t.status !== "PLANLAGT") return;
+  if (!t || t.status === "FULLFORT") return;
+
+  // Slett tilknyttet Ovelse-rad først (foreign key constraint)
+  await prisma.ovelse.deleteMany({ where: { turneringId } });
+
   await prisma.turnering.delete({ where: { id: turneringId } });
   revalidatePath("/turnering");
+  revalidatePath("/ovelser");
   redirect("/turnering");
 }

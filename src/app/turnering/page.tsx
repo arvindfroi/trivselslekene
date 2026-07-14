@@ -115,13 +115,8 @@ export default async function TurneringSide() {
                       </p>
                     </div>
 
-                    {t.status === "PLANLAGT" && (
-                      <form
-                        action={async () => {
-                          "use server";
-                          await slettTurnering(t.id);
-                        }}
-                      >
+                    {t.status !== "FULLFORT" && (
+                      <form action={slettTurnering.bind(null, t.id)}>
                         <SubmitButton variant="danger" className="px-3 py-2 text-xs" pendingText="Sletter…">
                           <Trash2 size={14} /> Slett
                         </SubmitButton>

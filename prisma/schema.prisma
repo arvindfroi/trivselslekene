@@ -38,6 +38,7 @@ model Sesong {
 enum OvelseType {
   INDIVIDUELL
   LAG
+  TURNERING
 }
 
 enum LagFormat {
@@ -96,6 +97,9 @@ model Ovelse {
 
   vertId String
   vert   User   @relation("Vert", fields: [vertId], references: [id])
+
+  turneringId String? @unique
+  turnering   Turnering? @relation(fields: [turneringId], references: [id], onDelete: SetNull)
 
   lag                    Lag[]
   individuelleResultater ResultatIndividuell[]
@@ -184,6 +188,7 @@ model Turnering {
 
   deltagere TurneringsDeltager[]
   kamper    TurneringsKamp[]
+  ovelse    Ovelse?
 }
 
 /// Deltager i en turnering med seed 1–8

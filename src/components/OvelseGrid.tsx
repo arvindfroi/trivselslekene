@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, ChevronDown, MapPin, Trash2, Users } from "lucide-react";
+import { ArrowRight, ChevronDown, MapPin, Trash2, Trophy, Users } from "lucide-react";
 import type { Kvalitet, OvelseStatus, OvelseType } from "@prisma/client";
 import { kvalitetIkon, statusTekst, statusVariant } from "@/lib/ovelseLabels";
 import { antallFyllCeller, BENTO_GRID, bentoSpenn } from "@/lib/bento";
 import { slettOvelse } from "@/lib/actions/ovelser";
+import { slettTurnering } from "@/lib/actions/turnering";
 import Avatar from "@/components/Avatar";
 import Badge from "@/components/ui/Badge";
 import SubmitButton from "@/components/ui/SubmitButton";
@@ -25,6 +26,7 @@ export type SpillKort = {
   fellesLek: boolean;
   kvaliteter: Kvalitet[];
   deltakere: { id: string; navn: string }[];
+  turneringId?: string | null;
 };
 
 export default function OvelseGrid({
@@ -81,10 +83,11 @@ export default function OvelseGrid({
             <div className="flex items-start justify-between gap-2">
               <h3
                 className={cn(
-                  "font-display leading-tight text-fg",
+                  "font-display leading-tight text-fg inline-flex items-center gap-1.5",
                   hero ? "text-2xl" : "text-lg"
                 )}
               >
+                {s.type === "TURNERING" && <Trophy size={hero ? 20 : 16} className="text-accent-2 shrink-0" />}
                 {s.navn}
               </h3>
               <div className="flex shrink-0 items-center gap-2">
@@ -121,7 +124,7 @@ export default function OvelseGrid({
             </div>
 
             <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-fg-faint">
-              <span>{s.type === "LAG" ? "Lagøvelse" : "Individuell"}</span>
+              <span>{s.type === "LAG" ? "Lagøvelse" : s.type === "TURNERING" ? "Turnering" : "Individuell"}</span>
               <span>Vert: {s.vertNavn}</span>
               {s.lokasjon && (
                 <span className="inline-flex items-center gap-1">
@@ -196,7 +199,7 @@ export default function OvelseGrid({
                   )}
 
                   <Link
-                    href={`/ovelser/${s.id}`}
+                    href={s.type === "TURNERING" ? "/turnering" : `/ovelser/${s.id}`}
                     onClick={(e) => e.stopPropagation()}
                     className="mt-3 inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-accent-2 hover:text-fg active:bg-white/5 min-h-[44px]"
                   >
@@ -205,7 +208,11 @@ export default function OvelseGrid({
 
                   {s.vertId === currentUserId && (
                     <form
-                      action={slettOvelse.bind(null, s.id)}
+                      action={
+                        s.type === "TURNERING" && s.turneringId
+                          ? slettTurnering.bind(null, s.turneringId)
+                          : slettOvelse.bind(null, s.id)
+                      }
                       className="mt-2"
                       onSubmit={(e) => e.stopPropagation()}
                     >
@@ -214,7 +221,7 @@ export default function OvelseGrid({
                         className="px-3 py-2 text-xs"
                         pendingText="Sletter…"
                       >
-                        <Trash2 size={14} /> Slett øvelse
+                        <Trash2 size={14} /> Slett {s.type === "TURNERING" ? "turnering" : "øvelse"}
                       </SubmitButton>
                     </form>
                   )}

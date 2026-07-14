@@ -28,6 +28,7 @@ export default async function OvelserSide() {
       status: true,
       type: true,
       vertId: true,
+      turneringId: true,
       lokasjon: true,
       fellesLek: true,
       kvaliteter: true,
@@ -68,6 +69,7 @@ export default async function OvelserSide() {
       fellesLek: o.fellesLek,
       kvaliteter: o.kvaliteter,
       deltakere: [...deltakere.values()],
+      turneringId: o.turneringId,
     };
   });
 
