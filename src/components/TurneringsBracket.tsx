@@ -310,19 +310,17 @@ export default function TurneringsBracket({ turnering }: { turnering: TurneringM
 
   // Bygg kolonne-liste
   // Mønster: WR1 → LR1 → WR2 → LR2+LR3 → WR3 → LR4+LR5 → ... → WR(W) → LR(LR)+GF
-  const columns: { groups: RoundGroup[]; connector?: "right" | "down-right" }[] = [];
+  const columns: { groups: RoundGroup[] }[] = [];
 
   // WR1
   columns.push({
     groups: [{ label: "Runde 1", bracket: "W" as const, runder: [1], kamper: kamperFor("W", 1) }],
-    connector: "right",
   });
 
   // LR1 (hvis det finnes LR-kamper)
   if (LR >= 1 && kamperFor("L", 1).length > 0) {
     columns.push({
       groups: [{ label: "LR1", bracket: "L" as const, runder: [1], kamper: kamperFor("L", 1) }],
-      connector: "right",
     });
   }
 
@@ -331,7 +329,6 @@ export default function TurneringsBracket({ turnering }: { turnering: TurneringM
     // WR-runde
     columns.push({
       groups: [{ label: `Runde ${wr}`, bracket: "W" as const, runder: [wr], kamper: kamperFor("W", wr) }],
-      connector: wr < WR ? "right" : "right",
     });
 
     // Tilhørende LR-par (runde 2*wr-2 og 2*wr-1) hvis de finnes
@@ -359,10 +356,7 @@ export default function TurneringsBracket({ turnering }: { turnering: TurneringM
       }
 
       if (lrGroups.length > 0) {
-        columns.push({
-          groups: lrGroups,
-          connector: wr < WR ? "right" : "right",
-        });
+        columns.push({ groups: lrGroups });
       }
     }
   }
@@ -417,7 +411,7 @@ export default function TurneringsBracket({ turnering }: { turnering: TurneringM
                 visSeeding={visSeeding}
               />
               {/* Connector arrow between columns */}
-              {col.connector && ci < columns.length - 1 && <KolonnePil />}
+              {ci < columns.length - 1 && <KolonnePil />}
             </div>
           ))}
         </div>
