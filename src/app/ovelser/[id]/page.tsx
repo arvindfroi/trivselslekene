@@ -18,6 +18,7 @@ import FaseNavigator from "@/components/FaseNavigator";
 import ElimineringsPanel from "@/components/ElimineringsPanel";
 import LiveRefresh from "@/components/LiveRefresh";
 import RankingRedigering from "@/components/RankingRedigering";
+import LagResultatAutoLagre from "@/components/LagResultatAutoLagre";
 import Card from "@/components/ui/Card";
 import { LinkButton } from "@/components/ui/Button";
 import SubmitButton from "@/components/ui/SubmitButton";
@@ -126,8 +127,10 @@ export default async function OvelseSide({
 
   return (
     <div className="mx-auto max-w-4xl px-4 pt-6 pb-28">
-      {/* Tilskuere følger fasebytter og nye resultater live mens øvelsen pågår */}
-      <LiveRefresh aktiv={ovelse.status === "PAAGAAR" && !erVert} />
+      {/* Alle følger fasebytter, nye deltakere og resultater live — klient-
+          komponentene beholder sin lokale state gjennom refresh, så vertens
+          redigering forstyrres ikke. */}
+      <LiveRefresh aktiv />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs tracking-[0.2em] text-accent-2 uppercase">
@@ -406,30 +409,12 @@ export default async function OvelseSide({
                       </SubmitButton>
                     </form>
 
-                    <form action={lagreResultatAction} className="flex items-end gap-2">
-                      <div className="w-20">
-                        <Label htmlFor={`plassering-${lag.id}`}>Plass.</Label>
-                        <Input
-                          id={`plassering-${lag.id}`}
-                          type="number"
-                          name="plassering"
-                          min={1}
-                          defaultValue={lag.resultat?.plassering ?? undefined}
-                        />
-                      </div>
-                      <div className="w-24">
-                        <Label htmlFor={`poeng-${lag.id}`}>Poeng</Label>
-                        <Input
-                          id={`poeng-${lag.id}`}
-                          type="number"
-                          name="poeng"
-                          step="0.5"
-                          required
-                          defaultValue={lag.resultat?.poeng ?? undefined}
-                        />
-                      </div>
-                      <SubmitButton>Lagre</SubmitButton>
-                    </form>
+                    <LagResultatAutoLagre
+                      lagId={lag.id}
+                      plassering={lag.resultat?.plassering ?? null}
+                      poeng={lag.resultat?.poeng ?? null}
+                      lagre={lagreResultatAction}
+                    />
                   </div>
                 )}
               </Card>

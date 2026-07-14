@@ -8,6 +8,7 @@ import Card from "@/components/ui/Card";
 import Button, { LinkButton } from "@/components/ui/Button";
 import OvelseGrid, { type SpillKort } from "@/components/OvelseGrid";
 import { Plus } from "lucide-react";
+import LiveRefresh from "@/components/LiveRefresh";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: "Øvelser" };
@@ -72,6 +73,7 @@ export default async function OvelserSide() {
 
   return (
     <>
+        <LiveRefresh aktiv />
         <div className="flex items-end justify-between gap-3">
           <div>
             <p className="text-xs tracking-[0.3em] text-accent-2 uppercase">

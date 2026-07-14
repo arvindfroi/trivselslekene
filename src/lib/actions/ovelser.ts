@@ -292,9 +292,14 @@ export async function lagreResultaterIndividuellMasse(
 
   if (resultater.length === 0) return;
 
-  // Kjør alle upserts i én transaksjon
-  await prisma.$transaction(
-    resultater.map((r) =>
+  // Kjør alle upserts i én transaksjon. Resultater for deltakere som er
+  // fjernet fra rangeringen slettes, så listen i databasen alltid speiler
+  // det verten ser.
+  await prisma.$transaction([
+    prisma.resultatIndividuell.deleteMany({
+      where: { ovelseId, userId: { notIn: resultater.map((r) => r.userId) } },
+    }),
+    ...resultater.map((r) =>
       prisma.resultatIndividuell.upsert({
         where: { ovelseId_userId: { ovelseId, userId: r.userId } },
         create: {
@@ -311,7 +316,7 @@ export async function lagreResultaterIndividuellMasse(
         },
       }),
     ),
-  );
+  ]);
 
   revalidatePath(`/ovelser/${ovelseId}`);
   revalidatePath("/dashboard");

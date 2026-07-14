@@ -9,6 +9,7 @@ import SubmitButton from "@/components/ui/SubmitButton";
 import Badge from "@/components/ui/Badge";
 import TurneringsBracket, { type TurneringMedData } from "@/components/TurneringsBracket";
 import { Trophy, Trash2 } from "lucide-react";
+import LiveRefresh from "@/components/LiveRefresh";
 
 const statusBadge: Record<string, "planlagt" | "pagaar" | "fullfort"> = {
   PLANLAGT: "planlagt",
@@ -67,6 +68,7 @@ export default async function TurneringSide() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 pt-6 pb-28">
+        <LiveRefresh aktiv />
         <div className="flex items-end justify-between gap-3">
           <div>
             <p className="text-xs tracking-[0.3em] text-accent-2 uppercase">
