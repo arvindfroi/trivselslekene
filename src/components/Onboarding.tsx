@@ -356,6 +356,31 @@ export default function Onboarding({ startNavn = "" }: { startNavn?: string }) {
               tittel="Hva tester leken?"
               tekst="Velg egenskapene leken din setter på prøve — én eller flere."
             >
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-xs text-fg-faint">
+                  {data.kvaliteter.length} av {kvalitetValg.length} valgt
+                </span>
+                <div className="flex gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      oppdater({
+                        kvaliteter: kvalitetValg.map((k) => k.verdi),
+                      })
+                    }
+                    className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-accent-2 transition-colors hover:bg-accent-2/10"
+                  >
+                    Alle
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => oppdater({ kvaliteter: [] })}
+                    className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-fg-dim transition-colors hover:bg-white/[0.06]"
+                  >
+                    Ingen
+                  </button>
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {kvalitetValg.map((k) => {
                   const valgt = data.kvaliteter.includes(k.verdi);
