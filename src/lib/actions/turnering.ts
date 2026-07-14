@@ -89,42 +89,113 @@ function PFromKamper(kamper: { bracket: string; runde: number }[]): number {
   return kamper.filter((k) => k.bracket === "W" && k.runde === 1).length * 2;
 }
 
+/**
+ * Cascade fixup: etter WR1-behandling kan losers bracket ha slots med kun
+ * én deltager (fordi WR1 bye-posisjoner ikke produserer tapere).
+ * Auto-avanser solo-deltagere gjennom losers bracket.
+ *
+ * Regler for når en LR-slot auto-avanseres:
+ * - LR1 (runde 1): alltid — tomme plasser skyldes WR1-byes
+ * - Oddetallsrunder > 1 (3, 5, …): begge deltagere kommer fra forrige LR-runde,
+ *   så hvis bare én er på plass og den andre aldri kommer → auto-avanser
+ * - Partallsrunder (2, 4, …): D1 fra forrige LR, D2 fra WR. Ikke auto-avanser
+ *   hvis D2 mangler — den kommer når WR-kampen avgjøres.
+ * - Siste LR-runde: hvis den er partall, vent på WR-finaletaper.
+ */
+async function cascadeLosersBracket(turneringId: string, P: number) {
+  const LR = losersRunder(P);
+
+  // Hent alle LR-kamper, sortert etter runde og posisjon
+  const lrKamper = await prisma.turneringsKamp.findMany({
+    where: { turneringId, bracket: "L" },
+    orderBy: [{ runde: "asc" }, { posisjon: "asc" }],
+  });
+
+  // Bygg lookup: runde -> kamper sortert på posisjon
+  const byRunde = new Map<number, typeof lrKamper>();
+  for (const k of lrKamper) {
+    const arr = byRunde.get(k.runde) ?? [];
+    arr.push(k);
+    byRunde.set(k.runde, arr);
+  }
+
+  // Prosesser LR-runder i rekkefølge
+  for (let r = 1; r <= LR; r++) {
+    const kamper = byRunde.get(r);
+    if (!kamper || kamper.length === 0) continue;
+    kamper.sort((a, b) => a.posisjon - b.posisjon);
+
+    const isEven = r % 2 === 0;
+
+    for (const kamp of kamper) {
+      const harD1 = !!kamp.deltager1Id;
+      const harD2 = !!kamp.deltager2Id;
+
+      if (harD1 && harD2) continue;
+      if (kamp.status === "FULLFORT") continue;
+
+      // Begge mangler — slot er dødt
+      if (!harD1 && !harD2) continue;
+
+      // For partallsrunder: hvis D1 finnes men D2 mangler, IKKE auto-avanser.
+      // D2 kommer fra en WR-kamp som ikke er avgjort ennå.
+      if (isEven && harD1 && !harD2) continue;
+
+      // For partallsrunder: hvis D1 mangler men D2 finnes, betyr det at
+      // forrige LR-runde var død — D1 kommer aldri. Auto-avanser D2.
+      // For oddetallsrunder: auto-avanser solo-deltager uansett.
+      // For LR1: alltid auto-avanser (tom plass = WR1 bye).
+
+      const soloId = harD1 ? kamp.deltager1Id! : kamp.deltager2Id!;
+
+      await prisma.turneringsKamp.update({
+        where: { id: kamp.id },
+        data: { vinnerId: soloId, status: "FULLFORT" },
+      });
+
+      const target = nesteKampForVinner(
+        { bracket: "L", runde: kamp.runde, posisjon: kamp.posisjon },
+        P,
+      );
+      if (target) {
+        await plasserDeltager(turneringId, target, soloId);
+      }
+    }
+
+    // Refresh neste runde
+    if (r < LR) {
+      const nesteKamper = await prisma.turneringsKamp.findMany({
+        where: { turneringId, bracket: "L", runde: r + 1 },
+        orderBy: { posisjon: "asc" },
+      });
+      byRunde.set(r + 1, nesteKamper);
+    }
+  }
+}
+
 // ─── Server actions ───────────────────────────────────────────────────────
 
-/**
- * Oppretter en ny turnering med valgfritt antall deltagere (3–64).
- * Ikke-2-potens antall håndteres med byes (walkover for toppseedene).
- */
-export async function opprettTurnering(formData: FormData) {
-  const bruker = await krevInnlogget();
-  const sesong = await sikreAktivSesong();
+export type OpprettTurneringInput = {
+  navn: string;
+  sesongId: string;
+  vertId: string;
+  /** Deltager-IDer i seed-rekkefølge (seed 1 først, seed N sist) */
+  deltagerIder: string[];
+};
 
-  const navn = String(formData.get("navn") ?? "").trim();
-  if (!navn) return;
-
-  const antallStr = String(formData.get("antallDeltagere") ?? "8").trim();
-  const N = parseInt(antallStr, 10);
-  if (isNaN(N) || N < 3 || N > 64) return;
-
+/** Oppretter turnering med alle bracket-slots og byes. Brukes både av
+ *  server-action og av fullforOnboarding. */
+export async function opprettTurneringData(input: OpprettTurneringInput) {
+  const { navn, sesongId, vertId, deltagerIder } = input;
+  const N = deltagerIder.length;
   const P = bracketSize(N);
-
-  // Hent deltager-IDer i seed-rekkefølge (1..N)
-  const deltagerIder: string[] = [];
-  for (let i = 1; i <= N; i++) {
-    const id = String(formData.get(`seed${i}`) ?? "").trim();
-    if (!id) continue;
-    if (deltagerIder.includes(id)) continue;
-    deltagerIder.push(id);
-  }
-  if (deltagerIder.length !== N) return;
-
   const slots = bracketSlots(P);
 
   // Opprett turnering med alle slots
   await prisma.turnering.create({
     data: {
       navn,
-      sesongId: sesong.id,
+      sesongId,
       status: "PLANLAGT",
       deltagere: {
         create: deltagerIder.map((userId, i) => ({
@@ -144,11 +215,11 @@ export async function opprettTurnering(formData: FormData) {
   });
 
   const turnering = await prisma.turnering.findFirst({
-    where: { sesongId: sesong.id, navn },
+    where: { sesongId, navn },
     include: { deltagere: true, kamper: true },
     orderBy: { createdAt: "desc" },
   });
-  if (!turnering) return;
+  if (!turnering) return null;
 
   const deltagerMap = new Map(turnering.deltagere.map((d) => [d.seed, d.id]));
   const pSeeds = seedRekkefolge(P);
@@ -168,14 +239,12 @@ export async function opprettTurnering(formData: FormData) {
     if (!wr1Kamp) continue;
 
     if (s1Real && !s2Real) {
-      // Bye for s1
       const dId = deltagerMap.get(s1);
       if (!dId) continue;
       await prisma.turneringsKamp.update({
         where: { id: wr1Kamp.id },
         data: { deltager1Id: dId, vinnerId: dId, status: "FULLFORT" },
       });
-      // Avanser vinneren til WR2
       const target = nesteKampForVinner(
         { bracket: "W", runde: 1, posisjon: wr1Pos },
         P,
@@ -184,7 +253,6 @@ export async function opprettTurnering(formData: FormData) {
         await plasserDeltager(turnering.id, target, dId);
       }
     } else if (!s1Real && s2Real) {
-      // Bye for s2
       const dId = deltagerMap.get(s2);
       if (!dId) continue;
       await prisma.turneringsKamp.update({
@@ -199,10 +267,9 @@ export async function opprettTurnering(formData: FormData) {
         await plasserDeltager(turnering.id, target, dId);
       }
     }
-    // s1Real && s2Real: faktisk kamp — håndteres av wr1Par nedenfor
   }
 
-  // 2. Fyll inn faktiske WR1-kamper
+  // Fyll inn faktiske WR1-kamper
   for (const [s1, s2, pos] of wr1Par(N)) {
     const d1 = deltagerMap.get(s1);
     const d2 = deltagerMap.get(s2);
@@ -219,16 +286,55 @@ export async function opprettTurnering(formData: FormData) {
     });
   }
 
+  // Cascade fixup: auto-advance solo LR participants from WR1 bye gaps
+  await cascadeLosersBracket(turnering.id, P);
+
   // Opprett Ovelse-rad så turneringen vises i øvelsesgridet
   await prisma.ovelse.create({
     data: {
       navn,
       type: "TURNERING",
-      sesongId: sesong.id,
-      vertId: bruker.id,
+      sesongId,
+      vertId,
       turneringId: turnering.id,
     },
   });
+
+  return turnering.id;
+}
+
+/**
+ * Oppretter en ny turnering med valgfritt antall deltagere (3–64).
+ * Ikke-2-potens antall håndteres med byes (walkover for toppseedene).
+ */
+export async function opprettTurnering(formData: FormData) {
+  const bruker = await krevInnlogget();
+  const sesong = await sikreAktivSesong();
+
+  const navn = String(formData.get("navn") ?? "").trim();
+  if (!navn) return;
+
+  const antallStr = String(formData.get("antallDeltagere") ?? "8").trim();
+  const N = parseInt(antallStr, 10);
+  if (isNaN(N) || N < 3 || N > 64) return;
+
+  // Hent deltager-IDer i seed-rekkefølge (1..N)
+  const deltagerIder: string[] = [];
+  for (let i = 1; i <= N; i++) {
+    const id = String(formData.get(`seed${i}`) ?? "").trim();
+    if (!id) continue;
+    if (deltagerIder.includes(id)) continue;
+    deltagerIder.push(id);
+  }
+  if (deltagerIder.length !== N) return;
+
+  const turneringId = await opprettTurneringData({
+    navn,
+    sesongId: sesong.id,
+    vertId: bruker.id,
+    deltagerIder,
+  });
+  if (!turneringId) return;
 
   revalidatePath("/turnering");
   redirect("/turnering");
@@ -319,6 +425,12 @@ export async function velgVinner(kampId: string, vinnerDeltagerId: string) {
   const taperMål = nesteKampForTaper(detteSlot, P);
   if (taperMål) {
     await plasserDeltager(kamp.turneringId, taperMål, taperId!);
+  }
+
+  // Cascade fixup: WR-taper kan etterlate LR-slots med kun én deltager
+  // hvis den tilhørende WR1-posisjonen var en bye.
+  if (kamp.bracket === "W") {
+    await cascadeLosersBracket(kamp.turneringId, P);
   }
 
   revalidatePath("/turnering");

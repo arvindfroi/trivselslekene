@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import Avatar from "@/components/Avatar";
 import Badge from "@/components/ui/Badge";
 import { velgVinner } from "@/lib/actions/turnering";
-import { expectedSeedMap } from "@/lib/bracket";
-import { Trophy, ChevronRight, Eye } from "lucide-react";
+import { expectedSeedMap, winnersRunder, losersRunder } from "@/lib/bracket";
+import { Trophy, ChevronRight } from "lucide-react";
 
 export type TurneringMedData = {
   id: string;
@@ -31,13 +31,20 @@ export type TurneringMedData = {
   }[];
 };
 
-// Hjelp: beregn vertikal gap mellom kampkort basert på antall kamper i runden
+// ─── Hjelpefunksjoner ────────────────────────────────────────────────────
+
 function gapForMatchCount(count: number): string {
   if (count >= 8) return "0.25rem";
-  if (count >= 4) return "1rem";
-  if (count >= 2) return "3.5rem";
-  return "1.5rem"; // 1 kamp — gap er irrelevant
+  if (count >= 4) return "0.5rem";
+  if (count >= 2) return "1.5rem";
+  return "1.5rem";
 }
+
+function PFromKamper(kamper: TurneringMedData["kamper"]): number {
+  return kamper.filter((k) => k.bracket === "W" && k.runde === 1).length * 2;
+}
+
+// ─── DeltagerLinje ───────────────────────────────────────────────────────
 
 function DeltagerLinje({
   deltager,
@@ -55,7 +62,6 @@ function DeltagerLinje({
   forventetNavn?: string | null;
 }) {
   if (!deltager) {
-    // TBD — vis forventet navn hvis tilgjengelig
     if (forventetNavn) {
       return (
         <div className="flex items-center gap-2 px-2 py-1.5 text-xs text-fg-faint/40 italic">
@@ -90,7 +96,6 @@ function DeltagerLinje({
         <span className="truncate">{deltager.user.navn}</span>
         {erVinner && <Trophy size={12} className="ml-auto shrink-0" />}
       </button>
-      {/* Forventet navn som faint overlay — kun hvis faktisk deltager finnes OG forventet er en annen */}
       {forventetNavn && forventetNavn !== deltager.user.navn && (
         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-fg-faint/25 italic pointer-events-none">
           ({forventetNavn})
@@ -99,6 +104,8 @@ function DeltagerLinje({
     </div>
   );
 }
+
+// ─── KampKort ────────────────────────────────────────────────────────────
 
 function KampKort({
   kamp,
@@ -116,7 +123,6 @@ function KampKort({
   const [optimistiskVinner, setOptimistiskVinner] = useState<string | null>(null);
   const prevStatusRef = useRef(kamp.status);
 
-  // Rydd opp optimistisk state når serveren bekrefter resultatet
   useEffect(() => {
     if (kamp.status === "FULLFORT" && prevStatusRef.current !== "FULLFORT") {
       setOptimistiskVinner(null);
@@ -180,28 +186,111 @@ function KampKort({
   );
 }
 
-function PFromKamper(kamper: TurneringMedData["kamper"]): number {
-  return kamper.filter((k) => k.bracket === "W" && k.runde === 1).length * 2;
+// ─── Kolonne med kamper ──────────────────────────────────────────────────
+
+type RoundGroup = {
+  label: string;
+  bracket: "W" | "L" | "G";
+  runder: number[];
+  kamper: TurneringMedData["kamper"][number][];
+};
+
+function BracketKolonne({
+  groups,
+  turneringStatus,
+  forventetPerKamp,
+  visSeeding,
+}: {
+  groups: RoundGroup[];
+  turneringStatus: string;
+  forventetPerKamp: Map<string, { d1: string | null; d2: string | null }>;
+  visSeeding: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-4 shrink-0">
+      {groups.map((group) => {
+        // Group matches by round within the column
+        const byRunde = new Map<number, typeof group.kamper>();
+        for (const k of group.kamper) {
+          const arr = byRunde.get(k.runde) ?? [];
+          arr.push(k);
+          byRunde.set(k.runde, arr);
+        }
+
+        const sorterteRunder = [...byRunde.keys()].sort((a, b) => a - b);
+
+        return (
+          <div key={group.label} className="flex flex-col gap-3">
+            <div className="text-center">
+              <Badge
+                variant={
+                  group.bracket === "W" ? "pagaar"
+                  : group.bracket === "G" ? "gold"
+                  : "neutral"
+                }
+              >
+                {group.label}
+              </Badge>
+            </div>
+            {sorterteRunder.map((runde) => {
+              const kamper = byRunde.get(runde)!.sort((a, b) => a.posisjon - b.posisjon);
+              return (
+                <div
+                  key={`${group.label}-${runde}`}
+                  className="flex flex-col"
+                  style={{ gap: gapForMatchCount(kamper.length) }}
+                >
+                  {kamper.map((kamp) => (
+                    <KampKort
+                      key={kamp.id}
+                      kamp={kamp}
+                      turneringStatus={turneringStatus}
+                      forventetD1={visSeeding ? forventetPerKamp.get(kamp.id)?.d1 ?? null : null}
+                      forventetD2={visSeeding ? forventetPerKamp.get(kamp.id)?.d2 ?? null : null}
+                    />
+                  ))}
+                </div>
+              );
+            })}
+
+            {/* Connector arrow after this group (unless it's the last in column) */}
+            {/* Group-to-group connectors are shown in the column layout below */}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
+
+// ─── Connector-pil mellom kolonner ───────────────────────────────────────
+
+function KolonnePil() {
+  return (
+    <div className="flex items-center shrink-0 px-0.5">
+      <ChevronRight size={16} className="text-fg-faint" />
+    </div>
+  );
+}
+
+// ─── Hovedkomponent ──────────────────────────────────────────────────────
 
 export default function TurneringsBracket({ turnering }: { turnering: TurneringMedData }) {
   const { kamper, deltagere } = turnering;
   const [visSeeding, setVisSeeding] = useState(false);
 
-  // Deriver P og N
   const P = PFromKamper(kamper);
   const N = deltagere.length;
+  const WR = winnersRunder(P);
+  const LR = losersRunder(P);
 
-  // Bygg seed → navn lookup
+  // Build seed → navn lookup
   const seedNavn = new Map<number, string>();
   for (const d of deltagere) {
     seedNavn.set(d.seed, d.user.navn);
   }
 
-  // Beregn forventede seeds per slot
+  // Expected seeds
   const seedMap = P >= 4 ? expectedSeedMap(P, N) : null;
-
-  // Bygg forventet navn per kamp (key: kampId → { d1, d2 })
   const forventetPerKamp = new Map<string, { d1: string | null; d2: string | null }>();
   if (seedMap) {
     for (const kamp of kamper) {
@@ -213,28 +302,78 @@ export default function TurneringsBracket({ turnering }: { turnering: TurneringM
     }
   }
 
-  // Utled runder dynamisk fra kampdata
-  const wRunder = [...new Set(kamper.filter((k) => k.bracket === "W").map((k) => k.runde))].sort((a, b) => a - b);
-  const lRunder = [...new Set(kamper.filter((k) => k.bracket === "L").map((k) => k.runde))].sort((a, b) => a - b);
+  // ─── Bygg kolonner: interleaved WR og LR ─────────────────────────────
 
-  const wRounds = wRunder.map((r) => ({
-    runde: r,
-    kamper: kamper
-      .filter((k) => k.bracket === "W" && k.runde === r)
-      .sort((a, b) => a.posisjon - b.posisjon),
-  }));
+  // Hjelper: hent kamper for en spesifikk bracket+runde
+  const kamperFor = (bracket: string, runde: number) =>
+    kamper.filter((k) => k.bracket === bracket && k.runde === runde);
 
-  const lRounds = lRunder.map((r) => ({
-    runde: r,
-    kamper: kamper
-      .filter((k) => k.bracket === "L" && k.runde === r)
-      .sort((a, b) => a.posisjon - b.posisjon),
-  }));
+  // Bygg kolonne-liste
+  // Mønster: WR1 → LR1 → WR2 → LR2+LR3 → WR3 → LR4+LR5 → ... → WR(W) → LR(LR)+GF
+  const columns: { groups: RoundGroup[]; connector?: "right" | "down-right" }[] = [];
 
-  // Grand finals: G-M1 og ev. G-M2 (reset-kamp)
-  const grandFinals = kamper
-    .filter((k) => k.bracket === "G")
-    .sort((a, b) => a.runde - b.runde);
+  // WR1
+  columns.push({
+    groups: [{ label: "Runde 1", bracket: "W" as const, runder: [1], kamper: kamperFor("W", 1) }],
+    connector: "right",
+  });
+
+  // LR1 (hvis det finnes LR-kamper)
+  if (LR >= 1 && kamperFor("L", 1).length > 0) {
+    columns.push({
+      groups: [{ label: "LR1", bracket: "L" as const, runder: [1], kamper: kamperFor("L", 1) }],
+      connector: "right",
+    });
+  }
+
+  // For WR runde 2 til nest siste
+  for (let wr = 2; wr <= WR; wr++) {
+    // WR-runde
+    columns.push({
+      groups: [{ label: `Runde ${wr}`, bracket: "W" as const, runder: [wr], kamper: kamperFor("W", wr) }],
+      connector: wr < WR ? "right" : "right",
+    });
+
+    // Tilhørende LR-par (runde 2*wr-2 og 2*wr-1) hvis de finnes
+    const lrEven = 2 * wr - 2;
+    const lrOdd = 2 * wr - 1;
+
+    if (lrEven <= LR || lrOdd <= LR) {
+      const lrGroups: RoundGroup[] = [];
+
+      if (lrEven <= LR && kamperFor("L", lrEven).length > 0) {
+        lrGroups.push({
+          label: `LR${lrEven}`,
+          bracket: "L" as const,
+          runder: [lrEven],
+          kamper: kamperFor("L", lrEven),
+        });
+      }
+      if (lrOdd <= LR && kamperFor("L", lrOdd).length > 0) {
+        lrGroups.push({
+          label: `LR${lrOdd}`,
+          bracket: "L" as const,
+          runder: [lrOdd],
+          kamper: kamperFor("L", lrOdd),
+        });
+      }
+
+      if (lrGroups.length > 0) {
+        columns.push({
+          groups: lrGroups,
+          connector: wr < WR ? "right" : "right",
+        });
+      }
+    }
+  }
+
+  // Grand Finals
+  const grandFinals = kamper.filter((k) => k.bracket === "G").sort((a, b) => a.runde - b.runde);
+  if (grandFinals.length > 0) {
+    columns.push({
+      groups: [{ label: "Finale", bracket: "G" as const, runder: grandFinals.map((k) => k.runde), kamper: grandFinals }],
+    });
+  }
 
   // Finn turneringsvinner
   const sisteG = [...grandFinals].reverse().find((k) => k.status === "FULLFORT");
@@ -246,7 +385,7 @@ export default function TurneringsBracket({ turnering }: { turnering: TurneringM
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Seeding-toggle */}
       <div className="flex justify-end">
         <button
@@ -258,105 +397,40 @@ export default function TurneringsBracket({ turnering }: { turnering: TurneringM
               : "text-fg-dim hover:bg-white/[0.06] hover:text-fg"
           }`}
         >
-          <Eye size={14} />
-          Vis seeding
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+          {visSeeding ? "Skjul seeding" : "Vis seeding"}
         </button>
       </div>
 
-      {/* Winners bracket */}
-      <div>
-        <div className="mb-3 flex items-center gap-2">
-          <Badge variant="pagaar">Winners bracket</Badge>
-        </div>
-        <div className="flex items-start gap-0 overflow-x-auto pb-2">
-          {wRounds.map((round, ri) => (
-            <div key={round.runde} className="flex items-center">
-              <div className="flex flex-col" style={{ gap: gapForMatchCount(round.kamper.length) }}>
-                {round.kamper.map((kamp) => (
-                  <KampKort
-                    key={kamp.id}
-                    kamp={kamp}
-                    turneringStatus={turnering.status}
-                    forventetD1={visSeeding ? forventetPerKamp.get(kamp.id)?.d1 ?? null : null}
-                    forventetD2={visSeeding ? forventetPerKamp.get(kamp.id)?.d2 ?? null : null}
-                  />
-                ))}
-              </div>
-              {/* Connector lines to next round */}
-              {ri < wRounds.length - 1 && (
-                <div className="flex items-center mx-1">
-                  <ChevronRight size={14} className="text-fg-faint" />
-                </div>
-              )}
+      {/* Bracket-kolonner */}
+      <div className="overflow-x-auto pb-2 -mx-2 px-2">
+        <div className="flex items-start gap-0 min-w-min">
+          {columns.map((col, ci) => (
+            <div key={ci} className="flex items-start">
+              <BracketKolonne
+                groups={col.groups}
+                turneringStatus={turnering.status}
+                forventetPerKamp={forventetPerKamp}
+                visSeeding={visSeeding}
+              />
+              {/* Connector arrow between columns */}
+              {col.connector && ci < columns.length - 1 && <KolonnePil />}
             </div>
           ))}
-
-          {/* Connector to Grand Finals */}
-          {wRounds.length > 0 && grandFinals.length > 0 && (
-            <div className="flex items-center mx-1">
-              <ChevronRight size={14} className="text-accent-2" />
-            </div>
-          )}
-
-          {/* Grand Finals */}
-          {grandFinals.length > 0 && (
-            <div className="flex flex-col gap-2">
-              <Badge variant="gold">Grand Finals</Badge>
-              {grandFinals.map((kamp) => (
-                <KampKort
-                  key={kamp.id}
-                  kamp={kamp}
-                  turneringStatus={turnering.status}
-                  forventetD1={visSeeding ? forventetPerKamp.get(kamp.id)?.d1 ?? null : null}
-                  forventetD2={visSeeding ? forventetPerKamp.get(kamp.id)?.d2 ?? null : null}
-                />
-              ))}
-              {vinnerNavn && (
-                <div className="mt-1 text-center text-sm font-display text-accent-2">
-                  🏆 {vinnerNavn}
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Losers bracket */}
-      <div>
-        <div className="mb-3 flex items-center gap-2">
-          <Badge variant="neutral">Losers bracket</Badge>
+      {/* Turneringsvinner */}
+      {vinnerNavn && (
+        <div className="text-center pt-2">
+          <p className="text-sm font-display text-accent-2">
+            🏆 {vinnerNavn}
+          </p>
         </div>
-        <div className="flex items-start gap-0 overflow-x-auto pb-2">
-          {lRounds.map((round, ri) => (
-            <div key={round.runde} className="flex items-center">
-              <div className="flex flex-col" style={{ gap: gapForMatchCount(round.kamper.length) }}>
-                {round.kamper.map((kamp) => (
-                  <KampKort
-                    key={kamp.id}
-                    kamp={kamp}
-                    turneringStatus={turnering.status}
-                    forventetD1={visSeeding ? forventetPerKamp.get(kamp.id)?.d1 ?? null : null}
-                    forventetD2={visSeeding ? forventetPerKamp.get(kamp.id)?.d2 ?? null : null}
-                  />
-                ))}
-              </div>
-              {/* Connector between losers rounds */}
-              {ri < lRounds.length - 1 && (
-                <div className="flex items-center mx-1">
-                  <ChevronRight size={14} className="text-fg-faint" />
-                </div>
-              )}
-            </div>
-          ))}
-
-          {/* Losers → Grand Finals connector */}
-          {lRounds.length > 0 && grandFinals.length > 0 && (
-            <div className="flex items-center mx-1">
-              <ChevronRight size={14} className="text-accent-2" />
-            </div>
-          )}
-        </div>
-      </div>
+      )}
     </div>
   );
 }
