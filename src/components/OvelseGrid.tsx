@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { ArrowRight, ChevronDown, MapPin, Trash2, Trophy, Users } from "lucide-react";
 import type { Kvalitet, OvelseStatus, OvelseType } from "@prisma/client";
 import { kvalitetIkon, statusTekst, statusVariant } from "@/lib/ovelseLabels";
 import { antallFyllCeller, BENTO_GRID, bentoSpenn } from "@/lib/bento";
-import { slettOvelse } from "@/lib/actions/ovelser";
+import { slettOvelse, nesteOvelseStatus } from "@/lib/actions/ovelser";
 import { slettTurnering } from "@/lib/actions/turnering";
 import Avatar from "@/components/Avatar";
 import Badge from "@/components/ui/Badge";
@@ -37,6 +37,7 @@ export default function OvelseGrid({
   currentUserId: string;
 }) {
   const [apen, setApen] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
 
   // Regner ut spennet hver flis faktisk bruker akkurat nå (inkludert den
   // som ev. er utvidet), slik at vi kan fylle ut resten av gridet med
@@ -92,12 +93,74 @@ export default function OvelseGrid({
               </h3>
               <div className="flex shrink-0 items-center gap-2">
                 {er ? (
-                  <Badge
-                    variant={statusVariant[s.status]}
-                    pulse={s.status === "PAAGAAR"}
-                  >
-                    {statusTekst[s.status]}
-                  </Badge>
+                  s.vertId === currentUserId ? (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        startTransition(async () => {
+                          await nesteOvelseStatus(s.id);
+                        });
+                      }}
+                      disabled={isPending}
+                      className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-sans text-[11px] font-medium tracking-wide uppercase transition-opacity disabled:opacity-50"
+                      style={{
+                        borderColor:
+                          s.status === "PAAGAAR"
+                            ? "var(--color-accent-3)"
+                            : s.status === "FULLFORT"
+                              ? "var(--color-emerald-500)"
+                              : "var(--color-line)",
+                        color:
+                          s.status === "PAAGAAR"
+                            ? "var(--color-accent-3)"
+                            : s.status === "FULLFORT"
+                              ? "var(--color-emerald-300)"
+                              : "var(--color-fg-dim)",
+                        backgroundColor:
+                          s.status === "PAAGAAR"
+                            ? "rgb(var(--color-accent-3) / 0.1)"
+                            : s.status === "FULLFORT"
+                              ? "rgb(var(--color-emerald-500) / 0.1)"
+                              : "rgb(255 255 255 / 0.06)",
+                      }}
+                      title="Klikk for å bytte status"
+                    >
+                      {s.status === "PAAGAAR" && (
+                        <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-current" />
+                      )}
+                      {statusTekst[s.status]}
+                    </button>
+                  ) : (
+                    <Badge
+                      variant={statusVariant[s.status]}
+                      pulse={s.status === "PAAGAAR"}
+                    >
+                      {statusTekst[s.status]}
+                    </Badge>
+                  )
+                ) : s.vertId === currentUserId ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startTransition(async () => {
+                        await nesteOvelseStatus(s.id);
+                      });
+                    }}
+                    disabled={isPending}
+                    className={cn(
+                      "h-2.5 w-2.5 shrink-0 rounded-full border transition-opacity disabled:opacity-50",
+                      s.status === "PAAGAAR" &&
+                        "animate-pulse-dot border-accent-3/40 bg-accent-3",
+                      s.status === "FULLFORT" &&
+                        "border-emerald-500/40 bg-emerald-400",
+                      s.status === "PLANLAGT" &&
+                        "border-line bg-fg-dim"
+                    )}
+                    aria-label={`${statusTekst[s.status]} — klikk for å bytte`}
+                    title="Klikk for å bytte status"
+                  />
                 ) : (
                   <span
                     className={cn(

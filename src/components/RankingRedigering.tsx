@@ -5,6 +5,7 @@ import { Reorder } from "framer-motion";
 import { GripVertical, Link2, Link2Off, X } from "lucide-react";
 import { Input } from "@/components/ui/Field";
 import { lagreResultaterIndividuellMasse } from "@/lib/actions/ovelser";
+import type { OvelseStatus } from "@prisma/client";
 import { autoLagreTekst, useAutoLagre } from "@/lib/useAutoLagre";
 
 // Standard poeng for plassering 1–8+. Utover 8. plass = 0 poeng.
@@ -59,6 +60,7 @@ interface DeltakerRad {
 
 interface Props {
   ovelseId: string;
+  status: OvelseStatus;
   eksisterende: {
     id: string;
     userId: string;
@@ -72,9 +74,11 @@ interface Props {
 
 export default function RankingRedigering({
   ovelseId,
+  status,
   eksisterende,
   alleDeltakere,
 }: Props) {
+  const laast = status === "FULLFORT";
   // Bygg initiell rad-liste fra eksisterende resultater (sortert på plassering)
   const sorted = [...eksisterende].sort((a, b) => {
     const pa = a.plassering ?? 999;
@@ -120,7 +124,7 @@ export default function RankingRedigering({
       });
       await lagreResultaterIndividuellMasse(ovelseId, resultater);
     },
-    { aktiv: rader.length > 0 },
+    { aktiv: rader.length > 0 && !laast },
   );
 
   // Finn brukere som ikke allerede er i listen
@@ -197,6 +201,11 @@ export default function RankingRedigering({
 
   return (
     <div className="mt-6">
+      {laast && (
+        <p className="mb-3 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2 text-xs text-emerald-300">
+          Denne leken er fullført — resultatene er låst.
+        </p>
+      )}
       <div className="mb-4 flex items-center justify-between gap-2">
         <h2 className="text-sm font-medium tracking-widest text-fg-dim uppercase">
           Ranger deltakere
@@ -224,7 +233,7 @@ export default function RankingRedigering({
         <Reorder.Group
           axis="y"
           values={rader}
-          onReorder={handleReorder}
+          onReorder={laast ? () => {} : handleReorder}
           className="flex flex-col"
         >
           {rader.map((rad, i) => {
@@ -264,7 +273,7 @@ export default function RankingRedigering({
                 } ${
                   !iTie ? "py-2" : erTieMidt ? "py-0.5" : "py-2"
                 }`}
-                style={{ cursor: "grab" }}
+                style={{ cursor: laast ? "default" : "grab" }}
               >
                 {/* Drag-håndtak */}
                 <div className="flex shrink-0 items-center justify-center w-8 h-11 text-fg-faint">
@@ -304,6 +313,7 @@ export default function RankingRedigering({
                     className="h-9 px-1.5 text-xs text-center"
                     aria-label={`Bonuspoeng for ${rad.navn}`}
                     placeholder="0"
+                    disabled={laast}
                   />
                 </div>
 
@@ -317,10 +327,13 @@ export default function RankingRedigering({
                   <button
                     type="button"
                     onClick={() => toggleDelPlass(i)}
+                    disabled={laast}
                     className={`shrink-0 flex items-center justify-center w-8 h-8 transition-colors ${
-                      rad.delPlass
-                        ? "text-accent-2 hover:text-accent-2/70"
-                        : "text-fg-faint hover:text-fg-dim"
+                      laast
+                        ? "text-fg-faint/40 cursor-not-allowed"
+                        : rad.delPlass
+                          ? "text-accent-2 hover:text-accent-2/70"
+                          : "text-fg-faint hover:text-fg-dim"
                     }`}
                     aria-label={
                       rad.delPlass
@@ -347,7 +360,12 @@ export default function RankingRedigering({
                 <button
                   type="button"
                   onClick={() => fjernRad(i)}
-                  className="shrink-0 flex items-center justify-center w-8 h-8 text-fg-faint hover:text-red-300 transition-colors"
+                  disabled={laast}
+                  className={`shrink-0 flex items-center justify-center w-8 h-8 transition-colors ${
+                    laast
+                      ? "text-fg-faint/40 cursor-not-allowed"
+                      : "text-fg-faint hover:text-red-300"
+                  }`}
                   aria-label={`Fjern ${rad.navn}`}
                 >
                   <X size={15} strokeWidth={2.5} />
@@ -374,7 +392,7 @@ export default function RankingRedigering({
       )}
 
       {/* Legg til deltaker */}
-      {ledigeDeltakere.length > 0 && (
+      {!laast && ledigeDeltakere.length > 0 && (
         <div className="mt-4">
           <div className="mb-2 flex items-center justify-between">
             <span className="text-xs text-fg-faint">

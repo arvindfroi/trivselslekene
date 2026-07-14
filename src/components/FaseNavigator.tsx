@@ -4,6 +4,7 @@ import { useOptimistic, useTransition } from "react";
 import { ChevronLeft, ChevronRight, Play } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { settAktivFase } from "@/lib/actions/ovelser";
+import type { OvelseStatus } from "@prisma/client";
 
 export type FaseVisning = {
   id: string;
@@ -23,12 +24,14 @@ export default function FaseNavigator({
   faser,
   aktivFase,
   erVert,
+  status,
   fallbackBilde,
 }: {
   ovelseId: string;
   faser: FaseVisning[];
   aktivFase: number;
   erVert: boolean;
+  status: OvelseStatus;
   fallbackBilde: string | null;
 }) {
   const [visFase, settVisFase] = useOptimistic(
@@ -37,8 +40,10 @@ export default function FaseNavigator({
   );
   const [isPending, startTransition] = useTransition();
   const totalFaser = faser.length;
+  const laast = status === "FULLFORT";
 
   function gaaTil(fase: number) {
+    if (laast) return;
     const neste = Math.min(totalFaser, Math.max(0, fase));
     if (neste === visFase) return;
 
@@ -89,7 +94,7 @@ export default function FaseNavigator({
               <Button
                 type="button"
                 className="px-4 py-2 text-xs"
-                disabled={isPending}
+                disabled={isPending || laast}
                 onClick={() => gaaTil(1)}
               >
                 <Play size={14} />
@@ -103,7 +108,7 @@ export default function FaseNavigator({
                   type="button"
                   variant="secondary"
                   className="px-3 py-2 text-xs"
-                  disabled={visFase <= 1 || isPending}
+                  disabled={visFase <= 1 || isPending || laast}
                   onClick={() => gaaTil(visFase - 1)}
                   aria-label="Forrige fase"
                 >
@@ -114,7 +119,7 @@ export default function FaseNavigator({
                   type="button"
                   variant={erFerdig ? "secondary" : "primary"}
                   className="px-3 py-2 text-xs"
-                  disabled={erFerdig || isPending}
+                  disabled={erFerdig || isPending || laast}
                   onClick={() => gaaTil(visFase + 1)}
                   aria-label={erFerdig ? "Alle faser vist" : "Neste fase"}
                 >

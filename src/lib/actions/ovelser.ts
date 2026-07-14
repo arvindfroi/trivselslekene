@@ -49,6 +49,61 @@ async function krevVert(ovelseId: string) {
   return bruker;
 }
 
+// ─── Delt hjelpefunksjon for øvelsesoppretting ─────────────────────────────
+
+export type OpprettOvelseData = {
+  navn: string;
+  type: OvelseType;
+  lagFormat: LagFormat | null;
+  kvaliteter: Kvalitet[];
+  fellesLek: boolean;
+  lokasjon: string | null;
+  beskrivelse: string | null;
+  bildeUrl: string | null;
+  faser: { tittel?: string; bildeUrl?: string | null }[];
+  sesongId: string;
+  vertId: string;
+  deltagerIder?: string[];
+};
+
+export async function opprettOvelseIDb(data: OpprettOvelseData) {
+  const ovelse = await prisma.ovelse.create({
+    data: {
+      navn: data.navn,
+      type: data.type,
+      lagFormat: data.type === "LAG" ? data.lagFormat : null,
+      kvaliteter: data.kvaliteter,
+      fellesLek: data.fellesLek,
+      lokasjon: data.lokasjon,
+      beskrivelse: data.beskrivelse,
+      bildeUrl: data.bildeUrl?.startsWith("data:image/") ? data.bildeUrl : null,
+      sesongId: data.sesongId,
+      vertId: data.vertId,
+      faser: data.faser.length > 0
+        ? {
+            create: data.faser.map((f, i) => ({
+              rekkefolge: i + 1,
+              tittel: f.tittel?.trim() || null,
+              bildeUrl: f.bildeUrl?.startsWith("data:image/") ? f.bildeUrl : null,
+            })),
+          }
+        : undefined,
+    },
+  });
+
+  if (data.type === "INDIVIDUELL" && data.deltagerIder && data.deltagerIder.length > 0) {
+    await prisma.resultatIndividuell.createMany({
+      data: data.deltagerIder.map((userId) => ({
+        ovelseId: ovelse.id,
+        userId,
+        poeng: 0,
+      })),
+    });
+  }
+
+  return ovelse;
+}
+
 // ─── Server actions ───────────────────────────────────────────────────────
 
 export async function opprettOvelse(
@@ -119,48 +174,29 @@ export async function opprettOvelse(
   }
 
 
-  // ─── Opprett øvelse i databasen ─────────────────────────────────
-  const ovelse = await prisma.ovelse.create({
-    data: {
-      navn: parsed.data.navn,
-      beskrivelse: beskrivelse || null,
-      lokasjon: lokasjon || null,
-      type,
-      lagFormat: type === "LAG" ? lagFormat : null,
-      kvaliteter,
-      fellesLek,
-      bildeUrl: bildeUrl?.startsWith("data:image/") ? bildeUrl : null,
-      sesongId: sesong.id,
-      vertId: bruker.id,
-      faser: faser.length > 0
-        ? {
-            create: faser.map((f, i) => ({
-              rekkefolge: i + 1,
-              tittel: f.tittel?.trim() || null,
-              bildeUrl: f.bildeUrl?.startsWith("data:image/") ? f.bildeUrl : null,
-            })),
-          }
-        : undefined,
-    },
+  // ─── Hent deltagere ────────────────────────────────────────────────
+  const deltagerIder = type === "INDIVIDUELL"
+    ? formData
+        .getAll("deltagere")
+        .map(String)
+        .filter((id) => id && id !== bruker.id) // verten deltar ikke (med mindre fellesLek)
+    : undefined;
+
+  // ─── Opprett øvelse via delt hjelpefunksjon ────────────────────────
+  const ovelse = await opprettOvelseIDb({
+    navn: parsed.data.navn,
+    type,
+    lagFormat: type === "LAG" ? lagFormat : null,
+    kvaliteter,
+    fellesLek,
+    lokasjon: lokasjon || null,
+    beskrivelse: beskrivelse || null,
+    bildeUrl: bildeUrl?.startsWith("data:image/") ? bildeUrl : null,
+    faser,
+    sesongId: sesong.id,
+    vertId: bruker.id,
+    deltagerIder,
   });
-
-  // ─── Opprett resultater for valgte deltagere (kun individuell) ────
-  if (type === "INDIVIDUELL") {
-    const deltagerIder = formData
-      .getAll("deltagere")
-      .map(String)
-      .filter((id) => id && id !== bruker.id); // verten deltar ikke (med mindre fellesLek)
-
-    if (deltagerIder.length > 0) {
-      await prisma.resultatIndividuell.createMany({
-        data: deltagerIder.map((userId) => ({
-          ovelseId: ovelse.id,
-          userId,
-          poeng: 0,
-        })),
-      });
-    }
-  }
 
   revalidatePath("/ovelser");
   revalidatePath("/profil");
@@ -198,6 +234,38 @@ export async function settOvelseStatus(ovelseId: string, status: OvelseStatus) {
   });
   revalidatePath(`/ovelser/${ovelseId}`);
   revalidatePath("/ovelser");
+}
+
+const STATUS_REKKEFOLGE: Record<OvelseStatus, OvelseStatus> = {
+  PLANLAGT: "PAAGAAR",
+  PAAGAAR: "FULLFORT",
+  FULLFORT: "PLANLAGT",
+};
+
+/** Sykler øvelsens status til neste: PLANLAGT → PÅGÅR → FULLFØRT → PLANLAGT. */
+export async function nesteOvelseStatus(ovelseId: string) {
+  const bruker = await krevInnloggetBruker();
+
+  const ovelse = await prisma.ovelse.findUnique({
+    where: { id: ovelseId, vertId: bruker.id },
+    select: { status: true },
+  });
+  if (!ovelse) return;
+
+  const neste = STATUS_REKKEFOLGE[ovelse.status];
+  await prisma.ovelse.updateMany({
+    where: { id: ovelseId, vertId: bruker.id },
+    data: { status: neste },
+  });
+
+  if (neste === "FULLFORT") {
+    await beregnAutoPlassering(ovelseId);
+  }
+
+  revalidatePath(`/ovelser/${ovelseId}`);
+  revalidatePath("/ovelser");
+  revalidatePath("/dashboard");
+  revalidatePath("/stilling");
 }
 
 export async function settAktivFase(ovelseId: string, fase: number) {

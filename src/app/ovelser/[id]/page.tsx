@@ -99,6 +99,7 @@ export default async function OvelseSide({
     : alleBrukere.filter((b) => b.id !== ovelse.vertId);
   const erVert = session.user.id === ovelse.vertId;
   const harFaser = ovelse.faser.length > 0;
+  const laast = ovelse.status === "FULLFORT";
 
   // Bilder sendes som små URL-er (cachebare via /api/bilde) i stedet for å
   // inline base64 i payloaden — dette var hovedårsaken til trege knapper.
@@ -169,6 +170,7 @@ export default async function OvelseSide({
               faser={faserMedBilde}
               aktivFase={ovelse.aktivFase}
               erVert={erVert}
+              status={ovelse.status}
               fallbackBilde={ovelseBilde}
             />
           )}
@@ -269,6 +271,7 @@ export default async function OvelseSide({
           <Card className="mt-8" padding="p-5 sm:p-6">
             <RankingRedigering
               ovelseId={ovelseId}
+              status={ovelse.status}
               eksisterende={ovelse.individuelleResultater}
               alleDeltakere={deltakere}
             />
@@ -321,7 +324,12 @@ export default async function OvelseSide({
         )
       ) : (
         <div className="mt-8 flex flex-col gap-5">
-          {erVert && (
+          {laast && (
+            <p className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2 text-xs text-emerald-300">
+              Denne leken er fullført — resultatene er låst.
+            </p>
+          )}
+          {erVert && !laast && (
             <Card padding="p-5 sm:p-6">
               <h2 className="mb-4 text-sm font-medium tracking-widest text-fg-dim uppercase">
                 Opprett lag
@@ -372,7 +380,7 @@ export default async function OvelseSide({
                       className="flex items-center gap-1.5 rounded-full border border-line bg-white/[0.05] px-3 py-1 text-sm text-fg"
                     >
                       {m.user.navn}
-                      {erVert && (
+                      {erVert && !laast && (
                         <form action={fjernMedlemAction}>
                           <input type="hidden" name="lagmedlemId" value={m.id} />
                           <button
@@ -391,7 +399,7 @@ export default async function OvelseSide({
                   )}
                 </ul>
 
-                {erVert && (
+                {erVert && !laast && (
                   <div className="mt-4 flex flex-col gap-3 border-t border-line pt-4 sm:flex-row sm:items-end sm:justify-between">
                     <form action={leggTilMedlemAction} className="flex items-end gap-2">
                       <div>
