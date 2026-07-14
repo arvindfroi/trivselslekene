@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
+import { tildelFarge } from "@/lib/farger";
 
 async function cleanupDUsers() {
   // Finn alle D-brukere
@@ -47,11 +48,11 @@ export async function opprettTestdeltakere() {
 
   await cleanupDUsers();
 
-  // Opprett D1–D9 med poeng: D1=1, D2=2, … D9=9
+  // Opprett D1–D9 med poeng og unike farger
   const users: { id: string; navn: string }[] = [];
   for (let i = 1; i <= 9; i++) {
     const u = await prisma.user.create({
-      data: { navn: `D${i}` },
+      data: { navn: `D${i}`, farge: await tildelFarge() },
     });
     users.push(u);
   }

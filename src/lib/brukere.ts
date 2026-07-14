@@ -33,5 +33,5 @@ export async function finnEllerOpprettBruker(raaNavn: string) {
   const eksisterende = await finnBrukerVedNavn(navn);
   if (eksisterende) return eksisterende;
 
-  return prisma.user.create({ data: { navn: parsed.data, farge: tildelFarge(parsed.data) } });
+  return prisma.user.create({ data: { navn: parsed.data, farge: await tildelFarge() } });
 }
