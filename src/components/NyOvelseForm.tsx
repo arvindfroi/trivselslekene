@@ -71,6 +71,7 @@ export default function NyOvelseForm({ stillingTopp, alleDeltagere }: Props) {
   const [faser, setFaser] = useState<LokalFase[]>([]);
   const [valgteDeltagere, setValgteDeltagere] = useState<Set<string>>(new Set());
   const [antallTurneringDeltagere, setAntallTurneringDeltagere] = useState(8);
+  const [antallInput, setAntallInput] = useState("8");
   const [isPending, startTransition] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
   const faseFileRefs = useRef<Map<number, HTMLInputElement>>(new Map());
@@ -553,10 +554,24 @@ export default function NyOvelseForm({ stillingTopp, alleDeltagere }: Props) {
               type="number"
               min={3}
               max={64}
-              value={antallTurneringDeltagere}
+              value={antallInput}
               onChange={(e) => {
+                setAntallInput(e.target.value);
                 const v = parseInt(e.target.value, 10);
                 if (!isNaN(v) && v >= 3 && v <= 64) {
+                  setAntallTurneringDeltagere(v);
+                }
+              }}
+              onBlur={() => {
+                const v = parseInt(antallInput, 10);
+                if (isNaN(v) || v < 3) {
+                  setAntallInput("3");
+                  setAntallTurneringDeltagere(3);
+                } else if (v > 64) {
+                  setAntallInput("64");
+                  setAntallTurneringDeltagere(64);
+                } else {
+                  setAntallInput(String(v));
                   setAntallTurneringDeltagere(v);
                 }
               }}
