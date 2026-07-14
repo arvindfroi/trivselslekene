@@ -36,10 +36,13 @@ export async function opprettLagkampData(input: OpprettLagkampInput) {
     i < rest ? base + 1 : base,
   );
 
-  // Snake draft
+  // Snake draft: fordel jevnt slik at Lag 1 ikke får alle beste spillerne
   const lagenesMedlemmer: string[][] = lagStorrelser.map(() => []);
   topp.forEach((r, i) => {
-    lagenesMedlemmer[i % antallLag].push(r.userId);
+    const runde = Math.floor(i / antallLag);
+    const pos = i % antallLag;
+    const lagIndex = runde % 2 === 0 ? pos : antallLag - 1 - pos;
+    lagenesMedlemmer[lagIndex].push(r.userId);
   });
 
   const ovelse = await prisma.ovelse.create({

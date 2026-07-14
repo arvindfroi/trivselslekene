@@ -149,7 +149,7 @@ export default function Onboarding({ startNavn = "", alleDeltagere = [] }: Props
     }));
   };
 
-  // ─── FellesLek auto-velger alle ───────────────────────────────────
+  // ─── FellesLek auto-velger alle — tømmer ved avskrudd ────────────
   const handleFellesLekChange = (checked: boolean) => {
     oppdater({ fellesLek: checked });
     if (checked) {
@@ -157,6 +157,12 @@ export default function Onboarding({ startNavn = "", alleDeltagere = [] }: Props
         ...d,
         fellesLek: true,
         deltagere: alleDeltagere.map((u) => u.userId),
+      }));
+    } else {
+      setData((d) => ({
+        ...d,
+        fellesLek: false,
+        deltagere: [],
       }));
     }
   };

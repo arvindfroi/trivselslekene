@@ -110,14 +110,11 @@ export async function opprettOvelse(
   prev: unknown,
   formData: FormData,
 ) {
-  const bruker = await krevInnloggetBruker();
-  const sesong = await sikreAktivSesong();
-
   const opprettType = String(formData.get("opprettType") ?? "ovelse");
 
   // ─── Turnering ────────────────────────────────────────────────
   if (opprettType === "turnering") {
-    // Delegér til turnering.ts — den håndterer alt inkludert redirect
+    // Delegér til turnering.ts — den håndterer auth og redirect
     return opprettTurnering(formData);
   }
 
@@ -132,6 +129,9 @@ export async function opprettOvelse(
     }
     return { error: "Ukjent feil ved opprettelse av lagkamp" };
   }
+
+  const bruker = await krevInnloggetBruker();
+  const sesong = await sikreAktivSesong();
 
   // ─── Vanlig øvelse ────────────────────────────────────────────
   const navn = String(formData.get("navn") ?? "").trim();
@@ -154,6 +154,8 @@ export async function opprettOvelse(
   const lagFormat = formData.get("lagFormat") as LagFormat | null;
   const fellesLek = formData.get("fellesLek") === "on";
   const bildeUrl = String(formData.get("bildeUrl") ?? "").trim() || null;
+
+  // Når fellesLek er på, skal verten (bruker.id) IKKE filtreres bort fra deltagerlisten
   const kvaliteter = formData
     .getAll("kvaliteter")
     .map(String)
@@ -175,11 +177,12 @@ export async function opprettOvelse(
 
 
   // ─── Hent deltagere ────────────────────────────────────────────────
+  // Når fellesLek er på skal verten (bruker.id) være med som deltager
   const deltagerIder = type === "INDIVIDUELL"
     ? formData
         .getAll("deltagere")
         .map(String)
-        .filter((id) => id && id !== bruker.id) // verten deltar ikke (med mindre fellesLek)
+        .filter((id) => id && (fellesLek || id !== bruker.id))
     : undefined;
 
   // ─── Opprett øvelse via delt hjelpefunksjon ────────────────────────

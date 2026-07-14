@@ -121,7 +121,7 @@ export async function fullforOnboarding(data: OnboardingData) {
       sesongId: sesong.id,
       vertId: user.id,
       deltagerIder: (data.type ?? "INDIVIDUELL") === "INDIVIDUELL"
-        ? (data.deltagere ?? []).filter((id) => id !== user.id)
+        ? (data.deltagere ?? []).filter((id) => data.fellesLek || id !== user.id)
         : undefined,
     });
   }

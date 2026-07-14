@@ -96,10 +96,12 @@ export default function NyOvelseForm({ stillingTopp, alleDeltagere }: Props) {
     setValgteDeltagere(new Set());
   };
 
-  // Auto-velg alle når fellesLek aktiveres
+  // Auto-velg alle når fellesLek aktiveres, tøm når den skrus av
   const handleFellesLekChange = (checked: boolean) => {
     if (checked) {
       setValgteDeltagere(new Set(alleDeltagere.map((d) => d.userId)));
+    } else {
+      setValgteDeltagere(new Set());
     }
   };
 
