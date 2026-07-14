@@ -81,7 +81,7 @@ export default function ProfilRediger({
               ref={fileRef}
               type="file"
               accept="image/*"
-              hidden
+              className="sr-only"
               onChange={velgFil}
             />
             <Button
