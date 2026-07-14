@@ -12,19 +12,25 @@ async function krevBrukerId() {
   return session.user.id;
 }
 
-/** Endrer navnet på den innloggede brukeren og friskner opp sesjonen. */
-export async function endreNavn(formData: FormData) {
+/**
+ * Endrer navnet på den innloggede brukeren og friskner opp sesjonen.
+ * Returnerer en feilkode i stedet for å redirecte, så navnet kan
+ * auto-lagres fra klienten uten sidenavigasjon.
+ */
+export async function endreNavn(
+  navn: string,
+): Promise<{ feil: "kort" | "opptatt" | null }> {
   const userId = await krevBrukerId();
-  const nyttNavn = normaliserNavn(String(formData.get("navn") ?? ""));
+  const nyttNavn = normaliserNavn(navn);
 
   if (nyttNavn.length < 2) {
-    redirect("/profil?navnfeil=kort");
+    return { feil: "kort" };
   }
 
   // Navnet er nøkkelen til kontoen — det kan ikke deles med en annen bruker.
   const finnes = await finnBrukerVedNavn(nyttNavn);
   if (finnes && finnes.id !== userId) {
-    redirect("/profil?navnfeil=opptatt");
+    return { feil: "opptatt" };
   }
 
   await prisma.user.update({ where: { id: userId }, data: { navn: nyttNavn } });
@@ -35,7 +41,8 @@ export async function endreNavn(formData: FormData) {
   revalidatePath("/ovelser");
 
   // Logg inn på nytt så sesjonen (og hilsenen) viser det nye navnet.
-  await signIn("credentials", { navn: nyttNavn, redirectTo: "/profil" });
+  await signIn("credentials", { navn: nyttNavn, redirect: false });
+  return { feil: null };
 }
 
 /** Lagrer et profilbilde (data-URL) eller fjerner det når verdien er tom. */

@@ -28,12 +28,12 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function ProfilSide({
   searchParams,
 }: {
-  searchParams: Promise<{ navnfeil?: string; ny?: string }>;
+  searchParams: Promise<{ ny?: string }>;
 }) {
   const session = await auth();
   if (!session?.user) redirect("/bli-med");
 
-  const { navnfeil, ny } = await searchParams;
+  const { ny } = await searchParams;
   const sesong = await sikreAktivSesong();
   const [bruker, mine, sesongData] = await Promise.all([
     prisma.user.findUnique({
@@ -99,7 +99,6 @@ export default async function ProfilSide({
                 id: session.user.id,
                 bildeUrl: bruker?.bildeUrl ?? null,
               })}
-              navnFeil={navnfeil}
             />
           </div>
         </div>

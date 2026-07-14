@@ -1,12 +1,13 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { Camera, Check, Trash2 } from "lucide-react";
+import { Camera, Trash2 } from "lucide-react";
 import Avatar from "@/components/Avatar";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import { Input, Label } from "@/components/ui/Field";
 import { endreNavn, oppdaterBilde } from "@/lib/actions/profil";
+import { autoLagreTekst, useAutoLagre } from "@/lib/useAutoLagre";
 
 // Skalerer bildet ned til maks 256px og komprimerer til en liten JPEG-dataURL
 // før det lagres, så vi slipper ekstern fillagring.
@@ -39,15 +40,26 @@ function skalerBilde(file: File): Promise<string> {
 export default function ProfilRediger({
   navn,
   bildeUrl,
-  navnFeil,
 }: {
   navn: string;
   bildeUrl: string | null;
-  navnFeil?: string;
 }) {
   const [bilde, setBilde] = useState<string | null>(bildeUrl);
   const [pending, startTransition] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Navnet auto-lagres kort tid etter siste tastetrykk — ingen Lagre-knapp.
+  const [navnVerdi, setNavnVerdi] = useState(navn);
+  const [navnFeil, setNavnFeil] = useState<"kort" | "opptatt" | null>(null);
+  const navnStatus = useAutoLagre(
+    navnVerdi,
+    async (verdi) => {
+      const res = await endreNavn(verdi);
+      setNavnFeil(res.feil);
+      if (res.feil) throw new Error(res.feil);
+    },
+    { aktiv: navnVerdi.trim().length >= 2, forsinkelseMs: 1500 },
+  );
 
   const velgFil = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -75,7 +87,7 @@ export default function ProfilRediger({
     <Card padding="p-5 sm:p-6">
       <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
         <div className="flex items-center gap-4">
-          <Avatar navn={navn} bildeUrl={bilde} size={72} />
+          <Avatar navn={navnVerdi} bildeUrl={bilde} size={72} />
           <div className="flex flex-col gap-2">
             <input
               ref={fileRef}
@@ -107,21 +119,30 @@ export default function ProfilRediger({
           </div>
         </div>
 
-        <form action={endreNavn} className="flex-1">
-          <Label htmlFor="navn">Navn</Label>
-          <div className="flex items-center gap-2">
-            <Input
-              id="navn"
-              name="navn"
-              defaultValue={navn}
-              required
-              minLength={2}
-              className="flex-1"
-            />
-            <Button type="submit" className="shrink-0 px-4">
-              <Check size={16} /> Lagre
-            </Button>
+        <div className="flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <Label htmlFor="navn">Navn</Label>
+            <span
+              aria-live="polite"
+              className={`text-xs ${
+                navnStatus === "feil"
+                  ? "text-red-400"
+                  : navnStatus === "lagret"
+                    ? "text-accent-2"
+                    : "text-fg-faint"
+              }`}
+            >
+              {pending ? "Lagrer…" : autoLagreTekst(navnStatus)}
+            </span>
           </div>
+          <Input
+            id="navn"
+            name="navn"
+            value={navnVerdi}
+            onChange={(e) => setNavnVerdi(e.target.value)}
+            required
+            minLength={2}
+          />
           {navnFeil === "opptatt" && (
             <p className="mt-2 text-sm text-red-300">
               Navnet er allerede i bruk av en annen deltaker.
@@ -132,7 +153,7 @@ export default function ProfilRediger({
               Navnet må ha minst to bokstaver.
             </p>
           )}
-        </form>
+        </div>
       </div>
     </Card>
   );
