@@ -103,7 +103,7 @@ body {
 .bg-icon-badge {
   background-color: var(--accent);
   background-image: radial-gradient(
-    circle at 30% 25%,
+    circle at 50% 50%,
     color-mix(in srgb, var(--accent-3) 55%, transparent) 0%,
     transparent 65%
   );
