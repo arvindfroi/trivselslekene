@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { opprettOvelse } from "@/lib/actions/ovelser";
 import { opprettTurnering } from "@/lib/actions/turnering";
+import { antallByes } from "@/lib/bracket";
 import {
   kvalitetValg,
   lagFormatValg,
@@ -545,28 +546,27 @@ export default function NyOvelseForm({ stillingTopp, alleDeltagere }: Props) {
       {/* ─── Turnering-spesifikke felter ─── */}
       {opprettType === "turnering" && (
         <div>
-          <Label>Antall deltagere</Label>
-          <div className="grid grid-cols-3 gap-2 mb-4">
-            {([4, 8, 16] as const).map((n) => (
-              <label
-                key={n}
-                className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm transition-colors ${
-                  antallTurneringDeltagere === n
-                    ? "border-accent-2 bg-accent-2/10 text-fg"
-                    : "border-line bg-white/[0.03] text-fg-dim"
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="_antall"
-                  value={n}
-                  checked={antallTurneringDeltagere === n}
-                  onChange={() => setAntallTurneringDeltagere(n)}
-                  className="sr-only"
-                />
-                {n}
-              </label>
-            ))}
+          <Label htmlFor="antallInput">Antall deltagere</Label>
+          <div className="flex items-center gap-3 mb-3">
+            <Input
+              id="antallInput"
+              type="number"
+              min={3}
+              max={64}
+              value={antallTurneringDeltagere}
+              onChange={(e) => {
+                const v = parseInt(e.target.value, 10);
+                if (!isNaN(v) && v >= 3 && v <= 64) {
+                  setAntallTurneringDeltagere(v);
+                }
+              }}
+              className="w-24"
+            />
+            <span className="text-xs text-fg-faint">
+              {antallByes(antallTurneringDeltagere) > 0
+                ? `${antallByes(antallTurneringDeltagere)} walkover — toppseedene går rett til runde 2`
+                : "ingen walkovers"}
+            </span>
           </div>
 
           <Label>Deltagere (seed 1–{antallTurneringDeltagere})</Label>
