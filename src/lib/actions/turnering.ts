@@ -5,7 +5,13 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
-import { bracketSlots, type KampSlot } from "@/lib/bracket";
+import {
+  bracketSlots,
+  type KampSlot,
+  winnersRunder,
+  losersRunder,
+  wr1Par,
+} from "@/lib/bracket";
 
 type AdvanceTarget = {
   bracket: "W" | "L" | "G";
@@ -14,80 +20,73 @@ type AdvanceTarget = {
   somDeltager: 1 | 2;
 };
 
+// ─── Advance-funksjoner (generaliserte for N deltagere) ──────────────────
+
 /**
- * For en gitt kamp, finner vi hvor vinneren og taperen skal plasseres.
- * Returnerer null hvis deltageren er ute av turneringen.
+ * Hvor vinneren av en kamp avanserer til.
+ * N = antall deltagere i turneringen.
  */
-function nesteKampForVinner(kamp: KampSlot): AdvanceTarget | null {
+function nesteKampForVinner(kamp: KampSlot, N: number): AdvanceTarget | null {
   const { bracket, runde, posisjon } = kamp;
+  const WR = winnersRunder(N);
+  const LR = losersRunder(N);
 
   if (bracket === "W") {
-    if (runde === 3) {
-      // Vinner av winners bracket → Grand Finals deltager 1
+    if (runde === WR) {
       return { bracket: "G", runde: 1, posisjon: 1, somDeltager: 1 };
     }
-    // WR1/WR2: vinneren går videre i winners
     const nyPosisjon = Math.ceil(posisjon / 2);
     const somDeltager: 1 | 2 = posisjon % 2 === 1 ? 1 : 2;
     return { bracket: "W", runde: runde + 1, posisjon: nyPosisjon, somDeltager };
   }
 
   if (bracket === "L") {
-    if (runde === 4) {
-      // Vinner av losers bracket → Grand Finals deltager 2
+    const isLastLR = runde === LR;
+    const isOdd = runde % 2 === 1;
+
+    if (isLastLR) {
       return { bracket: "G", runde: 1, posisjon: 1, somDeltager: 2 };
     }
-    if (runde === 3) {
-      // LR3 → LR4 (deltager 1)
-      return { bracket: "L", runde: 4, posisjon: 1, somDeltager: 1 };
+
+    if (isOdd) {
+      // Oddetallsrunde: posisjon bevares, alltid deltager 1
+      return { bracket: "L", runde: runde + 1, posisjon, somDeltager: 1 };
     }
-    if (runde === 1) {
-      // LR1(2)→LR2(2): posisjon beholdes, alltid deltager 1
-      return { bracket: "L", runde: 2, posisjon, somDeltager: 1 };
-    }
-    // LR2(2)→LR3(1): halver posisjon
+
+    // Partallsrunde: halver posisjon
     const nyPosisjon = Math.ceil(posisjon / 2);
     const somDeltager: 1 | 2 = posisjon % 2 === 1 ? 1 : 2;
     return { bracket: "L", runde: runde + 1, posisjon: nyPosisjon, somDeltager };
   }
 
-  // G: vinneren har vunnet turneringen (ingen neste kamp)
   return null;
 }
 
-function nesteKampForTaper(kamp: KampSlot): AdvanceTarget | null {
+/**
+ * Hvor taperen av en kamp sendes (kun relevant for winners bracket).
+ */
+function nesteKampForTaper(kamp: KampSlot, N: number): AdvanceTarget | null {
   const { bracket, runde, posisjon } = kamp;
+  const WR = winnersRunder(N);
+  const LR = losersRunder(N);
 
-  if (bracket === "W") {
-    if (runde === 3) {
-      // Taper av winners finals → LR4 (deltager 2)
-      return { bracket: "L", runde: 4, posisjon: 1, somDeltager: 2 };
-    }
-    // Taper av WR1/WR2 → losers bracket
-    // WR1: pos 1→LR1-1(d1), pos 2→LR1-1(d2), pos 3→LR1-2(d1), pos 4→LR1-2(d2)
-    // WR2: pos 1→LR2-1(d2), pos 2→LR2-2(d2)
-    if (runde === 1) {
-      const lrPosisjon = Math.ceil(posisjon / 2);
-      const somDeltager: 1 | 2 = posisjon % 2 === 1 ? 1 : 2;
-      return { bracket: "L", runde: 1, posisjon: lrPosisjon, somDeltager };
-    }
-    if (runde === 2) {
-      return { bracket: "L", runde: 2, posisjon, somDeltager: 2 };
-    }
+  if (bracket !== "W") return null;
+
+  if (runde === WR) {
+    // Taper av winners final → siste losers-runde, deltager 2
+    return { bracket: "L", runde: LR, posisjon: 1, somDeltager: 2 };
   }
 
-  if (bracket === "L") {
-    // Taper i losers bracket = ute
-    return null;
+  if (runde === 1) {
+    // WR1-tapere → LR1
+    const lrPosisjon = Math.ceil(posisjon / 2);
+    const somDeltager: 1 | 2 = posisjon % 2 === 1 ? 1 : 2;
+    return { bracket: "L", runde: 1, posisjon: lrPosisjon, somDeltager };
   }
 
-  if (bracket === "G") {
-    // G-M1: hvis deltager 2 (LB-vinner) vinner → reset-kamp G-M2
-    // (håndteres spesielt i velgVinner)
-    return null;
-  }
-
-  return null;
+  // WR-runde r (2 ≤ r < WR) → LR-runde (2*r - 2), deltager 2
+  const lrRunde = 2 * runde - 2;
+  return { bracket: "L", runde: lrRunde, posisjon, somDeltager: 2 };
 }
 
 // ─── Hjelpefunksjoner ─────────────────────────────────────────────────────
@@ -102,8 +101,8 @@ function krevInnlogget() {
 // ─── Server actions ───────────────────────────────────────────────────────
 
 /**
- * Oppretter en ny turnering med 8 deltagere (seed 1–8).
- * Deltagerne tas fra topp 8 på stillingen hvis ingen spesifiseres.
+ * Oppretter en ny turnering med valgfritt antall deltagere (4, 8 eller 16).
+ * Deltagerne tas fra form-data i seed-rekkefølge.
  */
 export async function opprettTurnering(formData: FormData) {
   await krevInnlogget();
@@ -112,18 +111,22 @@ export async function opprettTurnering(formData: FormData) {
   const navn = String(formData.get("navn") ?? "").trim();
   if (!navn) return;
 
-  // Hent deltager-IDer (8 stk, i seed-rekkefølge 1–8)
+  const antallStr = String(formData.get("antallDeltagere") ?? "8").trim();
+  const antallDeltagere = parseInt(antallStr, 10);
+  if (![4, 8, 16].includes(antallDeltagere)) return;
+
+  // Hent deltager-IDer i seed-rekkefølge
   const deltagerIder: string[] = [];
-  for (let i = 1; i <= 8; i++) {
+  for (let i = 1; i <= antallDeltagere; i++) {
     const id = String(formData.get(`seed${i}`) ?? "").trim();
     if (!id) continue;
     if (deltagerIder.includes(id)) continue;
     deltagerIder.push(id);
   }
 
-  if (deltagerIder.length !== 8) return;
+  if (deltagerIder.length !== antallDeltagere) return;
 
-  const slots = bracketSlots();
+  const slots = bracketSlots(antallDeltagere);
 
   await prisma.turnering.create({
     data: {
@@ -147,7 +150,7 @@ export async function opprettTurnering(formData: FormData) {
     },
   });
 
-  // Plasser seeds i WR1: seed 1v8, 4v5, 3v6, 2v7
+  // Plasser seeds i WR1 med riktig seeding-mønster
   const turnering = await prisma.turnering.findFirst({
     where: { sesongId: sesong.id, navn },
     include: { deltagere: true, kamper: true },
@@ -158,21 +161,13 @@ export async function opprettTurnering(formData: FormData) {
 
   const deltagerMap = new Map(turnering.deltagere.map((d) => [d.seed, d.id]));
 
-  // WR1 paringer: [ [seedA, seedB, posisjon], ... ]
-  const wr1Par: [number, number, number][] = [
-    [1, 8, 1],
-    [4, 5, 2],
-    [3, 6, 3],
-    [2, 7, 4],
-  ];
-
-  for (const [s1, s2, pos] of wr1Par) {
+  for (const [s1, s2, pos] of wr1Par(antallDeltagere)) {
     const d1 = deltagerMap.get(s1);
     const d2 = deltagerMap.get(s2);
     if (!d1 || !d2) continue;
 
     const kamp = turnering.kamper.find(
-      (k) => k.bracket === "W" && k.runde === 1 && k.posisjon === pos
+      (k) => k.bracket === "W" && k.runde === 1 && k.posisjon === pos,
     );
     if (!kamp) continue;
 
@@ -195,26 +190,25 @@ export async function velgVinner(kampId: string, vinnerDeltagerId: string) {
 
   const kamp = await prisma.turneringsKamp.findUnique({
     where: { id: kampId },
-    include: { turnering: true },
+    include: { turnering: { include: { _count: { select: { deltagere: true } } } } },
   });
 
   if (!kamp || kamp.status === "FULLFORT") return;
   if (kamp.turnering.status === "FULLFORT") return;
   if (!kamp.deltager1Id || !kamp.deltager2Id) return;
 
-  // Valider at vinneren faktisk er en av deltagerne
   if (vinnerDeltagerId !== kamp.deltager1Id && vinnerDeltagerId !== kamp.deltager2Id) return;
+
+  const N = kamp.turnering._count.deltagere;
 
   const taperId =
     vinnerDeltagerId === kamp.deltager1Id ? kamp.deltager2Id : kamp.deltager1Id;
 
-  // Oppdater kampen
   await prisma.turneringsKamp.update({
     where: { id: kampId },
     data: { vinnerId: vinnerDeltagerId, status: "FULLFORT" },
   });
 
-  // Sett turnering til PAAGAAR hvis den er PLANLAGT
   if (kamp.turnering.status === "PLANLAGT") {
     await prisma.turnering.update({
       where: { id: kamp.turnering.id },
@@ -231,10 +225,7 @@ export async function velgVinner(kampId: string, vinnerDeltagerId: string) {
   // Spesialhåndtering for Grand Finals
   // G-M1: hvis LB-vinner vinner → opprett reset-kamp G-M2
   if (kamp.bracket === "G" && kamp.runde === 1) {
-    // Hent deltagerne for å vite hvem som er WB-vinner og LB-vinner
-    // I G-M1 er deltager1 WB-vinner, deltager2 LB-vinner
     if (vinnerDeltagerId === kamp.deltager2Id) {
-      // LB-vinner vant → opprett reset-kamp G-M2
       await prisma.turneringsKamp.create({
         data: {
           turneringId: kamp.turneringId,
@@ -247,7 +238,6 @@ export async function velgVinner(kampId: string, vinnerDeltagerId: string) {
         },
       });
     } else {
-      // WB-vinner vant → turnering ferdig
       await prisma.turnering.update({
         where: { id: kamp.turnering.id },
         data: { status: "FULLFORT" },
@@ -257,8 +247,8 @@ export async function velgVinner(kampId: string, vinnerDeltagerId: string) {
     return;
   }
 
-  // Håndter reset-kamp (G-M2) — vinneren vinner hele turneringen
-  if (kamp.bracket === "G" && kamp.posisjon === 1 && kamp.runde === 2) {
+  // G-M2: vinneren vinner hele turneringen
+  if (kamp.bracket === "G" && kamp.runde === 2) {
     await prisma.turnering.update({
       where: { id: kamp.turnering.id },
       data: { status: "FULLFORT" },
@@ -268,13 +258,13 @@ export async function velgVinner(kampId: string, vinnerDeltagerId: string) {
   }
 
   // Flytt vinner videre
-  const vinnerMål = nesteKampForVinner(detteSlot);
+  const vinnerMål = nesteKampForVinner(detteSlot, N);
   if (vinnerMål) {
     await plasserDeltager(kamp.turneringId, vinnerMål, vinnerDeltagerId);
   }
 
   // Flytt taper til losers bracket
-  const taperMål = nesteKampForTaper(detteSlot);
+  const taperMål = nesteKampForTaper(detteSlot, N);
   if (taperMål) {
     await plasserDeltager(kamp.turneringId, taperMål, taperId!);
   }
@@ -287,7 +277,6 @@ async function plasserDeltager(
   target: AdvanceTarget,
   deltagerId: string,
 ) {
-  // Hent kampen med begge deltager-felter for å sjekke om den andre allerede er på plass
   const kamp = await prisma.turneringsKamp.findFirst({
     where: {
       turneringId,
@@ -303,7 +292,6 @@ async function plasserDeltager(
   const erDeltager1 = target.somDeltager === 1;
   const annenErSatt = erDeltager1 ? !!kamp.deltager2Id : !!kamp.deltager1Id;
 
-  // Oppdater + sett KLAR hvis begge deltagere nå er på plass
   await prisma.turneringsKamp.update({
     where: { id: kamp.id },
     data: {

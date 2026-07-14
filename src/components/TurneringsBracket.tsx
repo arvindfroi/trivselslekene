@@ -29,9 +29,12 @@ export type TurneringMedData = {
   }[];
 };
 
-// Hjelp: finn kamp i en gitt posisjon
-function finnKamp(kamper: TurneringMedData["kamper"], bracket: string, runde: number, posisjon: number) {
-  return kamper.find((k) => k.bracket === bracket && k.runde === runde && k.posisjon === posisjon);
+// Hjelp: beregn vertikal gap mellom kampkort basert på antall kamper i runden
+function gapForMatchCount(count: number): string {
+  if (count >= 8) return "0.25rem";
+  if (count >= 4) return "1rem";
+  if (count >= 2) return "3.5rem";
+  return "1.5rem"; // 1 kamp — gap er irrelevant
 }
 
 function DeltagerLinje({
@@ -143,26 +146,28 @@ function KampKort({
 export default function TurneringsBracket({ turnering }: { turnering: TurneringMedData }) {
   const { kamper } = turnering;
 
-  // Winners bracket: runder 1-3
-  const wRounds = [1, 2, 3].map((r) => ({
+  // Utled runder dynamisk fra kampdata
+  const wRunder = [...new Set(kamper.filter((k) => k.bracket === "W").map((k) => k.runde))].sort((a, b) => a - b);
+  const lRunder = [...new Set(kamper.filter((k) => k.bracket === "L").map((k) => k.runde))].sort((a, b) => a - b);
+
+  const wRounds = wRunder.map((r) => ({
     runde: r,
-    kamper: [1, 2, 3, 4]
-      .map((p) => finnKamp(kamper, "W", r, p))
-      .filter(Boolean) as TurneringMedData["kamper"],
+    kamper: kamper
+      .filter((k) => k.bracket === "W" && k.runde === r)
+      .sort((a, b) => a.posisjon - b.posisjon),
   }));
 
-  // Losers bracket: runder 1-4
-  const lRounds = [1, 2, 3, 4].map((r) => ({
+  const lRounds = lRunder.map((r) => ({
     runde: r,
-    kamper: [1, 2, 3, 4]
-      .map((p) => finnKamp(kamper, "L", r, p))
-      .filter(Boolean) as TurneringMedData["kamper"],
+    kamper: kamper
+      .filter((k) => k.bracket === "L" && k.runde === r)
+      .sort((a, b) => a.posisjon - b.posisjon),
   }));
 
-  // Grand finals
-  const grandFinals = [1, 2]
-    .map((p) => finnKamp(kamper, "G", 1, p) ?? finnKamp(kamper, "G", 2, p))
-    .filter(Boolean) as TurneringMedData["kamper"];
+  // Grand finals: G-M1 og ev. G-M2 (reset-kamp)
+  const grandFinals = kamper
+    .filter((k) => k.bracket === "G")
+    .sort((a, b) => a.runde - b.runde);
 
   // Finn turneringsvinner
   const sisteG = [...grandFinals].reverse().find((k) => k.status === "FULLFORT");
@@ -183,7 +188,7 @@ export default function TurneringsBracket({ turnering }: { turnering: TurneringM
         <div className="flex items-start gap-0 overflow-x-auto pb-2">
           {wRounds.map((round, ri) => (
             <div key={round.runde} className="flex items-center">
-              <div className="flex flex-col" style={{ gap: round.runde === 1 ? "1rem" : round.runde === 2 ? "3.5rem" : "8rem" }}>
+              <div className="flex flex-col" style={{ gap: gapForMatchCount(round.kamper.length) }}>
                 {round.kamper.map((kamp) => (
                   <KampKort
                     key={kamp.id}
@@ -237,7 +242,7 @@ export default function TurneringsBracket({ turnering }: { turnering: TurneringM
         <div className="flex items-start gap-0 overflow-x-auto pb-2">
           {lRounds.map((round, ri) => (
             <div key={round.runde} className="flex items-center">
-              <div className="flex flex-col" style={{ gap: round.runde <= 2 ? "1.5rem" : round.runde === 3 ? "3rem" : "1.5rem" }}>
+              <div className="flex flex-col" style={{ gap: gapForMatchCount(round.kamper.length) }}>
                 {round.kamper.map((kamp) => (
                   <KampKort
                     key={kamp.id}
@@ -246,7 +251,7 @@ export default function TurneringsBracket({ turnering }: { turnering: TurneringM
                   />
                 ))}
               </div>
-              {/* Connector from losers to Grand Finals (LR4 → G) */}
+              {/* Connector between losers rounds */}
               {ri < lRounds.length - 1 && (
                 <div className="flex items-center mx-1">
                   <ChevronRight size={14} className="text-fg-faint" />

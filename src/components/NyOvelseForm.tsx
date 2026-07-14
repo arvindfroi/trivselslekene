@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { opprettOvelse } from "@/lib/actions/ovelser";
+import { opprettTurnering } from "@/lib/actions/turnering";
 import {
   kvalitetValg,
   lagFormatValg,
@@ -48,7 +49,7 @@ type Deltager = {
 };
 
 type Props = {
-  stillingTopp8: StillingSpiller[];
+  stillingTopp: StillingSpiller[];
   alleDeltagere: Deltager[];
 };
 
@@ -62,12 +63,13 @@ type LokalFase = {
 
 let nesteFaseId = 1;
 
-export default function NyOvelseForm({ stillingTopp8, alleDeltagere }: Props) {
+export default function NyOvelseForm({ stillingTopp, alleDeltagere }: Props) {
   const [opprettType, setOpprettType] = useState<OpprettType>("ovelse");
   const [ovelseType, setOvelseType] = useState<"INDIVIDUELL" | "LAG">("INDIVIDUELL");
   const [bildeUrl, setBildeUrl] = useState<string | null>(null);
   const [faser, setFaser] = useState<LokalFase[]>([]);
   const [valgteDeltagere, setValgteDeltagere] = useState<Set<string>>(new Set());
+  const [antallTurneringDeltagere, setAntallTurneringDeltagere] = useState(8);
   const [isPending, startTransition] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
   const faseFileRefs = useRef<Map<number, HTMLInputElement>>(new Map());
@@ -157,7 +159,11 @@ export default function NyOvelseForm({ stillingTopp8, alleDeltagere }: Props) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     startTransition(async () => {
-      await opprettOvelse(null, formData);
+      if (opprettType === "turnering") {
+        await opprettTurnering(formData);
+      } else {
+        await opprettOvelse(null, formData);
+      }
     });
   };
 
@@ -167,6 +173,7 @@ export default function NyOvelseForm({ stillingTopp8, alleDeltagere }: Props) {
       <input type="hidden" name="opprettType" value={opprettType} />
       <input type="hidden" name="bildeUrl" value={bildeUrl ?? ""} />
       <input type="hidden" name="faser" value={faserJson} />
+      <input type="hidden" name="antallDeltagere" value={antallTurneringDeltagere} />
       {[...valgteDeltagere].map((userId) => (
         <input key={userId} type="hidden" name="deltagere" value={userId} />
       ))}
@@ -538,12 +545,36 @@ export default function NyOvelseForm({ stillingTopp8, alleDeltagere }: Props) {
       {/* ─── Turnering-spesifikke felter ─── */}
       {opprettType === "turnering" && (
         <div>
-          <Label>Deltagere (seed 1–8)</Label>
+          <Label>Antall deltagere</Label>
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            {([4, 8, 16] as const).map((n) => (
+              <label
+                key={n}
+                className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm transition-colors ${
+                  antallTurneringDeltagere === n
+                    ? "border-accent-2 bg-accent-2/10 text-fg"
+                    : "border-line bg-white/[0.03] text-fg-dim"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="_antall"
+                  value={n}
+                  checked={antallTurneringDeltagere === n}
+                  onChange={() => setAntallTurneringDeltagere(n)}
+                  className="sr-only"
+                />
+                {n}
+              </label>
+            ))}
+          </div>
+
+          <Label>Deltagere (seed 1–{antallTurneringDeltagere})</Label>
           <p className="mb-2 text-xs text-fg-faint">
             Forhåndsutfylt fra stillingen. Bytt ut ved å velge andre deltagere.
           </p>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            {[1, 2, 3, 4, 5, 6, 7, 8].map((seed) => (
+            {Array.from({ length: antallTurneringDeltagere }, (_, i) => i + 1).map((seed) => (
               <div key={seed}>
                 <Label htmlFor={`seed${seed}`} className="text-xs">
                   Seed #{seed}
@@ -552,10 +583,10 @@ export default function NyOvelseForm({ stillingTopp8, alleDeltagere }: Props) {
                   id={`seed${seed}`}
                   name={`seed${seed}`}
                   required
-                  defaultValue={stillingTopp8[seed - 1]?.userId ?? ""}
+                  defaultValue={stillingTopp[seed - 1]?.userId ?? ""}
                 >
                   <option value="">Velg deltager</option>
-                  {stillingTopp8.map((s) => (
+                  {stillingTopp.map((s) => (
                     <option key={s.userId} value={s.userId}>
                       {s.navn}
                     </option>

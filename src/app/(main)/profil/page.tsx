@@ -54,7 +54,7 @@ export default async function ProfilSide({
   ]);
   const stilling = hentStilling(sesongData);
 
-  const stillingTopp8 = stilling.slice(0, 8).map((r) => ({
+  const stillingTopp = stilling.slice(0, 16).map((r) => ({
     userId: r.userId,
     navn: r.navn,
   }));
@@ -105,7 +105,7 @@ export default async function ProfilSide({
         <h2 className="mb-4 flex items-center gap-2 text-sm font-medium tracking-widest text-fg-dim uppercase">
           <Plus size={16} /> Ny øvelse
         </h2>
-        <NyOvelseForm stillingTopp8={stillingTopp8} alleDeltagere={alleDeltagere} />
+        <NyOvelseForm stillingTopp={stillingTopp} alleDeltagere={alleDeltagere} />
       </Card>
 
       <section className="mt-10">
