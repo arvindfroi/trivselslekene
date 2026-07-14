@@ -331,6 +331,19 @@ async function plasserDeltager(
   if (!kamp) return;
 
   const erDeltager1 = target.somDeltager === 1;
+  const eksisterende = erDeltager1 ? kamp.deltager1Id : kamp.deltager2Id;
+
+  // Aldri overskriv en annen deltager — beskytt mot race conditions og logiske feil
+  if (eksisterende && eksisterende !== deltagerId) {
+    console.error(
+      `[plasserDeltager] KONFLIKT: Prøvde å plassere ${deltagerId} i ${target.bracket}-${target.runde}-${target.posisjon} som D${target.somDeltager}, men ${eksisterende} er allerede der. Hopper over.`,
+    );
+    return;
+  }
+
+  // Idempotent: hvis samme deltager allerede er plassert, ikke gjør noe
+  if (eksisterende === deltagerId) return;
+
   const annenErSatt = erDeltager1 ? !!kamp.deltager2Id : !!kamp.deltager1Id;
 
   await prisma.turneringsKamp.update({

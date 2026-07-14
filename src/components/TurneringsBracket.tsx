@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import Avatar from "@/components/Avatar";
 import Badge from "@/components/ui/Badge";
 import { velgVinner } from "@/lib/actions/turnering";
@@ -110,8 +111,18 @@ function KampKort({
   forventetD1: string | null;
   forventetD2: string | null;
 }) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [optimistiskVinner, setOptimistiskVinner] = useState<string | null>(null);
+  const prevStatusRef = useRef(kamp.status);
+
+  // Rydd opp optimistisk state når serveren bekrefter resultatet
+  useEffect(() => {
+    if (kamp.status === "FULLFORT" && prevStatusRef.current !== "FULLFORT") {
+      setOptimistiskVinner(null);
+    }
+    prevStatusRef.current = kamp.status;
+  }, [kamp.status]);
 
   const erFerdigFaktisk = kamp.status === "FULLFORT";
   const erFerdig = erFerdigFaktisk || optimistiskVinner !== null;
@@ -132,6 +143,7 @@ function KampKort({
     setOptimistiskVinner(deltagerId);
     startTransition(async () => {
       await velgVinner(kamp.id, deltagerId);
+      router.refresh();
     });
   }
 
