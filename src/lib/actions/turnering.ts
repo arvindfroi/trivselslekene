@@ -191,8 +191,8 @@ export async function opprettTurneringData(input: OpprettTurneringInput) {
   const P = bracketSize(N);
   const slots = bracketSlots(P);
 
-  // Opprett turnering med alle slots
-  await prisma.turnering.create({
+  // Opprett turnering med alle slots — inkluder relasjoner så vi slipper ekstra spørring
+  const turnering = await prisma.turnering.create({
     data: {
       navn,
       sesongId,
@@ -212,14 +212,8 @@ export async function opprettTurneringData(input: OpprettTurneringInput) {
         })),
       },
     },
-  });
-
-  const turnering = await prisma.turnering.findFirst({
-    where: { sesongId, navn },
     include: { deltagere: true, kamper: true },
-    orderBy: { createdAt: "desc" },
   });
-  if (!turnering) return null;
 
   const deltagerMap = new Map(turnering.deltagere.map((d) => [d.seed, d.id]));
   const pSeeds = seedRekkefolge(P);
@@ -400,6 +394,7 @@ export async function velgVinner(kampId: string, vinnerDeltagerId: string) {
         where: { id: kamp.turnering.id },
         data: { status: "FULLFORT" },
       });
+      await fullforTurnering(kamp.turneringId);
     }
     revalidatePath("/turnering");
     return;
@@ -411,6 +406,7 @@ export async function velgVinner(kampId: string, vinnerDeltagerId: string) {
       where: { id: kamp.turnering.id },
       data: { status: "FULLFORT" },
     });
+    await fullforTurnering(kamp.turneringId);
     revalidatePath("/turnering");
     return;
   }
@@ -476,6 +472,153 @@ async function plasserDeltager(
       status: annenErSatt ? "KLAR" : "VENTER",
     },
   });
+}
+
+/**
+ * Beregn plassering og poeng for alle deltagere når en turnering fullføres.
+ * Oppretter ResultatIndividuell-rader knyttet til turneringens Ovelse slik
+ * at poengene teller med i stillingen.
+ */
+async function fullforTurnering(turneringId: string) {
+  const turnering = await prisma.turnering.findUnique({
+    where: { id: turneringId },
+    include: {
+      deltagere: { include: { user: true } },
+      kamper: { where: { status: "FULLFORT" } },
+      ovelse: { select: { id: true } },
+    },
+  });
+
+  if (!turnering || !turnering.ovelse) return;
+
+  const { deltagere, kamper, ovelse } = turnering;
+  const N = deltagere.length;
+  const P = bracketSize(N);
+  const LR = losersRunder(P);
+
+  // ─── Bygg statistikk per deltager ───────────────────────────────────
+
+  type Stat = {
+    turneringsDeltagerId: string;
+    userId: string;
+    seed: number;
+    seire: number;
+    maksWRRunde: number;
+    maksLRRunde: number;
+    tapteLBFinale: boolean; // tapte siste LB-runde (LR)
+  };
+
+  const statsMap = new Map<string, Stat>();
+
+  for (const d of deltagere) {
+    statsMap.set(d.id, {
+      turneringsDeltagerId: d.id,
+      userId: d.userId,
+      seed: d.seed,
+      seire: 0,
+      maksWRRunde: 0,
+      maksLRRunde: 0,
+      tapteLBFinale: false,
+    });
+  }
+
+  for (const k of kamper) {
+    const vinner = k.vinnerId ? statsMap.get(k.vinnerId) : undefined;
+    const d1 = k.deltager1Id ? statsMap.get(k.deltager1Id) : undefined;
+    const d2 = k.deltager2Id ? statsMap.get(k.deltager2Id) : undefined;
+
+    if (vinner) vinner.seire++;
+
+    for (const s of [d1, d2]) {
+      if (!s) continue;
+      if (k.bracket === "W") s.maksWRRunde = Math.max(s.maksWRRunde, k.runde);
+      if (k.bracket === "L") s.maksLRRunde = Math.max(s.maksLRRunde, k.runde);
+    }
+
+    // LB finale: siste LB-runde — taperen får 3. plass
+    if (k.bracket === "L" && k.runde === LR) {
+      const taperId = k.vinnerId === k.deltager1Id ? k.deltager2Id : k.deltager1Id;
+      const taper = taperId ? statsMap.get(taperId) : undefined;
+      if (taper) taper.tapteLBFinale = true;
+    }
+  }
+
+  // ─── Finn mester og runner-up ──────────────────────────────────────
+
+  const gfKamper = kamper.filter((k) => k.bracket === "G");
+  const sisteGF = gfKamper.sort((a, b) => b.runde - a.runde)[0];
+  const championId = sisteGF?.vinnerId ?? undefined;
+
+  // Runner-up: den andre deltageren i siste GF-kamp
+  let runnerUpId: string | undefined;
+  if (sisteGF) {
+    runnerUpId =
+      sisteGF.vinnerId === sisteGF.deltager1Id
+        ? sisteGF.deltager2Id ?? undefined
+        : sisteGF.deltager1Id ?? undefined;
+  }
+
+  // ─── Sorter etter plassering ───────────────────────────────────────
+
+  const resultater = [...statsMap.values()];
+
+  resultater.sort((a, b) => {
+    // 1. Mester
+    const aChamp = a.turneringsDeltagerId === championId ? 1 : 0;
+    const bChamp = b.turneringsDeltagerId === championId ? 1 : 0;
+    if (aChamp !== bChamp) return bChamp - aChamp;
+
+    // 2. Runner-up (tapte GF)
+    const aRU = a.turneringsDeltagerId === runnerUpId ? 1 : 0;
+    const bRU = b.turneringsDeltagerId === runnerUpId ? 1 : 0;
+    if (aRU !== bRU) return bRU - aRU;
+
+    // 3. Tapte LB-finale
+    if (a.tapteLBFinale !== b.tapteLBFinale) return (b.tapteLBFinale ? 1 : 0) - (a.tapteLBFinale ? 1 : 0);
+
+    // 4. Høyest LB-runde
+    if (a.maksLRRunde !== b.maksLRRunde) return b.maksLRRunde - a.maksLRRunde;
+
+    // 5. Høyest WB-runde
+    if (a.maksWRRunde !== b.maksWRRunde) return b.maksWRRunde - a.maksWRRunde;
+
+    // 6. Flest seire
+    if (a.seire !== b.seire) return b.seire - a.seire;
+
+    // 7. Seed (lavere = bedre)
+    return a.seed - b.seed;
+  });
+
+  // ─── Lagre resultater ──────────────────────────────────────────────
+
+  const ovelseId = ovelse.id;
+
+  await prisma.$transaction([
+    // Slett eksisterende resultater (idempotent)
+    prisma.resultatIndividuell.deleteMany({ where: { ovelseId } }),
+    // Opprett nye
+    ...resultater.map((r, i) => {
+      const plassering = i + 1;
+      const poeng = N - plassering + 1;
+      return prisma.resultatIndividuell.create({
+        data: {
+          ovelseId,
+          userId: r.userId,
+          plassering,
+          poeng,
+        },
+      });
+    }),
+    // Marker øvelsen som FULLFORT
+    prisma.ovelse.update({
+      where: { id: ovelseId },
+      data: { status: "FULLFORT" },
+    }),
+  ]);
+
+  revalidatePath("/turnering");
+  revalidatePath("/stilling");
+  revalidatePath("/dashboard");
 }
 
 /** Slett en turnering og dens tilknyttede øvelse (kun PLANLAGT og PAAGAAR) */

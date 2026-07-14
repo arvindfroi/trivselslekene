@@ -8,6 +8,7 @@ import Card from "@/components/ui/Card";
 import SubmitButton from "@/components/ui/SubmitButton";
 import Badge from "@/components/ui/Badge";
 import TurneringsBracket, { type TurneringMedData } from "@/components/TurneringsBracket";
+import Avatar from "@/components/Avatar";
 import { Trophy, Trash2 } from "lucide-react";
 import LiveRefresh from "@/components/LiveRefresh";
 
@@ -47,6 +48,15 @@ export default async function TurneringSide() {
         },
         orderBy: [{ bracket: "asc" }, { runde: "asc" }, { posisjon: "asc" }],
       },
+      ovelse: {
+        select: {
+          id: true,
+          individuelleResultater: {
+            include: { user: { select: { id: true, navn: true, bildeUrl: true } } },
+            orderBy: { plassering: "asc" },
+          },
+        },
+      },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -64,6 +74,13 @@ export default async function TurneringSide() {
       deltager1: k.deltager1 ? { ...k.deltager1, user: lettBruker(k.deltager1.user) } : k.deltager1,
       deltager2: k.deltager2 ? { ...k.deltager2, user: lettBruker(k.deltager2.user) } : k.deltager2,
     })),
+    ovelse: t.ovelse ? {
+      ...t.ovelse,
+      individuelleResultater: t.ovelse.individuelleResultater.map((r) => ({
+        ...r,
+        user: lettBruker(r.user),
+      })),
+    } : null,
   }));
 
   return (
@@ -139,6 +156,61 @@ export default async function TurneringSide() {
 
                   {/* Bracket */}
                   <TurneringsBracket turnering={t as unknown as TurneringMedData} />
+
+                  {/* Resultater (kun vist når turneringen er ferdig) */}
+                  {t.status === "FULLFORT" && t.ovelse && t.ovelse.individuelleResultater.length > 0 && (
+                    <div className="mt-8 border-t border-line pt-6">
+                      <h4 className="mb-4 text-sm font-semibold text-fg">Resultater</h4>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-line text-left text-xs text-fg-faint uppercase tracking-wider">
+                              <th className="pb-2 w-12 font-medium">Plass</th>
+                              <th className="pb-2 font-medium">Deltaker</th>
+                              <th className="pb-2 w-16 text-right font-medium">Poeng</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-line/50">
+                            {t.ovelse.individuelleResultater.map((r, i) => (
+                              <tr
+                                key={r.id}
+                                className={`${i < 3 ? "font-semibold" : ""} hover:bg-white/[0.03] transition-colors`}
+                              >
+                                <td className="py-2">
+                                  <span
+                                    className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${
+                                      i === 0
+                                        ? "bg-yellow-500/20 text-yellow-400"
+                                        : i === 1
+                                          ? "bg-slate-400/20 text-slate-300"
+                                          : i === 2
+                                            ? "bg-amber-700/20 text-amber-600"
+                                            : "text-fg-faint"
+                                    }`}
+                                  >
+                                    {r.plassering ?? i + 1}
+                                  </span>
+                                </td>
+                                <td className="py-2">
+                                  <div className="flex items-center gap-2">
+                                    <Avatar
+                                      navn={r.user.navn}
+                                      bildeUrl={r.user.bildeUrl}
+                                      size={22}
+                                    />
+                                    <span className="text-fg">{r.user.navn}</span>
+                                  </div>
+                                </td>
+                                <td className="py-2 text-right">
+                                  <span className="text-accent-2 tabular-nums">{r.poeng} p</span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
                 </Card>
               ))}
             </div>
