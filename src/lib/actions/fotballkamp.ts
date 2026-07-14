@@ -7,25 +7,29 @@ import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
 import { hentAlleSesongData, hentStilling } from "@/lib/stilling";
 
-export async function opprettLagkamp(prev: unknown, formData: FormData) {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/bli-med");
+export type OpprettLagkampInput = {
+  navn: string;
+  lokasjon: string | null;
+  antallDeltakere: number;
+  antallLag: number;
+  sesongId: string;
+  vertId: string;
+};
 
-  const navn = String(formData.get("navn") ?? "").trim();
-  const lokasjon = String(formData.get("lokasjon") ?? "").trim();
-  const antallDeltakere = parseInt(String(formData.get("antallDeltakere") ?? "0"));
-  const antallLag = parseInt(String(formData.get("antallLag") ?? "0"));
+/** Oppretter lagkamp med snake draft. Brukes både av server-action og av
+ *  fullforOnboarding. Returnerer ovelseId. */
+export async function opprettLagkampData(input: OpprettLagkampInput) {
+  const { navn, lokasjon, antallDeltakere, antallLag, sesongId, vertId } = input;
 
-  if (!navn) return { error: "Navn er påkrevd" };
-  if (!antallDeltakere || antallDeltakere < 2) return { error: "Minst 2 deltakere" };
-  if (!antallLag || antallLag < 2) return { error: "Minst 2 lag" };
-  if (antallLag > antallDeltakere) return { error: "Flere lag enn deltakere" };
-  const sesong = await sikreAktivSesong();
-  const sesongData = await hentAlleSesongData(sesong.id);
+  const sesongData = await hentAlleSesongData(sesongId);
   const stilling = hentStilling(sesongData);
   const topp = stilling.slice(0, antallDeltakere);
 
-  // Fordel spillere jevnt på lag: base = floor(deltakere / lag), resten får +1
+  if (topp.length < antallDeltakere) {
+    return { error: `Trenger ${antallDeltakere} deltakere, men bare ${topp.length} er tilgjengelige` };
+  }
+
+  // Fordel spillere jevnt på lag
   const base = Math.floor(antallDeltakere / antallLag);
   const rest = antallDeltakere % antallLag;
   const lagStorrelser = Array.from({ length: antallLag }, (_, i) =>
@@ -45,8 +49,8 @@ export async function opprettLagkamp(prev: unknown, formData: FormData) {
       type: "LAG",
       lagFormat: "ANNET",
       kvaliteter: ["LAGSPILL", "UTHOLDENHET", "TAKTIKK"],
-      sesongId: sesong.id,
-      vertId: session.user.id,
+      sesongId,
+      vertId,
       lag: {
         create: lagenesMedlemmer.map((medlemmer, i) => ({
           navn: `Lag ${i + 1}`,
@@ -56,10 +60,39 @@ export async function opprettLagkamp(prev: unknown, formData: FormData) {
     },
   });
 
+  return { success: true, ovelseId: ovelse.id };
+}
+
+export async function opprettLagkamp(prev: unknown, formData: FormData) {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/bli-med");
+
+  const navn = String(formData.get("navn") ?? "").trim();
+  const lokasjon = String(formData.get("lokasjon") ?? "").trim();
+  const antallDeltakere = parseInt(String(formData.get("antallDeltakere") ?? "0"));
+  const antallLag = parseInt(String(formData.get("antallLag") ?? "0"));
+
+  if (!navn) return { error: "Navn er påkrevd" };
+  if (!antallDeltakere || antallDeltakere < 2) return { error: "Minst 2 deltakere" };
+  if (!antallLag || antallLag < 2) return { error: "Minst 2 lag" };
+  if (antallLag > antallDeltakere) return { error: "Flere lag enn deltakere" };
+  const sesong = await sikreAktivSesong();
+
+  const resultat = await opprettLagkampData({
+    navn,
+    lokasjon: lokasjon || null,
+    antallDeltakere,
+    antallLag,
+    sesongId: sesong.id,
+    vertId: session.user.id,
+  });
+
+  if ("error" in resultat) return resultat;
+
   revalidatePath("/fotball-kamp");
   revalidatePath("/profil");
   revalidatePath("/ovelser");
-  return { success: true, ovelseId: ovelse.id };
+  return { success: true, ovelseId: resultat.ovelseId };
 }
 
 export async function registrerVinner(

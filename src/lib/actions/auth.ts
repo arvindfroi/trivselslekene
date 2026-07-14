@@ -4,7 +4,6 @@ import { AuthError } from "next-auth";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { Kvalitet, LagFormat, OvelseType } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
 import { signIn } from "@/lib/auth";
 import {
   finnBrukerVedNavn,
@@ -12,6 +11,9 @@ import {
   normaliserNavn,
 } from "@/lib/brukere";
 import { sikreAktivSesong } from "@/lib/sesong";
+import { opprettOvelseIDb } from "@/lib/actions/ovelser";
+import { opprettTurneringData } from "@/lib/actions/turnering";
+import { opprettLagkampData } from "@/lib/actions/fotballkamp";
 
 const NAVN_COOKIE = "onboarding_navn";
 
@@ -37,16 +39,28 @@ export async function startOnboarding(formData: FormData) {
 
 export type OnboardingData = {
   navn: string;
+  opprettType: "ovelse" | "lagkamp" | "turnering";
   lekNavn: string;
-  type: OvelseType;
-  lagFormat: LagFormat | null;
-  kvaliteter: Kvalitet[];
-  fellesLek: boolean;
+  // Øvelse-felter
+  type?: OvelseType;
+  lagFormat?: LagFormat | null;
+  kvaliteter?: Kvalitet[];
+  fellesLek?: boolean;
+  bildeUrl?: string | null;
+  faser?: { tittel?: string; bildeUrl?: string | null }[];
+  deltagere?: string[];
+  // Felles
   lokasjon: string;
   beskrivelse: string;
+  // Lagkamp
+  antallLagkampDeltakere?: number;
+  antallLag?: number;
+  // Turnering
+  antallTurneringDeltagere?: number;
+  turneringSeeds?: { seed: number; userId: string }[];
 };
 
-/** Siste steg: opprett bruker (om nødvendig) + øvelsen, og logg inn. */
+/** Siste steg: opprett bruker (om nødvendig) + aktiviteten, og logg inn. */
 export async function fullforOnboarding(data: OnboardingData) {
   const navn = normaliserNavn(data.navn);
   const lekNavn = data.lekNavn.trim();
@@ -60,22 +74,60 @@ export async function fullforOnboarding(data: OnboardingData) {
   const sesong = await sikreAktivSesong();
   (await cookies()).delete(NAVN_COOKIE);
 
-  await prisma.ovelse.create({
-    data: {
+  let redirectTo = "/dashboard";
+
+  if (data.opprettType === "turnering") {
+    const seeds = data.turneringSeeds ?? [];
+    if (seeds.length < 3) return { feil: "Turnering må ha minst 3 deltagere." };
+
+    const deltagerIder = seeds
+      .sort((a, b) => a.seed - b.seed)
+      .map((s) => s.userId);
+
+    await opprettTurneringData({
       navn: lekNavn,
-      type: data.type,
-      lagFormat: data.type === "LAG" ? data.lagFormat : null,
-      kvaliteter: data.kvaliteter ?? [],
-      fellesLek: data.fellesLek,
-      lokasjon: data.lokasjon.trim() || null,
-      beskrivelse: data.beskrivelse.trim() || null,
       sesongId: sesong.id,
       vertId: user.id,
-    },
-  });
+      deltagerIder,
+    });
+    redirectTo = "/turnering";
+  } else if (data.opprettType === "lagkamp") {
+    const antallDeltakere = data.antallLagkampDeltakere ?? 4;
+    const antallLag = data.antallLag ?? 2;
+
+    const resultat = await opprettLagkampData({
+      navn: lekNavn,
+      lokasjon: data.lokasjon.trim() || null,
+      antallDeltakere,
+      antallLag,
+      sesongId: sesong.id,
+      vertId: user.id,
+    });
+
+    if ("error" in resultat) return { feil: resultat.error };
+    redirectTo = `/ovelser/${resultat.ovelseId}`;
+  } else {
+    // Vanlig øvelse
+    await opprettOvelseIDb({
+      navn: lekNavn,
+      type: data.type ?? "INDIVIDUELL",
+      lagFormat: (data.type ?? "INDIVIDUELL") === "LAG" ? (data.lagFormat ?? null) : null,
+      kvaliteter: data.kvaliteter ?? [],
+      fellesLek: data.fellesLek ?? false,
+      lokasjon: data.lokasjon.trim() || null,
+      beskrivelse: data.beskrivelse.trim() || null,
+      bildeUrl: data.bildeUrl ?? null,
+      faser: data.faser ?? [],
+      sesongId: sesong.id,
+      vertId: user.id,
+      deltagerIder: (data.type ?? "INDIVIDUELL") === "INDIVIDUELL"
+        ? (data.deltagere ?? []).filter((id) => id !== user.id)
+        : undefined,
+    });
+  }
 
   try {
-    await signIn("credentials", { navn, redirectTo: "/dashboard" });
+    await signIn("credentials", { navn, redirectTo });
   } catch (error) {
     if (error instanceof AuthError) {
       return { feil: "Kunne ikke logge inn. Prøv igjen." };

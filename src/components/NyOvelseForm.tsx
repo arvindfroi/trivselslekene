@@ -9,6 +9,7 @@ import {
   lagFormatValg,
 } from "@/lib/ovelseLabels";
 import Button from "@/components/ui/Button";
+import { ChoiceCard, FormatChip } from "@/components/ui/ChoiceCard";
 import { Input, Label, Select, Textarea } from "@/components/ui/Field";
 import { ImageIcon, Plus, Trash2, X } from "lucide-react";
 
@@ -67,6 +68,7 @@ let nesteFaseId = 1;
 export default function NyOvelseForm({ stillingTopp, alleDeltagere }: Props) {
   const [opprettType, setOpprettType] = useState<OpprettType>("ovelse");
   const [ovelseType, setOvelseType] = useState<"INDIVIDUELL" | "LAG">("INDIVIDUELL");
+  const [lagFormat, setLagFormat] = useState<typeof lagFormatValg[number]["verdi"]>("PAR");
   const [bildeUrl, setBildeUrl] = useState<string | null>(null);
   const [faser, setFaser] = useState<LokalFase[]>([]);
   const [valgteDeltagere, setValgteDeltagere] = useState<Set<string>>(new Set());
@@ -250,44 +252,42 @@ export default function NyOvelseForm({ stillingTopp, alleDeltagere }: Props) {
             <legend className="mb-1.5 block text-[11px] font-medium tracking-widest text-fg-dim uppercase">
               Type lek
             </legend>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <label className="has-checked:border-accent-2 has-checked:bg-accent-2/10 flex cursor-pointer items-center gap-2.5 rounded-xl border border-line bg-white/[0.03] px-3.5 py-2.5 text-sm text-fg transition-colors">
-                <input
-                  type="radio"
-                  name="type"
-                  value="INDIVIDUELL"
-                  checked={ovelseType === "INDIVIDUELL"}
-                  onChange={() => setOvelseType("INDIVIDUELL")}
-                  className="accent-accent-2"
-                />
-                Individuell
-              </label>
-              <label className="has-checked:border-accent-2 has-checked:bg-accent-2/10 flex cursor-pointer items-center gap-2.5 rounded-xl border border-line bg-white/[0.03] px-3.5 py-2.5 text-sm text-fg transition-colors">
-                <input
-                  type="radio"
-                  name="type"
-                  value="LAG"
-                  checked={ovelseType === "LAG"}
-                  onChange={() => setOvelseType("LAG")}
-                  className="accent-accent-2"
-                />
-                Laglek
-              </label>
+            <div className="grid grid-cols-2 gap-3">
+              <ChoiceCard
+                valgt={ovelseType === "INDIVIDUELL"}
+                onClick={() => setOvelseType("INDIVIDUELL")}
+                tittel="Individuell"
+                tekst="Alle for seg selv"
+              />
+              <ChoiceCard
+                valgt={ovelseType === "LAG"}
+                onClick={() => setOvelseType("LAG")}
+                tittel="Lag"
+                tekst="Konkurrer i lag"
+              />
             </div>
+            <input type="hidden" name="type" value={ovelseType} />
           </fieldset>
 
           {/* Lagformat (bare for lagleker) */}
           {ovelseType === "LAG" && (
-            <div>
-              <Label htmlFor="lagFormat">Lagformat</Label>
-              <Select id="lagFormat" name="lagFormat" defaultValue="PAR">
+            <fieldset>
+              <legend className="mb-1.5 block text-[11px] font-medium tracking-widest text-fg-dim uppercase">
+                Lagformat
+              </legend>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {lagFormatValg.map((v) => (
-                  <option key={v.verdi} value={v.verdi}>
-                    {v.tittel} — {v.hint}
-                  </option>
+                  <FormatChip
+                    key={v.verdi}
+                    valgt={lagFormat === v.verdi}
+                    onClick={() => setLagFormat(v.verdi)}
+                    tittel={v.tittel}
+                    hint={v.hint}
+                  />
                 ))}
-              </Select>
-            </div>
+              </div>
+              <input type="hidden" name="lagFormat" value={lagFormat} />
+            </fieldset>
           )}
 
           {/* Beskrivelse */}
