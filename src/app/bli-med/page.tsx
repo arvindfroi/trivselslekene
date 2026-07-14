@@ -8,5 +8,5 @@ export default async function BliMedSide() {
   if (session?.user) redirect("/dashboard");
 
   const navn = (await cookies()).get("onboarding_navn")?.value ?? "";
-  return <Onboarding startNavn={navn} />;
+  return <Onboarding key={navn || "ny"} startNavn={navn} />;
 }
