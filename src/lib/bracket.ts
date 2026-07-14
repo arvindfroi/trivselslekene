@@ -99,23 +99,23 @@ export function seedRekkefolge(P: number): number[] {
 /**
  * Returnerer [(seedA, seedB, posisjon), ...] for WR1-kamper (KUN faktiske kamper, ikke byes).
  * N = faktisk antall deltagere.
- * Posisjon telles kun for faktiske kamper (1, 2, ...).
+ * Posisjon er faktisk bracket-posisjon (1..P/2), tar hensyn til bye-plasseringer.
  */
 export function wr1Par(N: number): [number, number, number][] {
   const P = bracketSize(N);
   const allSeeds = seedRekkefolge(P);
   const pairs: [number, number, number][] = [];
 
-  let pos = 0;
   for (let i = 0; i < allSeeds.length; i += 2) {
     const s1 = allSeeds[i];
     const s2 = allSeeds[i + 1];
     const s1Real = s1 <= N;
     const s2Real = s2 <= N;
+    const bracketPos = i / 2 + 1; // faktisk posisjon i bracketet (1..P/2)
 
     if (s1Real && s2Real) {
       // Begge ekte → faktisk kamp
-      pairs.push([s1, s2, ++pos]);
+      pairs.push([s1, s2, bracketPos]);
     }
     // Hvis bare én er ekte → bye (håndteres i opprettTurnering)
   }

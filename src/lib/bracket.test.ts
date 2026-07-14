@@ -119,16 +119,16 @@ describe("wr1Par", () => {
     expect(par[3]).toEqual([3, 6, 4]);
   });
 
-  it("N=9 (P=16, 7 byes): 1 kamp — seeds 8 vs 9", () => {
+  it("N=9 (P=16, 7 byes): 1 kamp — seeds 8 vs 9 på bracket-pos 2", () => {
     const par = wr1Par(9);
     expect(par).toHaveLength(1);
-    expect(par[0]).toEqual([8, 9, 1]);
+    expect(par[0]).toEqual([8, 9, 2]);
   });
 
-  it("N=5 (P=8, 3 byes): 1 kamp — seeds 4 vs 5", () => {
+  it("N=5 (P=8, 3 byes): 1 kamp — seeds 4 vs 5 på bracket-pos 2", () => {
     const par = wr1Par(5);
     expect(par).toHaveLength(1);
-    expect(par[0]).toEqual([4, 5, 1]);
+    expect(par[0]).toEqual([4, 5, 2]);
   });
 });
 
