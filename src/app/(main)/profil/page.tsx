@@ -17,7 +17,8 @@ import SubmitButton from "@/components/ui/SubmitButton";
 import Badge from "@/components/ui/Badge";
 import NyOvelseForm from "@/components/NyOvelseForm";
 import ProfilRediger from "@/components/ProfilRediger";
-import { MapPin, Users, Settings2, Trash2, Plus } from "lucide-react";
+import KollapsSeksjon from "@/components/KollapsSeksjon";
+import { MapPin, Users, Settings2, Trash2 } from "lucide-react";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: "Profil" };
@@ -26,12 +27,12 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function ProfilSide({
   searchParams,
 }: {
-  searchParams: Promise<{ navnfeil?: string }>;
+  searchParams: Promise<{ navnfeil?: string; ny?: string }>;
 }) {
   const session = await auth();
   if (!session?.user) redirect("/bli-med");
 
-  const { navnfeil } = await searchParams;
+  const { navnfeil, ny } = await searchParams;
   const sesong = await sikreAktivSesong();
   const [bruker, mine, sesongData] = await Promise.all([
     prisma.user.findUnique({
@@ -101,11 +102,10 @@ export default async function ProfilSide({
           </div>
         </div>
 
-      <Card className="mt-6" padding="p-5 sm:p-6">
-        <h2 className="mb-4 flex items-center gap-2 text-sm font-medium tracking-widest text-fg-dim uppercase">
-          <Plus size={16} /> Ny øvelse
-        </h2>
-        <NyOvelseForm stillingTopp={stillingTopp} alleDeltagere={alleDeltagere} />
+      <Card id="ny-ovelse" className="mt-6" padding="p-5 sm:p-6">
+        <KollapsSeksjon tittel="Ny øvelse" startApen={ny === "1"}>
+          <NyOvelseForm stillingTopp={stillingTopp} alleDeltagere={alleDeltagere} />
+        </KollapsSeksjon>
       </Card>
 
       <section className="mt-10">

@@ -94,7 +94,7 @@ export default async function OvelserSide() {
                 Slett testdata
               </Button>
             </form>
-            <LinkButton href="/profil" className="shrink-0 px-4">
+            <LinkButton href="/profil?ny=1#ny-ovelse" className="shrink-0 px-4">
               <Plus size={16} /> Ny øvelse
             </LinkButton>
           </div>
@@ -102,7 +102,7 @@ export default async function OvelserSide() {
 
         {/* Mobil: Ny øvelse — primær CTA, alltid synlig */}
         <div className="mt-4 sm:hidden">
-          <LinkButton href="/profil" className="w-full justify-center px-4">
+          <LinkButton href="/profil?ny=1#ny-ovelse" className="w-full justify-center px-4">
             <Plus size={18} /> Ny øvelse
           </LinkButton>
         </div>
@@ -111,7 +111,7 @@ export default async function OvelserSide() {
         <Card className="mt-8 text-center" padding="p-10">
           <p className="text-sm text-fg-dim">Ingen øvelser er opprettet ennå.</p>
           <div className="mt-4 flex justify-center">
-            <LinkButton href="/profil">
+            <LinkButton href="/profil?ny=1#ny-ovelse">
               <Plus size={16} /> Opprett den første
             </LinkButton>
           </div>
