@@ -41,7 +41,11 @@ function nesteKampForVinner(kamp: KampSlot): AdvanceTarget | null {
       // LR3 → LR4 (deltager 1)
       return { bracket: "L", runde: 4, posisjon: 1, somDeltager: 1 };
     }
-    // LR1/LR2 → neste losers-runde
+    if (runde === 1) {
+      // LR1(2)→LR2(2): posisjon beholdes, alltid deltager 1
+      return { bracket: "L", runde: 2, posisjon, somDeltager: 1 };
+    }
+    // LR2(2)→LR3(1): halver posisjon
     const nyPosisjon = Math.ceil(posisjon / 2);
     const somDeltager: 1 | 2 = posisjon % 2 === 1 ? 1 : 2;
     return { bracket: "L", runde: runde + 1, posisjon: nyPosisjon, somDeltager };
@@ -225,7 +229,8 @@ export async function velgVinner(kampId: string, vinnerDeltagerId: string) {
   };
 
   // Spesialhåndtering for Grand Finals
-  if (kamp.bracket === "G" && kamp.posisjon === 1) {
+  // G-M1: hvis LB-vinner vinner → opprett reset-kamp G-M2
+  if (kamp.bracket === "G" && kamp.runde === 1) {
     // Hent deltagerne for å vite hvem som er WB-vinner og LB-vinner
     // I G-M1 er deltager1 WB-vinner, deltager2 LB-vinner
     if (vinnerDeltagerId === kamp.deltager2Id) {
