@@ -333,7 +333,7 @@ describe("hentUtmerkelser", () => {
     const kamper = utmerkelser.find((u) => u.key === "kamper")!;
     expect(kamper.leder).not.toBeNull();
     expect(kamper.leder!.navn).toBe("Alice");
-    expect(kamper.leder!.verdi).toBe("2 kamper");
+    expect(kamper.leder!.verdi).toBe("2 leker");
   });
 
   it("\"Flest seire\" finner brukeren med høyest antall seire", () => {

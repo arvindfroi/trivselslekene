@@ -101,7 +101,7 @@ export default async function FotballKampSide() {
                           )}
                           {erFerdig && vinner && (
                             <span className="inline-flex items-center gap-1 text-accent-2">
-                              <Trophy size={11} /> {vinner.navn} vant ({poeng} p per spiller)
+                              <Trophy size={11} /> {vinner.navn} vant ({poeng} p per deltaker)
                             </span>
                           )}
                         </p>
@@ -149,12 +149,12 @@ export default async function FotballKampSide() {
                             <div className="flex items-center justify-between mb-2">
                               <span className="text-sm font-medium text-fg">{lag.navn}</span>
                               <span className="text-xs text-fg-faint">
-                                {lag.medlemmer.length} spillere
+                                {lag.medlemmer.length} deltakere
                               </span>
                             </div>
 
                             {lag.medlemmer.length === 0 ? (
-                              <p className="text-xs text-fg-faint">Ingen spillere</p>
+                              <p className="text-xs text-fg-faint">Ingen deltakere</p>
                             ) : (
                               <ul className="flex flex-col gap-1.5">
                                 {lag.medlemmer.map((m) => (
@@ -181,7 +181,7 @@ export default async function FotballKampSide() {
 
                             {erVinner && (
                               <p className="mt-2 text-center text-xs font-medium text-accent-2">
-                                🏆 Vinnerlag — {poeng} poeng per spiller
+                                🏆 Vinnerlag — {poeng} poeng per deltaker
                               </p>
                             )}
                           </div>

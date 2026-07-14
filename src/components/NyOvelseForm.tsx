@@ -248,7 +248,7 @@ export default function NyOvelseForm({ stillingTopp, alleDeltagere }: Props) {
           {/* Øvelsestype: Individuell vs Lag */}
           <fieldset>
             <legend className="mb-1.5 block text-[11px] font-medium tracking-widest text-fg-dim uppercase">
-              Type øvelse
+              Type lek
             </legend>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <label className="has-checked:border-accent-2 has-checked:bg-accent-2/10 flex cursor-pointer items-center gap-2.5 rounded-xl border border-line bg-white/[0.03] px-3.5 py-2.5 text-sm text-fg transition-colors">
@@ -271,12 +271,12 @@ export default function NyOvelseForm({ stillingTopp, alleDeltagere }: Props) {
                   onChange={() => setOvelseType("LAG")}
                   className="accent-accent-2"
                 />
-                Lagøvelse
+                Laglek
               </label>
             </div>
           </fieldset>
 
-          {/* Lagformat (bare for lagøvelser) */}
+          {/* Lagformat (bare for lagleker) */}
           {ovelseType === "LAG" && (
             <div>
               <Label htmlFor="lagFormat">Lagformat</Label>
@@ -296,7 +296,7 @@ export default function NyOvelseForm({ stillingTopp, alleDeltagere }: Props) {
             <Textarea id="beskrivelse" name="beskrivelse" rows={2} />
           </div>
 
-          {/* Bilde (kart/illustrasjon) — enkeltbilde for øvelser uten faser */}
+          {/* Bilde (kart/illustrasjon) — enkeltbilde for leker uten faser */}
           <div>
             <Label>Kart / illustrasjon (valgfritt)</Label>
             <input
@@ -620,7 +620,7 @@ export default function NyOvelseForm({ stillingTopp, alleDeltagere }: Props) {
             ? "Opprett turnering"
             : opprettType === "lagkamp"
               ? "Opprett lagkamp"
-              : "Opprett øvelse"}
+              : "Opprett lek"}
       </Button>
     </form>
   );

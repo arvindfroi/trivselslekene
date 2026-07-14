@@ -423,7 +423,7 @@ export function hentUtmerkelser(data: SesongData): Utmerkelse[] {
     ),
     pakk(
       "kamper",
-      (v) => `${v} kamper`,
+      (v) => `${v} leker`,
       rangert((r) => r.kamper, (r) => r.kamper >= 1),
     ),
     pakk(

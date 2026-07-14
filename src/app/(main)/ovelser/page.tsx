@@ -99,21 +99,21 @@ export default async function OvelserSide() {
               </Button>
             </form>
             <LinkButton href="/profil?ny=1#ny-ovelse" className="shrink-0 px-4">
-              <Plus size={16} /> Ny øvelse
+              <Plus size={16} /> Ny lek
             </LinkButton>
           </div>
         </div>
 
-        {/* Mobil: Ny øvelse — primær CTA, alltid synlig */}
+        {/* Mobil: Ny lek — primær CTA, alltid synlig */}
         <div className="mt-4 sm:hidden">
           <LinkButton href="/profil?ny=1#ny-ovelse" className="w-full justify-center px-4">
-            <Plus size={18} /> Ny øvelse
+            <Plus size={18} /> Ny lek
           </LinkButton>
         </div>
 
       {ovelser.length === 0 ? (
         <Card className="mt-8 text-center" padding="p-10">
-          <p className="text-sm text-fg-dim">Ingen øvelser er opprettet ennå.</p>
+          <p className="text-sm text-fg-dim">Ingen leker er opprettet ennå.</p>
           <div className="mt-4 flex justify-center">
             <LinkButton href="/profil?ny=1#ny-ovelse">
               <Plus size={16} /> Opprett den første

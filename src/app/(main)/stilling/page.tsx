@@ -41,35 +41,35 @@ const UTMERKELSER: {
     key: "seire",
     tittel: "Vinnermaskin",
     tekst: "Flest førsteplasser",
-    forklaring: "Rangert etter antall øvelser der du endte på 1. plass.",
+    forklaring: "Rangert etter antall leker der du endte på 1. plass.",
     Ikon: Trophy,
   },
   {
     key: "pall",
     tittel: "Pallhabitué",
     tekst: "Flest pallplasser",
-    forklaring: "Rangert etter antall øvelser der du endte blant de tre beste.",
+    forklaring: "Rangert etter antall leker der du endte blant de tre beste.",
     Ikon: Medal,
   },
   {
     key: "kamper",
     tittel: "Ironman",
-    tekst: "Flest kamper spilt",
-    forklaring: "Rangert etter antall øvelser du har deltatt i totalt denne sesongen.",
+    tekst: "Flest leker",
+    forklaring: "Rangert etter antall leker du har deltatt i totalt denne sesongen.",
     Ikon: Swords,
   },
   {
     key: "snitt",
     tittel: "Snittkongen",
     tekst: "Best poengsnitt",
-    forklaring: "Rangert etter gjennomsnittlig poengsum per øvelse. Krever minst to spilte øvelser.",
+    forklaring: "Rangert etter gjennomsnittlig poengsum per lek. Krever minst to spilte leker.",
     Ikon: TrendingUp,
   },
   {
     key: "rekord",
     tittel: "Rekordholder",
     tekst: "Høyeste enkeltresultat",
-    forklaring: "Rangert etter høyeste poengsum oppnådd i en enkelt øvelse.",
+    forklaring: "Rangert etter høyeste poengsum oppnådd i en enkelt lek.",
     Ikon: Flame,
   },
   {
@@ -83,21 +83,21 @@ const UTMERKELSER: {
     key: "vert",
     tittel: "Sjefsarrangør",
     tekst: "Arrangert flest leker",
-    forklaring: "Rangert etter antall øvelser du har arrangert som vert.",
+    forklaring: "Rangert etter antall leker du har arrangert som vert.",
     Ikon: Crown,
   },
   {
     key: "uheldig",
     tittel: "Uflaks-magneten",
     tekst: "Flest sisteplasser",
-    forklaring: "Rangert etter antall øvelser der du endte sist.",
+    forklaring: "Rangert etter antall leker der du endte sist.",
     Ikon: CloudRain,
   },
   {
     key: "trost",
     tittel: "Trøstepremien",
     tekst: "Lavest poengsnitt",
-    forklaring: "Rangert etter lavest gjennomsnittlig poengsum — en trøst for jevn innsats uansett resultat. Krever minst to spilte øvelser.",
+    forklaring: "Rangert etter lavest gjennomsnittlig poengsum — en trøst for jevn innsats uansett resultat. Krever minst to spilte leker.",
     Ikon: HeartCrack,
   },
 ];
@@ -131,7 +131,7 @@ export default async function StillingSide() {
     key: `kval-${kvalitet}`,
     tittel: kvalitetTekst[kvalitet],
     tekst: undefined,
-    forklaring: `Rangert etter summen av poeng scoret i øvelser som tester ${kvalitetTekst[kvalitet].toLowerCase()}.`,
+    forklaring: `Rangert etter summen av poeng scoret i leker som tester ${kvalitetTekst[kvalitet].toLowerCase()}.`,
     Ikon: kvalitetIkon[kvalitet],
     leder: best ? { navn: best.navn, bildeUrl: best.bildeUrl, verdi: String(best.poeng) } : null,
     alle: alle.map((a) => ({ navn: a.navn, bildeUrl: a.bildeUrl, verdi: String(a.poeng) })),
@@ -164,7 +164,7 @@ export default async function StillingSide() {
 
         <div className="mt-6 grid grid-cols-3 gap-3 sm:gap-4">
           <StatCard label="Deltakere" verdi={String(stilling.length)} />
-          <StatCard label="Øvelser" verdi={`${antallFullfort}/${antallOvelser}`} />
+          <StatCard label="Leker" verdi={`${antallFullfort}/${antallOvelser}`} />
           <StatCard label="Leder" verdi={leder ? leder.navn.split(" ")[0] : "–"} />
         </div>
 

@@ -329,7 +329,7 @@ export default function Onboarding({ startNavn = "" }: { startNavn?: string }) {
                 <span className="flex-1">
                   <span className="block font-medium text-fg">Felles lek</span>
                   <span className="block text-sm text-fg-dim">
-                    Alle er med, også du. Passer leker uten fast vert.
+                    Alle er med, også du — ingen fast vert.
                   </span>
                 </span>
                 <span

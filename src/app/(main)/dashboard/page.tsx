@@ -53,7 +53,7 @@ export default async function HjemSide() {
           verdi={min && min.totalPoeng > 0 ? `#${minIndex + 1}` : "–"}
         />
         <StatCard label="Dine poeng" verdi={String(min?.totalPoeng ?? 0)} />
-        <StatCard label="Dine øvelser" verdi={String(dineOvelser)} />
+        <StatCard label="Dine leker" verdi={String(dineOvelser)} />
       </div>
 
       <section className="mt-10">
@@ -102,7 +102,7 @@ export default async function HjemSide() {
           <BarChart3 size={18} /> Statistikk
         </LinkButton>
         <LinkButton href="/ovelser" variant="secondary" className="justify-start">
-          <Swords size={18} /> Øvelser
+          <Swords size={18} /> Leker
         </LinkButton>
         <LinkButton href="/profil" variant="secondary" className="justify-start">
           <User size={18} /> Profil

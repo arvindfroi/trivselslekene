@@ -80,7 +80,7 @@ export default function StillingListe({
                     />
                   </div>
                   <span className="shrink-0 text-[11px] text-fg-faint">
-                    {rad.antallOvelser} øvelser
+                    {rad.antallOvelser} leker
                   </span>
                 </div>
               </div>
@@ -96,7 +96,7 @@ export default function StillingListe({
               <div className="animate-fade-up overflow-hidden">
                 <div className="px-4 pb-4 sm:px-5">
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    <MiniStat label="Kamper" verdi={String(d.kamper)} />
+                    <MiniStat label="Leker" verdi={String(d.kamper)} />
                     <MiniStat label="Seire" verdi={String(d.seire)} />
                     <MiniStat
                       label="Snitt"

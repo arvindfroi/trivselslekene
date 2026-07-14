@@ -124,7 +124,7 @@ export default function OvelseGrid({
             </div>
 
             <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-fg-faint">
-              <span>{s.type === "LAG" ? "Lagøvelse" : s.type === "TURNERING" ? "Turnering" : "Individuell"}</span>
+              <span>{s.type === "LAG" ? "Laglek" : s.type === "TURNERING" ? "Turnering" : "Individuell"}</span>
               <span>Vert: {s.vertNavn}</span>
               {s.lokasjon && (
                 <span className="inline-flex items-center gap-1">
@@ -221,7 +221,7 @@ export default function OvelseGrid({
                         className="px-3 py-2 text-xs"
                         pendingText="Sletter…"
                       >
-                        <Trash2 size={14} /> Slett {s.type === "TURNERING" ? "turnering" : "øvelse"}
+                        <Trash2 size={14} /> Slett {s.type === "TURNERING" ? "turnering" : "lek"}
                       </SubmitButton>
                     </form>
                   )}

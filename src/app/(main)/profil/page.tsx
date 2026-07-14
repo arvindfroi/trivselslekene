@@ -81,7 +81,7 @@ export default async function ProfilSide({
             </p>
             <h1 className="mt-1 font-display text-4xl text-fg">Profil</h1>
             <p className="mt-2 text-sm text-fg-dim">
-              Legg til øvelser og styr poengene dine.
+              Legg til leker og styr poengene dine.
             </p>
           </div>
           <form action={loggUt}>
@@ -104,18 +104,18 @@ export default async function ProfilSide({
         </div>
 
       <Card id="ny-ovelse" className="mt-6" padding="p-5 sm:p-6">
-        <KollapsSeksjon tittel="Ny øvelse" startApen={ny === "1"}>
+        <KollapsSeksjon tittel="Ny lek" startApen={ny === "1"}>
           <NyOvelseForm stillingTopp={stillingTopp} alleDeltagere={alleDeltagere} />
         </KollapsSeksjon>
       </Card>
 
       <section className="mt-10">
         <h2 className="mb-3 text-sm font-medium tracking-widest text-fg-dim uppercase">
-          Dine øvelser
+          Dine leker
         </h2>
         {mine.length === 0 ? (
           <p className="text-sm text-fg-dim">
-            Du har ingen øvelser ennå. Legg til én over.
+            Du har ingen leker ennå. Legg til én over.
           </p>
         ) : (
           <ul className="flex flex-col gap-3">
@@ -139,7 +139,7 @@ export default async function ProfilSide({
                   </div>
                   <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-fg-faint">
                     <span>
-                      {ovelse.type === "LAG" ? "Lagøvelse" : "Individuell"}
+                      {ovelse.type === "LAG" ? "Laglek" : "Individuell"}
                     </span>
                     {ovelse.lokasjon && (
                       <span className="inline-flex items-center gap-1">

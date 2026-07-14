@@ -151,10 +151,10 @@ export default async function OvelseSide({
           <h1 className="mt-1 font-display text-3xl text-fg">{ovelse.navn}</h1>
           <p className="mt-1 text-sm text-fg-dim">
             {ovelse.type === "LAG"
-              ? `Lagøvelse${
+              ? `Laglek${
                   ovelse.lagFormat ? ` · ${lagFormatTekst[ovelse.lagFormat]}` : ""
                 }`
-              : "Individuell øvelse"}
+              : "Individuell lek"}
           </p>
           {ovelse.beskrivelse && (
             <p className="mt-2 max-w-xl text-sm text-fg-dim">
@@ -189,7 +189,7 @@ export default async function OvelseSide({
             />
           )}
 
-          {/* Fallback — enkeltbilde for øvelser uten faser */}
+          {/* Fallback — enkeltbilde for leker uten faser */}
           {!harFaser && ovelseBilde && (
             <div className="mt-4 overflow-hidden rounded-xl border border-line">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -246,7 +246,7 @@ export default async function OvelseSide({
           </form>
           <form action={slettOvelse.bind(null, ovelseId)}>
             <SubmitButton variant="danger" className="px-3 py-2 text-xs" pendingText="Sletter…">
-              <Trash2 size={14} /> Slett øvelse
+              <Trash2 size={14} /> Slett lek
             </SubmitButton>
           </form>
           <LinkButton
@@ -260,7 +260,7 @@ export default async function OvelseSide({
       ) : (
         <p className="mt-5 rounded-xl border border-line bg-white/[0.03] px-4 py-2.5 text-sm text-fg-dim">
           Kun verten ({ovelse.vert.navn}) kan registrere resultater og endre
-          status for denne øvelsen.
+          status for denne leken.
         </p>
       )}
 
