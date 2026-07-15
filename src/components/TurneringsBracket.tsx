@@ -1,12 +1,10 @@
 "use client";
 
-import { useState, useTransition, useEffect, useRef } from "react";
+import { useState, useTransition, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Avatar from "@/components/Avatar";
-import Badge from "@/components/ui/Badge";
 import { velgVinner } from "@/lib/actions/turnering";
 import { expectedSeedMap, winnersRunder, losersRunder } from "@/lib/bracket";
-import { Trophy, ChevronRight } from "lucide-react";
 
 export type TurneringMedData = {
   id: string;
@@ -32,13 +30,6 @@ export type TurneringMedData = {
 };
 
 // ─── Hjelpefunksjoner ────────────────────────────────────────────────────
-
-function gapForMatchCount(count: number): string {
-  if (count >= 8) return "0.25rem";
-  if (count >= 4) return "0.5rem";
-  if (count >= 2) return "1.5rem";
-  return "1.5rem";
-}
 
 function PFromKamper(kamper: TurneringMedData["kamper"]): number {
   return kamper.filter((k) => k.bracket === "W" && k.runde === 1).length * 2;
@@ -82,7 +73,7 @@ function DeltagerLinje({
         type="button"
         onClick={onClick}
         disabled={!kanKlikke}
-        className={`flex items-center gap-2 px-2 py-1.5 text-xs rounded-md w-full transition-colors ${
+        className={`flex items-center gap-2 px-2 py-1.5 text-xs rounded w-full transition-colors ${
           erVinner
             ? "bg-accent-2/15 text-accent-2 font-semibold"
             : erTaper
@@ -94,7 +85,6 @@ function DeltagerLinje({
       >
         <Avatar navn={deltager.user.navn} bildeUrl={deltager.user.bildeUrl} size={20} />
         <span className="truncate">{deltager.user.navn}</span>
-        {erVinner && <Trophy size={12} className="ml-auto shrink-0" />}
       </button>
       {forventetNavn && forventetNavn !== deltager.user.navn && (
         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-fg-faint/25 italic pointer-events-none">
@@ -112,11 +102,13 @@ function KampKort({
   turneringStatus,
   forventetD1,
   forventetD2,
+  kampRef,
 }: {
   kamp: TurneringMedData["kamper"][number];
   turneringStatus: string;
   forventetD1: string | null;
   forventetD2: string | null;
+  kampRef?: (el: HTMLDivElement | null) => void;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -155,6 +147,11 @@ function KampKort({
 
   return (
     <div
+      ref={kampRef}
+      data-kamp-id={kamp.id}
+      data-bracket={kamp.bracket}
+      data-runde={kamp.runde}
+      data-posisjon={kamp.posisjon}
       className={`rounded-lg border px-2 py-1.5 min-w-[140px] transition-opacity ${
         isPending ? "opacity-70" : ""
       } ${
@@ -186,89 +183,120 @@ function KampKort({
   );
 }
 
-// ─── Kolonne med kamper ──────────────────────────────────────────────────
+// ─── Round-labels ─────────────────────────────────────────────────────────
 
-type RoundGroup = {
-  label: string;
-  bracket: "W" | "L" | "G";
-  runder: number[];
-  kamper: TurneringMedData["kamper"][number][];
-};
-
-function BracketKolonne({
-  groups,
-  turneringStatus,
-  forventetPerKamp,
-  visSeeding,
-}: {
-  groups: RoundGroup[];
-  turneringStatus: string;
-  forventetPerKamp: Map<string, { d1: string | null; d2: string | null }>;
-  visSeeding: boolean;
-}) {
-  return (
-    <div className="flex flex-col gap-4 shrink-0">
-      {groups.map((group) => {
-        // Group matches by round within the column
-        const byRunde = new Map<number, typeof group.kamper>();
-        for (const k of group.kamper) {
-          const arr = byRunde.get(k.runde) ?? [];
-          arr.push(k);
-          byRunde.set(k.runde, arr);
-        }
-
-        const sorterteRunder = [...byRunde.keys()].sort((a, b) => a - b);
-
-        return (
-          <div key={group.label} className="flex flex-col gap-3">
-            <div className="text-center">
-              <Badge
-                variant={
-                  group.bracket === "W" ? "pagaar"
-                  : group.bracket === "G" ? "gold"
-                  : "neutral"
-                }
-              >
-                {group.label}
-              </Badge>
-            </div>
-            {sorterteRunder.map((runde) => {
-              const kamper = byRunde.get(runde)!.sort((a, b) => a.posisjon - b.posisjon);
-              return (
-                <div
-                  key={`${group.label}-${runde}`}
-                  className="flex flex-col"
-                  style={{ gap: gapForMatchCount(kamper.length) }}
-                >
-                  {kamper.map((kamp) => (
-                    <KampKort
-                      key={kamp.id}
-                      kamp={kamp}
-                      turneringStatus={turneringStatus}
-                      forventetD1={visSeeding ? forventetPerKamp.get(kamp.id)?.d1 ?? null : null}
-                      forventetD2={visSeeding ? forventetPerKamp.get(kamp.id)?.d2 ?? null : null}
-                    />
-                  ))}
-                </div>
-              );
-            })}
-
-            {/* Connector arrow after this group (unless it's the last in column) */}
-            {/* Group-to-group connectors are shown in the column layout below */}
-          </div>
-        );
-      })}
-    </div>
-  );
+function roundLabel(bracket: string, runde: number, P: number): string {
+  const WR = winnersRunder(P);
+  const LR = losersRunder(P);
+  if (bracket === "W") {
+    if (WR === 5 && runde === 5) return "Winners Finale";
+    if (WR === 4 && runde === 4) return "Winners Finale";
+    if (WR === 3 && runde === 3) return "Winners Finale";
+    if (runde === 1) return "Runde 1";
+    if (runde === 2 && WR >= 4) return "Runde 2";
+    if (runde === 3 && WR >= 5) return "Kvartfinale";
+    if (runde === 4 && WR >= 6) return "Semifinale";
+    return `WR${runde}`;
+  }
+  if (bracket === "L") {
+    if (runde === LR) return "Losers Finale";
+    if (runde === 1) return "LR1";
+    return `LR${runde}`;
+  }
+  return "Grand Finals";
 }
 
-// ─── Connector-pil mellom kolonner ───────────────────────────────────────
+function formatAntallKamper(n: number): string {
+  return `${n} kamp${n === 1 ? "" : "er"}`;
+}
 
-function KolonnePil() {
+// ─── Bracket-linjer (SVG) ────────────────────────────────────────────────
+
+function BracketLinjer({
+  containerRef,
+  redrawTick,
+}: {
+  containerRef: React.RefObject<HTMLDivElement | null>;
+  redrawTick: number;
+}) {
+  const [paths, setPaths] = useState<string[]>([]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const newPaths: string[] = [];
+    const matchEls = container.querySelectorAll<HTMLDivElement>("[data-kamp-id]");
+
+    const byKey = new Map<string, HTMLDivElement>();
+    for (const el of matchEls) {
+      const b = el.dataset.bracket;
+      const r = el.dataset.runde;
+      const p = el.dataset.posisjon;
+      if (b && r && p) byKey.set(`${b}-${r}-${p}`, el);
+    }
+
+    const cRect = container.getBoundingClientRect();
+
+    const addLine = (srcEl: HTMLDivElement, tgtEl: HTMLDivElement) => {
+      const s = srcEl.getBoundingClientRect();
+      const t = tgtEl.getBoundingClientRect();
+
+      const x1 = s.right - cRect.left + 4;
+      const y1 = s.top + s.height / 2 - cRect.top;
+      const x2 = t.left - cRect.left - 4;
+      const y2 = t.top + t.height / 2 - cRect.top;
+
+      const midX = (x1 + x2) / 2;
+      newPaths.push(`M${x1.toFixed(1)},${y1.toFixed(1)} H${midX.toFixed(1)} V${y2.toFixed(1)} H${x2.toFixed(1)}`);
+    };
+
+    // Winners: position n and n+1 in round r feed into ceil(n/2) in round r+1
+    for (const [key, srcEl] of byKey) {
+      const [bracket, rStr, pStr] = key.split("-");
+      const r = parseInt(rStr);
+      const p = parseInt(pStr);
+
+      if (bracket === "W") {
+        const targetKey = `W-${r + 1}-${Math.ceil(p / 2)}`;
+        const tgt = byKey.get(targetKey);
+        if (tgt) addLine(srcEl, tgt);
+      } else if (bracket === "L") {
+        if (r % 2 === 1) {
+          const targetKey = `L-${r + 1}-${p}`;
+          const tgt = byKey.get(targetKey);
+          if (tgt) addLine(srcEl, tgt);
+        } else {
+          const targetKey = `L-${r + 1}-${Math.ceil(p / 2)}`;
+          const tgt = byKey.get(targetKey);
+          if (tgt) addLine(srcEl, tgt);
+        }
+      }
+    }
+
+    setPaths(newPaths);
+  }, [containerRef, redrawTick]);
+
+  if (paths.length === 0) return null;
+
   return (
-    <div className="flex items-center shrink-0 px-0.5">
-      <ChevronRight size={16} className="text-fg-faint" />
-    </div>
+    <svg
+      className="absolute inset-0 pointer-events-none z-0 overflow-visible"
+      style={{ width: "100%", height: "100%" }}
+    >
+      {paths.map((d, i) => (
+        <path
+          key={i}
+          d={d}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+          className="text-line"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      ))}
+    </svg>
   );
 }
 
@@ -277,6 +305,8 @@ function KolonnePil() {
 export default function TurneringsBracket({ turnering }: { turnering: TurneringMedData }) {
   const { kamper, deltagere } = turnering;
   const [visSeeding, setVisSeeding] = useState(false);
+  const [redrawTick, setRedrawTick] = useState(0);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   const P = PFromKamper(kamper);
   const N = deltagere.length;
@@ -302,74 +332,30 @@ export default function TurneringsBracket({ turnering }: { turnering: TurneringM
     }
   }
 
-  // ─── Bygg kolonner: interleaved WR og LR ─────────────────────────────
-
-  // Hjelper: hent kamper for en spesifikk bracket+runde
+  // Group matches
   const kamperFor = (bracket: string, runde: number) =>
-    kamper.filter((k) => k.bracket === bracket && k.runde === runde);
+    kamper
+      .filter((k) => k.bracket === bracket && k.runde === runde)
+      .sort((a, b) => a.posisjon - b.posisjon);
 
-  // Bygg kolonne-liste
-  // Mønster: WR1 → LR1 → WR2 → LR2+LR3 → WR3 → LR4+LR5 → ... → WR(W) → LR(LR)+GF
-  const columns: { groups: RoundGroup[] }[] = [];
-
-  // WR1
-  columns.push({
-    groups: [{ label: "Runde 1", bracket: "W" as const, runder: [1], kamper: kamperFor("W", 1) }],
-  });
-
-  // LR1 (hvis det finnes LR-kamper)
-  if (LR >= 1 && kamperFor("L", 1).length > 0) {
-    columns.push({
-      groups: [{ label: "LR1", bracket: "L" as const, runder: [1], kamper: kamperFor("L", 1) }],
-    });
+  // Winners rounds
+  const winnerRounds: { runde: number; label: string; kamper: typeof kamper }[] = [];
+  for (let r = 1; r <= WR; r++) {
+    const k = kamperFor("W", r);
+    if (k.length > 0) winnerRounds.push({ runde: r, label: roundLabel("W", r, P), kamper: k });
   }
 
-  // For WR runde 2 til nest siste
-  for (let wr = 2; wr <= WR; wr++) {
-    // WR-runde
-    columns.push({
-      groups: [{ label: `Runde ${wr}`, bracket: "W" as const, runder: [wr], kamper: kamperFor("W", wr) }],
-    });
-
-    // Tilhørende LR-par (runde 2*wr-2 og 2*wr-1) hvis de finnes
-    const lrEven = 2 * wr - 2;
-    const lrOdd = 2 * wr - 1;
-
-    if (lrEven <= LR || lrOdd <= LR) {
-      const lrGroups: RoundGroup[] = [];
-
-      if (lrEven <= LR && kamperFor("L", lrEven).length > 0) {
-        lrGroups.push({
-          label: `LR${lrEven}`,
-          bracket: "L" as const,
-          runder: [lrEven],
-          kamper: kamperFor("L", lrEven),
-        });
-      }
-      if (lrOdd <= LR && kamperFor("L", lrOdd).length > 0) {
-        lrGroups.push({
-          label: `LR${lrOdd}`,
-          bracket: "L" as const,
-          runder: [lrOdd],
-          kamper: kamperFor("L", lrOdd),
-        });
-      }
-
-      if (lrGroups.length > 0) {
-        columns.push({ groups: lrGroups });
-      }
-    }
+  // Losers rounds
+  const loserRounds: { runde: number; label: string; kamper: typeof kamper }[] = [];
+  for (let r = 1; r <= LR; r++) {
+    const k = kamperFor("L", r);
+    if (k.length > 0) loserRounds.push({ runde: r, label: roundLabel("L", r, P), kamper: k });
   }
 
   // Grand Finals
   const grandFinals = kamper.filter((k) => k.bracket === "G").sort((a, b) => a.runde - b.runde);
-  if (grandFinals.length > 0) {
-    columns.push({
-      groups: [{ label: "Finale", bracket: "G" as const, runder: grandFinals.map((k) => k.runde), kamper: grandFinals }],
-    });
-  }
 
-  // Finn turneringsvinner
+  // Turneringsvinner
   const sisteG = [...grandFinals].reverse().find((k) => k.status === "FULLFORT");
   let vinnerNavn: string | null = null;
   if (sisteG?.vinnerId) {
@@ -378,8 +364,29 @@ export default function TurneringsBracket({ turnering }: { turnering: TurneringM
     vinnerNavn = (d1 ?? d2)?.user.navn ?? null;
   }
 
+  // Match refs for bracket lines
+  const kampRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const setKampRef = useCallback(
+    (id: string) => (el: HTMLDivElement | null) => {
+      if (el) kampRefs.current.set(id, el);
+      else kampRefs.current.delete(id);
+    },
+    [],
+  );
+
+  // Redraw SVG on resize and tab switch
+  useEffect(() => {
+    const redraw = () => setRedrawTick((n) => n + 1);
+    window.addEventListener("resize", redraw);
+    const handle = setTimeout(redraw, 200);
+    return () => {
+      window.removeEventListener("resize", redraw);
+      clearTimeout(handle);
+    };
+  }, []);
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Seeding-toggle */}
       <div className="flex justify-end">
         <button
@@ -399,32 +406,146 @@ export default function TurneringsBracket({ turnering }: { turnering: TurneringM
         </button>
       </div>
 
-      {/* Bracket-kolonner */}
-      <div className="overflow-x-auto pb-2 -mx-2 px-2">
-        <div className="flex items-start gap-0 min-w-min">
-          {columns.map((col, ci) => (
-            <div key={ci} className="flex items-start">
-              <BracketKolonne
-                groups={col.groups}
-                turneringStatus={turnering.status}
-                forventetPerKamp={forventetPerKamp}
-                visSeeding={visSeeding}
-              />
-              {/* Connector arrow between columns */}
-              {ci < columns.length - 1 && <KolonnePil />}
+      {/* Bracket container */}
+      <div ref={containerRef} className="relative overflow-x-auto pb-2">
+        <BracketLinjer containerRef={containerRef} redrawTick={redrawTick} />
+
+        <div className="relative z-10 space-y-6">
+          {/* ═══════ WINNERS BRACKET ═══════ */}
+          <div>
+            <p className="text-[11px] font-bold text-accent-2 uppercase tracking-wider mb-2 px-1">
+              Winners bracket
+            </p>
+            <div className="flex items-start gap-8">
+              {winnerRounds.map((wr) => (
+                <BracketKolonne
+                  key={`W-${wr.runde}`}
+                  label={wr.label}
+                  sublabel={formatAntallKamper(wr.kamper.length)}
+                  kamper={wr.kamper}
+                  turneringStatus={turnering.status}
+                  forventetPerKamp={forventetPerKamp}
+                  visSeeding={visSeeding}
+                  setKampRef={setKampRef}
+                />
+              ))}
+              {/* GF column — aligned with WF (last winners column) */}
+              {grandFinals.length > 0 && (
+                <BracketKolonne
+                  label="Grand Finals"
+                  sublabel={grandFinals.length > 1 ? "incl. reset" : undefined}
+                  kamper={grandFinals}
+                  turneringStatus={turnering.status}
+                  forventetPerKamp={forventetPerKamp}
+                  visSeeding={visSeeding}
+                  setKampRef={setKampRef}
+                  isGrandFinals
+                />
+              )}
             </div>
-          ))}
+          </div>
+
+          {/* Separator */}
+          <div className="border-t border-line/40" />
+
+          {/* ═══════ LOSERS BRACKET ═══════ */}
+          <div>
+            <p className="text-[11px] font-bold text-amber-400/80 uppercase tracking-wider mb-2 px-1">
+              Losers bracket
+            </p>
+            <div className="flex items-start gap-8">
+              {loserRounds.map((lr) => (
+                <BracketKolonne
+                  key={`L-${lr.runde}`}
+                  label={lr.label}
+                  sublabel={formatAntallKamper(lr.kamper.length)}
+                  kamper={lr.kamper}
+                  turneringStatus={turnering.status}
+                  forventetPerKamp={forventetPerKamp}
+                  visSeeding={visSeeding}
+                  setKampRef={setKampRef}
+                />
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Turneringsvinner */}
       {vinnerNavn && (
         <div className="text-center pt-2">
-          <p className="text-sm font-display text-accent-2">
-            🏆 {vinnerNavn}
-          </p>
+          <p className="text-sm font-display text-accent-2">🏆 {vinnerNavn}</p>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── BracketKolonne ───────────────────────────────────────────────────────
+
+function BracketKolonne({
+  label,
+  sublabel,
+  kamper,
+  turneringStatus,
+  forventetPerKamp,
+  visSeeding,
+  setKampRef,
+  isGrandFinals,
+}: {
+  label: string;
+  sublabel?: string;
+  kamper: TurneringMedData["kamper"];
+  turneringStatus: string;
+  forventetPerKamp: Map<string, { d1: string | null; d2: string | null }>;
+  visSeeding: boolean;
+  setKampRef: (id: string) => (el: HTMLDivElement | null) => void;
+  isGrandFinals?: boolean;
+}) {
+  const n = kamper.length;
+
+  // Gap between matches: more matches → tighter; fewer → more spread
+  const gap =
+    n >= 8 ? "0.5rem"
+    : n >= 4 ? "1.25rem"
+    : n >= 2 ? "3rem"
+    : "0";
+
+  return (
+    <div className="flex flex-col shrink-0">
+      <div className="text-center mb-2">
+        <p
+          className={`text-[10px] font-semibold uppercase tracking-wider ${
+            isGrandFinals ? "text-yellow-400/90" : "text-fg-faint"
+          }`}
+        >
+          {label}
+        </p>
+        {sublabel && (
+          <p className="text-[9px] text-fg-faint/50">{sublabel}</p>
+        )}
+      </div>
+      <div className="flex flex-col" style={{ gap }}>
+        {kamper.map((kamp) => {
+          const f = forventetPerKamp.get(kamp.id);
+          return (
+            <div key={kamp.id} className="flex flex-col gap-0.5">
+              <KampKort
+                kamp={kamp}
+                turneringStatus={turneringStatus}
+                forventetD1={visSeeding ? f?.d1 ?? null : null}
+                forventetD2={visSeeding ? f?.d2 ?? null : null}
+                kampRef={setKampRef(kamp.id)}
+              />
+              {kamp.bracket === "G" && kamp.runde === 2 && (
+                <p className="text-[9px] text-fg-faint/60 text-center italic">
+                  Reset — vinneren kåres her
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
