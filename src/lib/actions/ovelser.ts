@@ -227,14 +227,37 @@ const GYLDIGE_STATUSER: readonly OvelseStatus[] = [
   "FULLFORT",
 ];
 
+/** Setter status og vedlikeholder fullfortTid: settes første gang leken
+ *  fullføres (gir rekkefølgen i finaleshowets tidslinje), nullstilles ved
+ *  gjenåpning. Vert-sjekken ligger i where-betingelsen. */
+async function settStatusMedTid(
+  ovelseId: string,
+  vertId: string,
+  status: OvelseStatus,
+) {
+  if (status === "FULLFORT") {
+    await prisma.$transaction([
+      prisma.ovelse.updateMany({
+        where: { id: ovelseId, vertId, fullfortTid: null },
+        data: { fullfortTid: new Date() },
+      }),
+      prisma.ovelse.updateMany({
+        where: { id: ovelseId, vertId },
+        data: { status },
+      }),
+    ]);
+  } else {
+    await prisma.ovelse.updateMany({
+      where: { id: ovelseId, vertId },
+      data: { status, fullfortTid: null },
+    });
+  }
+}
+
 export async function settOvelseStatus(ovelseId: string, status: OvelseStatus) {
   const bruker = await krevInnloggetBruker();
   if (!GYLDIGE_STATUSER.includes(status)) return;
-  // Vert-sjekken ligger i where-betingelsen — én rundtur, atomisk autorisert.
-  await prisma.ovelse.updateMany({
-    where: { id: ovelseId, vertId: bruker.id },
-    data: { status },
-  });
+  await settStatusMedTid(ovelseId, bruker.id, status);
   revalidatePath(`/ovelser/${ovelseId}`);
   revalidatePath("/ovelser");
 }
@@ -256,10 +279,7 @@ export async function nesteOvelseStatus(ovelseId: string) {
   if (!ovelse) return;
 
   const neste = STATUS_REKKEFOLGE[ovelse.status];
-  await prisma.ovelse.updateMany({
-    where: { id: ovelseId, vertId: bruker.id },
-    data: { status: neste },
-  });
+  await settStatusMedTid(ovelseId, bruker.id, neste);
 
   if (neste === "FULLFORT") {
     await beregnAutoPlassering(ovelseId);

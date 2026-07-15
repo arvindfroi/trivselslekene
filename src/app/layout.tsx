@@ -7,6 +7,8 @@ import SiteNav from "@/components/SiteNav";
 const robotoFlex = Roboto_Flex({
   variable: "--font-roboto-flex",
   subsets: ["latin"],
+  // wdth-aksen lastes med så bredden kan animeres (bl.a. i finaleshowet)
+  axes: ["wdth"],
 });
 
 const amstelvar = localFont({

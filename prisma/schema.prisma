@@ -91,6 +91,7 @@ model Ovelse {
   bildeUrl    String?      /// Data-URL for kart/illustrasjon til øvelsen (brukes som fallback hvis ingen faser)
   status      OvelseStatus @default(PLANLAGT)
   aktivFase   Int          @default(0) /// 0 = ingen aktiv fase; 1..N = fasenummer
+  fullfortTid DateTime?    /// Settes når leken markeres som fullført — gir tidslinjen i finaleshowet
   createdAt   DateTime     @default(now())
 
   sesongId String

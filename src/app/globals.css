@@ -171,6 +171,22 @@ body {
   will-change: transform, opacity;
 }
 
+/* Sakte gradient-sveip — lett "levende" teaser til finale-inngangen,
+   uten WebGL (den tunge shaderen er reservert til selve showet). */
+@keyframes gradient-drift {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+.animate-gradient-drift {
+  background-size: 200% 200%;
+  animation: gradient-drift 7s linear infinite;
+  will-change: background-position;
+}
+
 @keyframes bg-enter {
   from {
     opacity: 0;
@@ -241,6 +257,90 @@ body {
 .animate-float {
   animation: float-soft 3.4s ease-in-out infinite;
   will-change: transform;
+}
+
+/* ── Konfetti til finaleshowet ── */
+@keyframes konfetti-fall {
+  0% {
+    transform: translate3d(0, -12vh, 0) rotateZ(0deg) rotateX(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(var(--kx, 0px), 112vh, 0) rotateZ(720deg) rotateX(360deg);
+    opacity: 0.85;
+  }
+}
+.konfetti-bit {
+  position: absolute;
+  top: -12vh;
+  border-radius: 2px;
+  animation-name: konfetti-fall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform;
+}
+
+/* ── Kinetisk typografi til finaleshowet ──
+   Amstelvar er en variabel font med wght (100–900), wdth (50–125) og
+   opsz (8–144) — aksene animeres direkte, så bokstavene "blåses opp"
+   fra tynne og smale til fete og brede med full optisk størrelse. */
+@keyframes bokstav-boom {
+  0% {
+    font-variation-settings: "wght" 100, "wdth" 60, "opsz" 8;
+    opacity: 0;
+    transform: translateY(0.3em) scaleY(0.85);
+    filter: blur(10px);
+  }
+  55% {
+    opacity: 1;
+    filter: blur(0px);
+  }
+  100% {
+    font-variation-settings: "wght" 820, "wdth" 100, "opsz" 144;
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+    filter: blur(0px);
+  }
+}
+.kinetisk-bokstav {
+  display: inline-block;
+  animation: bokstav-boom 0.75s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity, font-variation-settings;
+}
+
+/* Pustende fontvekt — til trommevirvel og hemmelige "?" */
+@keyframes vekt-pust {
+  0%,
+  100% {
+    font-variation-settings: "wght" 250, "opsz" 144;
+  }
+  50% {
+    font-variation-settings: "wght" 900, "opsz" 144;
+  }
+}
+.animate-vekt-pust {
+  animation: vekt-pust 1.5s ease-in-out infinite;
+  will-change: font-variation-settings;
+}
+
+/* Kickere i showet: Roboto Flex strekkes fra ekstra bred (wdth 151)
+   og klemmes inn til normal bredde mens den fader inn */
+@keyframes kicker-strekk {
+  0% {
+    font-variation-settings: "wdth" 151;
+    opacity: 0;
+    letter-spacing: 0.55em;
+  }
+  100% {
+    font-variation-settings: "wdth" 100;
+    opacity: 1;
+    letter-spacing: 0.3em;
+  }
+}
+.kicker-strekk {
+  animation: kicker-strekk 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: 0.1s;
+  will-change: font-variation-settings, letter-spacing;
 }
 
 ::selection {

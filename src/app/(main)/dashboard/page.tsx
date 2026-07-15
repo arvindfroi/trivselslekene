@@ -10,6 +10,7 @@ import { LinkButton } from "@/components/ui/Button";
 import StatCard from "@/components/ui/StatCard";
 import RankBadge from "@/components/ui/RankBadge";
 import Avatar from "@/components/Avatar";
+import FinaleInngang from "@/components/FinaleInngang";
 import { ArrowRight, BarChart3, Swords, User } from "lucide-react";
 import LiveRefresh from "@/components/LiveRefresh";
 
@@ -22,11 +23,13 @@ export default async function HjemSide() {
   if (!session?.user) redirect("/bli-med");
 
   const sesong = await sikreAktivSesong();
-  const [alleData, dineOvelser] = await Promise.all([
+  const [alleData, dineOvelser, antallOvelser, antallFullfort] = await Promise.all([
     hentAlleSesongData(sesong.id),
     prisma.ovelse.count({
       where: { sesongId: sesong.id, vertId: session.user.id },
     }),
+    prisma.ovelse.count({ where: { sesongId: sesong.id } }),
+    prisma.ovelse.count({ where: { sesongId: sesong.id, status: "FULLFORT" } }),
   ]);
   const stilling = hentStilling(alleData);
 
@@ -54,6 +57,15 @@ export default async function HjemSide() {
         />
         <StatCard label="Dine poeng" verdi={String(min?.totalPoeng ?? 0)} />
         <StatCard label="Dine leker" verdi={String(dineOvelser)} />
+      </div>
+
+      {/* Sesongslutt-varsel: dukker bare opp når alle leker er ferdige */}
+      <div className="mt-6 animate-fade-up">
+        <FinaleInngang
+          antallFullfort={antallFullfort}
+          antallOvelser={antallOvelser}
+          variant="banner"
+        />
       </div>
 
       <section className="mt-10">

@@ -71,7 +71,10 @@ export default function FloatingNav({ loggedIn }: { loggedIn: boolean }) {
   }, [pathname, router]);
 
   const hidden =
-    !loggedIn || pathname === "/" || pathname.startsWith("/bli-med");
+    !loggedIn ||
+    pathname === "/" ||
+    pathname.startsWith("/bli-med") ||
+    pathname.startsWith("/finale");
   if (hidden) return null;
 
   return (

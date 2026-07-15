@@ -16,6 +16,7 @@ import Card from "@/components/ui/Card";
 import StatCard from "@/components/ui/StatCard";
 import StillingListe from "@/components/StillingListe";
 import StatFlis from "@/components/StatFlis";
+import FinaleInngang from "@/components/FinaleInngang";
 import {
   CloudRain,
   Crown,
@@ -161,6 +162,14 @@ export default async function StillingSide() {
         <p className="mt-2 text-sm text-fg-dim">
           Sammenlagt stilling, egenskaper og utmerkelser for lekene.
         </p>
+
+        <div className="mt-5">
+          <FinaleInngang
+            antallFullfort={antallFullfort}
+            antallOvelser={antallOvelser}
+            variant="hero"
+          />
+        </div>
 
         <div className="mt-6 grid grid-cols-3 gap-3 sm:gap-4">
           <StatCard label="Deltakere" verdi={String(stilling.length)} />
