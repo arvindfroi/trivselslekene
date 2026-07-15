@@ -331,6 +331,7 @@ export async function opprettTurnering(formData: FormData) {
   if (!turneringId) return;
 
   revalidatePath("/turnering");
+  revalidatePath("/ovelser");
   redirect("/turnering");
 }
 
@@ -430,6 +431,7 @@ export async function velgVinner(kampId: string, vinnerDeltagerId: string) {
   }
 
   revalidatePath("/turnering");
+  revalidatePath("/ovelser");
 }
 
 async function plasserDeltager(
@@ -617,6 +619,7 @@ async function fullforTurnering(turneringId: string) {
   ]);
 
   revalidatePath("/turnering");
+  revalidatePath("/ovelser");
   revalidatePath("/stilling");
   revalidatePath("/dashboard");
 }

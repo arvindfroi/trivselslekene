@@ -157,60 +157,121 @@ export default async function TurneringSide() {
                   {/* Bracket */}
                   <TurneringsBracket turnering={t as unknown as TurneringMedData} />
 
-                  {/* Resultater (kun vist når turneringen er ferdig) */}
-                  {t.status === "FULLFORT" && t.ovelse && t.ovelse.individuelleResultater.length > 0 && (
-                    <div className="mt-8 border-t border-line pt-6">
-                      <h4 className="mb-4 text-sm font-semibold text-fg">Resultater</h4>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="border-b border-line text-left text-xs text-fg-faint uppercase tracking-wider">
-                              <th className="pb-2 w-12 font-medium">Plass</th>
-                              <th className="pb-2 font-medium">Deltaker</th>
-                              <th className="pb-2 w-16 text-right font-medium">Poeng</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-line/50">
-                            {t.ovelse.individuelleResultater.map((r, i) => (
-                              <tr
-                                key={r.id}
-                                className={`${i < 3 ? "font-semibold" : ""} hover:bg-white/[0.03] transition-colors`}
-                              >
-                                <td className="py-2">
-                                  <span
-                                    className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${
-                                      i === 0
-                                        ? "bg-yellow-500/20 text-yellow-400"
-                                        : i === 1
-                                          ? "bg-slate-400/20 text-slate-300"
-                                          : i === 2
-                                            ? "bg-amber-700/20 text-amber-600"
-                                            : "text-fg-faint"
-                                    }`}
-                                  >
-                                    {r.plassering ?? i + 1}
-                                  </span>
-                                </td>
-                                <td className="py-2">
-                                  <div className="flex items-center gap-2">
-                                    <Avatar
-                                      navn={r.user.navn}
-                                      bildeUrl={r.user.bildeUrl}
-                                      size={22}
-                                    />
-                                    <span className="text-fg">{r.user.navn}</span>
-                                  </div>
-                                </td>
-                                <td className="py-2 text-right">
-                                  <span className="text-accent-2 tabular-nums">{r.poeng} p</span>
-                                </td>
+                  {/* Resultater / stilling */}
+                  {(() => {
+                    // Beregn status per deltager fra kamper
+                    const deltagerStatus = t.deltagere.map((d) => {
+                      let tap = 0;
+                      for (const k of t.kamper) {
+                        if (k.status !== "FULLFORT") continue;
+                        const erD1 = k.deltager1Id === d.id;
+                        const erD2 = k.deltager2Id === d.id;
+                        if ((erD1 || erD2) && k.vinnerId !== d.id) tap++;
+                      }
+                      let statusLabel: string;
+                      let statusColor: string;
+                      if (tap === 0) { statusLabel = "Winners bracket"; statusColor = "text-accent-2"; }
+                      else if (tap === 1) { statusLabel = "Losers bracket"; statusColor = "text-amber-400"; }
+                      else { statusLabel = "Eliminert"; statusColor = "text-fg-faint line-through"; }
+                      return { ...d, tap, statusLabel, statusColor };
+                    });
+
+                    // Sorter: færrest tap først, deretter seed
+                    deltagerStatus.sort((a, b) => a.tap - b.tap || a.seed - b.seed);
+
+                    const erFerdig = t.status === "FULLFORT";
+                    const harResultater = erFerdig && t.ovelse && t.ovelse.individuelleResultater.length > 0;
+
+                    return (
+                      <div className="mt-8 border-t border-line pt-6">
+                        <h4 className="mb-4 text-sm font-semibold text-fg">
+                          {erFerdig ? "Resultater" : "Stilling"}
+                        </h4>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b border-line text-left text-xs text-fg-faint uppercase tracking-wider">
+                                <th className="pb-2 w-12 font-medium">#</th>
+                                <th className="pb-2 font-medium">Deltaker</th>
+                                {harResultater ? (
+                                  <th className="pb-2 w-16 text-right font-medium">Poeng</th>
+                                ) : (
+                                  <th className="pb-2 font-medium">Status</th>
+                                )}
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                            </thead>
+                            <tbody className="divide-y divide-line/50">
+                              {harResultater
+                                ? t.ovelse!.individuelleResultater.map((r, i) => (
+                                    <tr
+                                      key={r.id}
+                                      className={`${i < 3 ? "font-semibold" : ""} hover:bg-white/[0.03] transition-colors`}
+                                    >
+                                      <td className="py-2">
+                                        <span
+                                          className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${
+                                            i === 0
+                                              ? "bg-yellow-500/20 text-yellow-400"
+                                              : i === 1
+                                                ? "bg-slate-400/20 text-slate-300"
+                                                : i === 2
+                                                  ? "bg-amber-700/20 text-amber-600"
+                                                  : "text-fg-faint"
+                                          }`}
+                                        >
+                                          {r.plassering ?? i + 1}
+                                        </span>
+                                      </td>
+                                      <td className="py-2">
+                                        <div className="flex items-center gap-2">
+                                          <Avatar
+                                            navn={r.user.navn}
+                                            bildeUrl={r.user.bildeUrl}
+                                            size={22}
+                                          />
+                                          <span className="text-fg">{r.user.navn}</span>
+                                        </div>
+                                      </td>
+                                      <td className="py-2 text-right">
+                                        <span className="text-accent-2 tabular-nums">{r.poeng} p</span>
+                                      </td>
+                                    </tr>
+                                  ))
+                                : deltagerStatus.map((ds) => (
+                                    <tr
+                                      key={ds.id}
+                                      className="hover:bg-white/[0.03] transition-colors"
+                                    >
+                                      <td className="py-2">
+                                        <span className="text-fg-faint font-mono text-xs">
+                                          #{ds.seed}
+                                        </span>
+                                      </td>
+                                      <td className="py-2">
+                                        <div className="flex items-center gap-2">
+                                          <Avatar
+                                            navn={ds.user.navn}
+                                            bildeUrl={ds.user.bildeUrl}
+                                            size={22}
+                                          />
+                                          <span className={`text-fg ${ds.statusColor}`}>
+                                            {ds.user.navn}
+                                          </span>
+                                        </div>
+                                      </td>
+                                      <td className="py-2">
+                                        <span className={`text-xs ${ds.statusColor}`}>
+                                          {ds.statusLabel}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  ))}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </Card>
               ))}
             </div>
