@@ -62,6 +62,7 @@ function lagSesong(seed: number) {
       id: ovelseId,
       navn: `Øvelse ${j}`,
       kvaliteter,
+      vertId: vert.id,
       fullfortTid: new Date(base + j * 86400000),
       createdAt: new Date(base),
       individuelleResultater: indRes.map(({ userId, poeng }) => ({ userId, poeng })),
@@ -210,5 +211,65 @@ describe("finaleshowets invarianter (Monte Carlo over 400 sesonger)", () => {
       expect(slides[0].type, `starter på intro (${ctx})`).toBe("intro");
       expect(slides[slides.length - 1].type, `ender på tallene (${ctx})`).toBe("tallene");
     }
+  });
+
+  it("utelukker uferdige leker helt — også fra sammendraget", () => {
+    // To FULLFØRTE leker + én uferdig lek (finnes i sesongData, men IKKE i
+    // ovelser-lista). Den uferdige gir "Sen" en kjempescore som ville gjort
+    // hen til vinner om den talte med — men den skal ignoreres fullstendig.
+    const brukere = ["Ann", "Bo", "Cato", "Sen"].map((navn, i) => ({
+      id: `u${i}`,
+      navn: `${navn} Etternavn`,
+      bildeUrl: null as string | null,
+      farge: "#334455" as string | null,
+    }));
+    const kval: Kvalitet[] = ["PRESISJON"];
+    const base = new Date("2026-07-01T12:00:00Z").getTime();
+
+    // Poeng per lek: [Ann, Bo, Cato, Sen]
+    const ferdige = [
+      { id: "f0", poeng: [10, 8, 6, 4] },
+      { id: "f1", poeng: [10, 8, 6, 4] },
+    ];
+    const uferdig = { id: "u_open", poeng: [0, 0, 0, 999] }; // Sen "leder" her
+
+    const ovelser: FinaleOvelseRad[] = ferdige.map((o, j) => ({
+      id: o.id,
+      navn: `Ferdig ${j}`,
+      kvaliteter: kval,
+      vertId: "u0",
+      fullfortTid: new Date(base + j * 86400000),
+      createdAt: new Date(base),
+      individuelleResultater: brukere.map((b, i) => ({ userId: b.id, poeng: o.poeng[i] })),
+      lag: [],
+    }));
+
+    const alleLeker = [...ferdige, uferdig];
+    const sesongData: SesongData = {
+      brukere: brukere.map((b, i) => ({
+        ...b,
+        individuelleResultater: alleLeker.map((o) => ({
+          id: `${o.id}-${b.id}`,
+          ovelseId: o.id,
+          plassering: null,
+          poeng: o.poeng[i],
+          ovelse: { id: o.id, kvaliteter: kval },
+        })),
+        lagmedlemskap: [],
+      })),
+      vertPerOvelse: [{ vertId: "u0" }, { vertId: "u0" }, { vertId: "u0" }],
+    };
+
+    const data = byggFinaleData({ navn: "Test", aar: 2026 }, sesongData, ovelser, 3);
+
+    // Vinner er Ann (20p fra ferdige leker), IKKE Sen (som "hadde" 999)
+    expect(data.deltakere[0].fornavn).toBe("Ann");
+    expect(data.deltakere[0].totalPoeng).toBe(20);
+    // Sens sum teller kun ferdige leker (8p), ikke 999+
+    const sen = data.deltakere.find((d) => d.fornavn === "Sen");
+    expect(sen?.totalPoeng).toBe(8);
+    // Den uferdige leken finnes ingensteds i tidslinjen
+    expect(data.tidslinje.every((t) => t.ovelseNavn !== "u_open")).toBe(true);
+    expect(data.antallFullfort).toBe(2);
   });
 });

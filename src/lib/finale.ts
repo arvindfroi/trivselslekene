@@ -513,6 +513,7 @@ export type FinaleOvelseRad = {
   id: string;
   navn: string;
   kvaliteter: Kvalitet[];
+  vertId: string;
   fullfortTid: Date | null;
   createdAt: Date;
   individuelleResultater: { userId: string; poeng: number }[];
@@ -538,6 +539,7 @@ export async function hentFinaleData(sesong: {
         id: true,
         navn: true,
         kvaliteter: true,
+        vertId: true,
         fullfortTid: true,
         createdAt: true,
         individuelleResultater: { select: { userId: true, poeng: true } },
@@ -564,10 +566,27 @@ export function byggFinaleData(
   ovelser: FinaleOvelseRad[],
   antallOvelser: number,
 ): FinaleData {
-  const stilling = hentStilling(sesongData);
-  const detaljer = hentSpillerdetaljer(sesongData);
-  const utmerkelser = hentUtmerkelser(sesongData);
+  // Kun FULLFØRTE leker teller i finalen. Planlagte/påbegynte leker som ikke
+  // ble ferdige holdes HELT utenfor — også fra sammendraget, poengsummer og
+  // utmerkelser, ikke bare fra tidslinjen. (`ovelser` er allerede filtrert til
+  // FULLFORT i spørringen; her speiler vi det inn i stats-grunnlaget.)
+  const fullfortIds = new Set(ovelser.map((o) => o.id));
+  const bareFullfort: SesongData = {
+    brukere: sesongData.brukere.map((b) => ({
+      ...b,
+      individuelleResultater: b.individuelleResultater.filter((r) =>
+        fullfortIds.has(r.ovelseId),
+      ),
+      lagmedlemskap: b.lagmedlemskap.filter((m) => fullfortIds.has(m.lag.ovelseId)),
+    })),
+    vertPerOvelse: ovelser.map((o) => ({ vertId: o.vertId })),
+  };
 
+  const stilling = hentStilling(bareFullfort);
+  const detaljer = hentSpillerdetaljer(bareFullfort);
+  const utmerkelser = hentUtmerkelser(bareFullfort);
+
+  // Navn/farger slås opp fra ALLE brukere (superset) så avatarer alltid rendrer
   const personer: Record<string, TidslinjePerson> = {};
   for (const b of sesongData.brukere) {
     personer[b.id] = {
@@ -1160,7 +1179,7 @@ export function byggFinaleData(
     const beste = [...antallPerKvalitet.entries()].sort((a, b) => b[1] - a[1])[0];
     if (beste) {
       const [kvalitet, antallLeker] = beste;
-      const ledere = hentKvalitetsledere(sesongData).find((k) => k.kvalitet === kvalitet);
+      const ledere = hentKvalitetsledere(bareFullfort).find((k) => k.kvalitet === kvalitet);
       const topp = (ledere?.topp3 ?? []).map((t) => ({ userId: t.userId, poeng: t.poeng }));
       if (topp.length >= 3) {
         const label = kvalitetTekst[kvalitet];
