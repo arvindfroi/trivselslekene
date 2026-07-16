@@ -20,6 +20,13 @@ import Avatar from "@/components/Avatar";
 import IridiserendeBakgrunn from "@/components/IridiserendeBakgrunn";
 import { ShowLyd } from "@/lib/showLyd";
 import { byggSlides, type Slide } from "@/lib/finaleSlides";
+import {
+  FJORARET_AAR,
+  FJORARET_NAVN,
+  FJORARET_SPILTE_LEKER,
+  fjoraretStilling,
+  fjorFarge,
+} from "@/lib/fjoraaret";
 import type {
   AvvikInnslag,
   DuellInnslag,
@@ -34,6 +41,7 @@ import type {
   RivalInnslag,
   Pris,
   TetsjiktInnslag,
+  TidslinjePerson,
   TvillingInnslag,
   Vendepunkt,
 } from "@/lib/finale";
@@ -122,6 +130,8 @@ function slideGlod(slide: Slide): [string, string] {
         default:
           return [LILLA, BLAA];
       }
+    case "ifjor":
+      return [GULL, BLAA];
     case "pris":
     case "hederlig":
     case "vendepunkt":
@@ -145,6 +155,7 @@ function slideOvergang(type: Slide["type"], retning: number) {
   switch (type) {
     case "intro":
     case "kapittel":
+    case "ifjor":
       // Tittelkort: skalerer opp og fader inn
       return {
         initial: { opacity: 0, scale: 0.9, filter: "blur(8px)" },
@@ -313,6 +324,7 @@ export default function FinaleShow({ data }: { data: FinaleData }) {
             className="w-full max-w-5xl"
           >
             {slide.type === "intro" && <IntroSlide data={data} />}
+            {slide.type === "ifjor" && <IfjorSlide data={data} />}
             {slide.type === "vifte" && <VifteSlide data={data} />}
             {slide.type === "kapittel" && (
               <KapittelSlide nr={slide.nr} tittel={slide.tittel} tekst={slide.tekst} />
@@ -510,11 +522,140 @@ function IntroSlide({ data }: { data: FinaleData }) {
       <motion.p
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
+        transition={{ delay: 0.95 }}
+        className="mt-2 text-sm text-fg-faint"
+      >
+        Tittelforsvarer fra {FJORARET_AAR}:{" "}
+        <span className="text-[var(--gold)]">{fjoraretStilling()[0].navn}</span> 👑
+      </motion.p>
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ delay: 1.2 }}
         className="mt-10 text-xs tracking-widest text-fg-faint uppercase"
       >
         Trykk Neste eller → for å starte showet
       </motion.p>
+    </div>
+  );
+}
+
+// ─── Tilbakeblikk: fjorårets pall som en «tidligere i lekene»-vignett ─
+
+/** Kobler et fjorårsnavn til årets deltaker med samme fornavn — så vi kan
+ *  gjenbruke profilbilde og farge når personen fortsatt er med. Faller ellers
+ *  tilbake på fjorårets egen farge og initial-avatar. */
+function IfjorSlide({ data }: { data: FinaleData }) {
+  const stilling = useMemo(() => fjoraretStilling(), []);
+  const fornavnKart = useMemo(() => {
+    const kart = new Map<string, TidslinjePerson>();
+    for (const p of Object.values(data.personer)) {
+      kart.set(p.fornavn.toLowerCase(), p);
+    }
+    return kart;
+  }, [data.personer]);
+
+  const topp = stilling.slice(0, 3);
+  const forsprang = topp.length >= 2 ? topp[0].totalPoeng - topp[1].totalPoeng : 0;
+  // Pall: 2. til venstre, 1. i midten, 3. til høyre
+  const pall = [
+    { rad: topp[1], plass: 2, hoyde: 104, delay: 0.7 },
+    { rad: topp[0], plass: 1, hoyde: 150, delay: 1.1 },
+    { rad: topp[2], plass: 3, hoyde: 74, delay: 0.4 },
+  ].filter((p) => p.rad);
+  const MEDALJER = ["", "🥇", "🥈", "🥉"];
+
+  const bildeOgFarge = (navn: string, fallbackFarge: string) => {
+    const match = fornavnKart.get(navn.toLowerCase());
+    return {
+      bildeUrl: match?.bildeUrl ?? null,
+      farge: match?.farge ?? fjorFarge(navn) ?? fallbackFarge,
+    };
+  };
+
+  return (
+    <div className="text-center">
+      <Kicker emoji="🕰️" tittel={`Sist gang · ${FJORARET_AAR}`} farge="var(--gold)" />
+      <h2 className="mt-4 font-display text-5xl sm:text-7xl">
+        <KinetiskTittel tekst="Tilbakeblikk" gradient delay={0.2} steg={0.06} />
+      </h2>
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.5 }}
+        className="mx-auto mt-4 max-w-xl text-base text-fg-dim"
+      >
+        Før vi kårer årets mester — slik endte {FJORARET_NAVN}.
+      </motion.p>
+
+      <div className="mx-auto mt-10 flex max-w-2xl items-end justify-center gap-3 sm:gap-5">
+        {pall.map(({ rad, plass, hoyde, delay }) => {
+          const { bildeUrl, farge } = bildeOgFarge(rad.navn, rad.farge);
+          const lys = lysFarge(farge);
+          const gull = plass === 1;
+          return (
+            <div key={rad.navn} className="flex w-28 flex-col items-center sm:w-32">
+              <motion.div
+                initial={{ opacity: 0, y: -70, scale: 0.6 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ delay: delay + 0.2, type: "spring", stiffness: 220, damping: 14 }}
+                className="mb-2 flex flex-col items-center gap-1"
+              >
+                <span className="text-xl" aria-hidden>
+                  {MEDALJER[plass]}
+                </span>
+                <Avatar
+                  navn={rad.navn}
+                  bildeUrl={bildeUrl}
+                  farge={farge}
+                  size={gull ? 72 : 56}
+                  className={gull ? "ring-2 ring-[var(--gold)]" : ""}
+                />
+                <span className="font-display text-lg text-fg">{rad.navn}</span>
+              </motion.div>
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: hoyde, opacity: 1 }}
+                transition={{ delay, type: "spring", stiffness: 130, damping: 17 }}
+                className="flex w-full items-start justify-center rounded-t-2xl pt-2.5"
+                style={{
+                  background: gull
+                    ? "linear-gradient(180deg, color-mix(in srgb, var(--gold) 85%, white), color-mix(in srgb, var(--gold) 68%, black))"
+                    : `linear-gradient(180deg, color-mix(in srgb, ${lys} 76%, white), color-mix(in srgb, ${lys} 62%, black))`,
+                  boxShadow: `inset 0 2px 0 rgba(255,255,255,0.4), 0 12px 36px -14px ${gull ? "var(--gold)" : lys}`,
+                }}
+              >
+                <span className="font-display text-2xl font-bold text-black/70 tabular-nums">
+                  {rad.totalPoeng}p
+                </span>
+              </motion.div>
+            </div>
+          );
+        })}
+      </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1.7 }}
+        className="mx-auto mt-9 flex max-w-2xl flex-wrap items-center justify-center gap-2.5 text-sm"
+      >
+        {[
+          `${FJORARET_SPILTE_LEKER.length} leker`,
+          forsprang === 0
+            ? `Delt seier på topp`
+            : `Kun ${forsprang}p mellom topp to`,
+          "Ingen egenskaper — bare rå kamp",
+          "«Marble lek» avgjorde mer enn noen trodde",
+        ].map((t) => (
+          <span
+            key={t}
+            className="rounded-full border border-line bg-white/[0.04] px-3.5 py-1.5 text-fg-dim"
+          >
+            {t}
+          </span>
+        ))}
+      </motion.div>
     </div>
   );
 }
@@ -2128,6 +2269,24 @@ function VinnerSlide({
       >
         «{d.kommentar}»
       </motion.p>
+
+      {(() => {
+        const ifjorVinner = fjoraretStilling()[0];
+        const forsvarte =
+          ifjorVinner.navn.toLowerCase() === d.fornavn.toLowerCase();
+        return (
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.75 }}
+            className="mx-auto mt-4 max-w-xl text-sm text-fg-faint"
+          >
+            {forsvarte
+              ? `👑 Forsvarte tronen fra ${FJORARET_AAR} — to på rad!`
+              : `Ny mester på tronen — ${ifjorVinner.navn} vant i ${FJORARET_AAR}.`}
+          </motion.p>
+        );
+      })()}
 
       <motion.p
         initial={{ opacity: 0 }}

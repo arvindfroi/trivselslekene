@@ -8,6 +8,7 @@ import type { FinaleData, FinaleDeltaker, Innslag, Pris, Vendepunkt } from "@/li
  */
 export type Slide =
   | { key: string; type: "intro" }
+  | { key: string; type: "ifjor" }
   | { key: string; type: "vifte" }
   | { key: string; type: "kapittel"; nr: number; tittel: string; tekst: string }
   | { key: string; type: "innslag"; innslag: Innslag }
@@ -22,6 +23,10 @@ export type Slide =
 export function byggSlides(data: FinaleData): Slide[] {
   const slides: Slide[] = [{ key: "intro", type: "intro" }];
   let kapittel = 0;
+
+  // Et lite tilbakeblikk til forrige utgave før vi går inn i årets show —
+  // fjorårets pall og et par tall, som en «tidligere i lekene»-vignett.
+  slides.push({ key: "ifjor", type: "ifjor" });
 
   // Årets felt: alle deltakerne som kortvifte, à la karaktervalget i
   // Mario Party — før historien begynner

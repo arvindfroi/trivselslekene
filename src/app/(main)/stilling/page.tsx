@@ -17,6 +17,8 @@ import StatCard from "@/components/ui/StatCard";
 import StillingListe from "@/components/StillingListe";
 import StatFlis from "@/components/StatFlis";
 import FinaleInngang from "@/components/FinaleInngang";
+import FjoraretSeksjon from "@/components/FjoraretSeksjon";
+import { FJORARET_AAR } from "@/lib/fjoraaret";
 import {
   CloudRain,
   Crown,
@@ -212,6 +214,18 @@ export default async function StillingSide() {
               <div key={`fyll-${i}`} aria-hidden="true" className="hidden sm:block" />
             ))}
           </div>
+        </section>
+
+        <section className="mt-12">
+          <div className="mb-3 flex items-baseline justify-between gap-3">
+            <h2 className="text-sm font-medium tracking-widest text-fg-dim uppercase">
+              Fjoråret
+            </h2>
+            <span className="text-xs tracking-widest text-fg-faint uppercase tabular-nums">
+              Trivselslekene {FJORARET_AAR}
+            </span>
+          </div>
+          <FjoraretSeksjon />
         </section>
     </>
   );
