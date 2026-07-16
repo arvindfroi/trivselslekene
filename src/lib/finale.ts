@@ -738,6 +738,16 @@ export function byggFinaleData(
   // ─── Kandidat-generatorer ───────────────────────────────────────
   const kandidater: Kandidat[] = [];
 
+  // Poengskjemaet er fast: 1. plass gir 10, 2. plass 8, 3. plass 6, … så den
+  // NORMALE avstanden mellom to nabo­plasseringer er 2 poeng. Marginbaserte
+  // innslag må derfor slå klart utenom dette for å bety noe — ellers ender vi
+  // opp med å kalle et helt vanlig napp både en «maktdemonstrasjon» og en
+  // «fotofinish» (samme 2-poengs luke), som ikke gir mening. En ekte storseier
+  // krever minst to plasseringers forsprang (≥ 4 p, typisk via bonuspoeng), og
+  // en ekte fotofinish krever tettere enn ett hakk (uavgjort eller bonusbrøk).
+  const STORSEIER_MIN_MARGIN = 4;
+  const THRILLER_MAKS_MARGIN = 1;
+
   // Margindata per lek med minst to deltakere
   const dueller = kronologisk
     .filter((o) => o.resultater.length >= 2)
@@ -753,9 +763,10 @@ export function byggFinaleData(
       };
     });
 
-  // Maktdemonstrasjonen: største seiersmargin
+  // Maktdemonstrasjonen: største seiersmargin — men bare når noen faktisk
+  // dro klart fra feltet (≥ to plasseringers forsprang), ikke et vanlig napp.
   const storseier = dueller
-    .filter((d) => d.margin > 0)
+    .filter((d) => d.margin >= STORSEIER_MIN_MARGIN)
     .reduce<(typeof dueller)[number] | null>(
       (m, d) => (!m || d.margin > m.margin ? d : m),
       null,
@@ -780,14 +791,20 @@ export function byggFinaleData(
     });
   }
 
-  // Fotofinishen: minste margin (i en annen lek enn storseieren)
+  // Fotofinishen: minste margin (i en annen lek enn storseieren) — men bare
+  // når det virkelig var tett (uavgjort eller under ett plasseringshakk).
+  // Et standard 2-poengs napp er ikke en fotofinish, det er bare en seier.
   const thriller = dueller
     .filter((d) => d.o.nr !== storseier?.o.nr)
     .reduce<(typeof dueller)[number] | null>(
       (m, d) => (!m || d.margin < m.margin ? d : m),
       null,
     );
-  if (thriller && (!storseier || thriller.margin < storseier.margin)) {
+  if (
+    thriller &&
+    thriller.margin <= THRILLER_MAKS_MARGIN &&
+    (!storseier || thriller.margin < storseier.margin)
+  ) {
     kandidater.push({
       vekt: Math.max(30, 72 - thriller.margin * 8),
       visuell: "duell",

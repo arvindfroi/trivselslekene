@@ -1,4 +1,51 @@
 import type { FinaleData, FinaleDeltaker, Innslag, Pris, Vendepunkt } from "@/lib/finale";
+import { fjoraretStilling } from "@/lib/fjoraaret";
+
+/** En deltaker som løftet nivået sitt fra i fjor, målt i snittpoeng per lek —
+ *  en rettferdig sammenligning selv om antall leker og deltakere varierer
+ *  mellom årene. */
+export type FramgangPost = {
+  userId: string;
+  fornavn: string;
+  bildeUrl: string | null;
+  farge: string | null;
+  ifjorSnitt: number;
+  iaarSnitt: number;
+  ifjorPlass: number;
+  iaarPlass: number;
+};
+
+/** Minste snittløft (poeng/lek) som teller som reell framgang — filtrerer
+ *  bort ren måle­støy. */
+const FRAMGANG_TERSKEL = 0.5;
+
+/** Finner deltakere som presterte bedre enn i fjor. Kobler årets deltakere til
+ *  fjorårets på fornavn, og sammenligner snittpoeng per lek. Ren funksjon. */
+export function byggFramgang(data: FinaleData): FramgangPost[] {
+  const fjor = new Map(
+    fjoraretStilling().map((r) => [r.navn.toLowerCase(), r]),
+  );
+  const poster: FramgangPost[] = [];
+  for (const d of data.deltakere) {
+    const f = fjor.get(d.fornavn.toLowerCase());
+    if (!f) continue;
+    if (d.snitt - f.snitt >= FRAMGANG_TERSKEL) {
+      poster.push({
+        userId: d.userId,
+        fornavn: d.fornavn,
+        bildeUrl: d.bildeUrl,
+        farge: d.farge,
+        ifjorSnitt: f.snitt,
+        iaarSnitt: d.snitt,
+        ifjorPlass: f.plass,
+        iaarPlass: d.plass,
+      });
+    }
+  }
+  // Størst løft først
+  poster.sort((a, b) => b.iaarSnitt - b.ifjorSnitt - (a.iaarSnitt - a.ifjorSnitt));
+  return poster;
+}
 
 /**
  * Ren slide-bygger (ingen React) — gjør FinaleData om til den ferdige
@@ -18,6 +65,7 @@ export type Slide =
   | { key: string; type: "tidslinje" }
   | { key: string; type: "trommevirvel" }
   | { key: string; type: "vinner"; deltaker: FinaleDeltaker }
+  | { key: string; type: "framgang"; framgang: FramgangPost[] }
   | { key: string; type: "tallene" };
 
 export function byggSlides(data: FinaleData): Slide[] {
@@ -76,6 +124,11 @@ export function byggSlides(data: FinaleData): Slide[] {
   if (vinner) {
     slides.push({ key: "trommevirvel", type: "trommevirvel" });
     slides.push({ key: "vinner", type: "vinner", deltaker: vinner });
+    // Etter kåringen (ingen spoiler-fare): hvem løftet seg fra i fjor?
+    const framgang = byggFramgang(data);
+    if (framgang.length > 0) {
+      slides.push({ key: "framgang", type: "framgang", framgang });
+    }
     slides.push({ key: "tallene", type: "tallene" });
   }
   return slides;

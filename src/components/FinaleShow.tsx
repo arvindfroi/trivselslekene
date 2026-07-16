@@ -19,7 +19,7 @@ import {
 import Avatar from "@/components/Avatar";
 import IridiserendeBakgrunn from "@/components/IridiserendeBakgrunn";
 import { ShowLyd } from "@/lib/showLyd";
-import { byggSlides, type Slide } from "@/lib/finaleSlides";
+import { byggSlides, type FramgangPost, type Slide } from "@/lib/finaleSlides";
 import {
   FJORARET_AAR,
   FJORARET_NAVN,
@@ -132,6 +132,8 @@ function slideGlod(slide: Slide): [string, string] {
       }
     case "ifjor":
       return [GULL, BLAA];
+    case "framgang":
+      return [GRONN, BLAA];
     case "pris":
     case "hederlig":
     case "vendepunkt":
@@ -348,6 +350,7 @@ export default function FinaleShow({ data }: { data: FinaleData }) {
             {slide.type === "vinner" && (
               <VinnerSlide deltaker={slide.deltaker} data={data} lyd={lyd} />
             )}
+            {slide.type === "framgang" && <FramgangSlide framgang={slide.framgang} />}
             {slide.type === "tallene" && <TalleneSlide data={data} />}
           </motion.div>
         </AnimatePresence>
@@ -2295,6 +2298,68 @@ function VinnerSlide({
         className="mt-8 text-xs tracking-widest text-fg-faint uppercase"
       >
         Trykk Neste for å utforske tallene 🎊
+      </motion.p>
+    </div>
+  );
+}
+
+// ─── Framgang: hvem løftet seg fra i fjor ────────────────────────
+
+function FramgangSlide({ framgang }: { framgang: FramgangPost[] }) {
+  return (
+    <div className="text-center">
+      <Kicker emoji="📈" tittel={`Bedre enn ${FJORARET_AAR}`} farge="var(--accent)" />
+      <h2 className="mt-4 font-display text-5xl sm:text-7xl">
+        <KinetiskTittel tekst="Framgang" gradient delay={0.2} steg={0.06} />
+      </h2>
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.5 }}
+        className="mx-auto mt-4 max-w-xl text-base text-fg-dim"
+      >
+        Disse løftet nivået sitt siden i fjor — målt i snittpoeng per lek, så
+        det teller likt uansett hvor mange leker det ble.
+      </motion.p>
+
+      <div className="mx-auto mt-9 flex max-w-2xl flex-col gap-3">
+        {framgang.map((f, i) => {
+          const lys = lysFarge(f.farge);
+          const delta = f.iaarSnitt - f.ifjorSnitt;
+          return (
+            <motion.div
+              key={f.userId}
+              initial={{ opacity: 0, x: -24 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.6 + i * 0.15, type: "spring", stiffness: 200, damping: 20 }}
+              className="surface flex items-center gap-3 rounded-2xl px-4 py-3 sm:gap-4"
+            >
+              <Avatar navn={f.fornavn} bildeUrl={f.bildeUrl} farge={f.farge} size={46} />
+              <span className="flex-1 text-left font-display text-xl text-fg">
+                {f.fornavn}
+              </span>
+              <div className="flex items-center gap-2 text-base tabular-nums sm:gap-3">
+                <span className="text-fg-faint">{f.ifjorSnitt.toFixed(1)}</span>
+                <MoveRight size={18} className="text-accent-2" />
+                <span className="font-semibold" style={{ color: lys }}>
+                  {f.iaarSnitt.toFixed(1)}
+                </span>
+              </div>
+              <span className="ml-1 w-14 shrink-0 rounded-full bg-[color-mix(in_srgb,var(--accent)_20%,transparent)] px-2 py-1 text-center text-xs font-bold text-accent tabular-nums">
+                ▲{delta.toFixed(1)}
+              </span>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.6 + framgang.length * 0.15 + 0.2 }}
+        className="mt-6 text-xs tracking-widest text-fg-faint uppercase"
+      >
+        Snittpoeng per lek · i fjor → i år
       </motion.p>
     </div>
   );
