@@ -43,11 +43,19 @@ export default async function HjemSide() {
   return (
     <>
       <LiveRefresh aktiv />
-      <p className="animate-fade-up text-xs tracking-[0.3em] text-accent-2 uppercase">
-        {sesong.navn}
-      </p>
-      <div className="animate-fade-up mt-1 flex items-center gap-3">
-        {/* Profilbilde — klikk fører til profilsiden */}
+      <div className="animate-fade-up flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs tracking-[0.3em] text-accent-2 uppercase">
+            {sesong.navn}
+          </p>
+          <h1 className="mt-1 font-display text-4xl text-fg">
+            Hei, {session.user.name}!
+          </h1>
+          <p className="mt-2 text-sm text-fg-dim">
+            Velkommen tilbake til lekene.
+          </p>
+        </div>
+        {/* Profilbilde til høyre — klikk fører til profilsiden */}
         <Link
           href="/profil"
           aria-label="Gå til profilen din"
@@ -60,13 +68,7 @@ export default async function HjemSide() {
             size={52}
           />
         </Link>
-        <h1 className="font-display text-4xl text-fg">
-          Hei, {session.user.name}!
-        </h1>
       </div>
-      <p className="animate-fade-up mt-2 text-sm text-fg-dim">
-        Velkommen tilbake til lekene.
-      </p>
 
       {!avslort && (
         <div className="mt-6 animate-fade-up">
