@@ -112,14 +112,25 @@ function stegForType(type: OpprettType): readonly string[] {
 
 type Props = {
   startNavn?: string;
+  startFornavn?: string;
+  startEtternavn?: string;
   alleDeltagere?: Deltager[];
 };
 
-export default function Onboarding({ startNavn = "", alleDeltagere = [] }: Props) {
+export default function Onboarding({
+  startNavn = "",
+  startFornavn = "",
+  startEtternavn = "",
+  alleDeltagere = [],
+}: Props) {
   const erNy = startNavn.length > 0;
 
   const [data, setData] = useState<Data>(start);
   const [navn, setNavn] = useState(startNavn);
+  const [fornavn, setFornavn] = useState(startFornavn);
+  const [etternavn, setEtternavn] = useState(startEtternavn);
+  // Kallenavnet foreslås fra fornavnet helt til brukeren redigerer det selv.
+  const [kallenavnRort, setKallenavnRort] = useState(startNavn.length > 0);
   const [steg, setSteg] = useState(erNy ? 1 : 0);
   const [pending, startTransition] = useTransition();
   const [feil, setFeil] = useState<string | null>(null);
@@ -138,6 +149,17 @@ export default function Onboarding({ startNavn = "", alleDeltagere = [] }: Props
   const oppdater = (delta: Partial<Data>) => setData((d) => ({ ...d, ...delta }));
   const neste = () => setSteg((s) => s + 1);
   const tilbake = () => setSteg((s) => Math.max(0, s - 1));
+
+  // ─── Navn: fornavn foreslår kallenavn til det redigeres manuelt ──
+  const endreFornavn = (verdi: string) => {
+    setFornavn(verdi);
+    if (!kallenavnRort) setNavn(verdi);
+  };
+  const endreKallenavn = (verdi: string) => {
+    setKallenavnRort(true);
+    setNavn(verdi);
+  };
+  const navnStegKlar = fornavn.trim().length >= 2 && navn.trim().length >= 2;
 
   // ─── Deltager-avkrysning ──────────────────────────────────────────
   const toggleDeltager = (userId: string) => {
@@ -233,6 +255,8 @@ export default function Onboarding({ startNavn = "", alleDeltagere = [] }: Props
     startTransition(async () => {
       const res = await fullforOnboarding({
         navn,
+        fornavn: fornavn.trim() || undefined,
+        etternavn: etternavn.trim() || undefined,
         opprettType: data.opprettType,
         lekNavn: data.lekNavn,
         type: data.type,
@@ -308,40 +332,104 @@ export default function Onboarding({ startNavn = "", alleDeltagere = [] }: Props
                   Hva heter du?
                 </h1>
                 <p className="mt-2 text-sm text-fg-dim">
-                  Ingen e-post eller passord — bare navnet ditt. Skriver du et navn
-                  du har brukt før, logger du rett inn igjen.
+                  Ingen e-post eller passord. Skriv navnet ditt, og velg hva du
+                  vil bli kalt — bruker du et kallenavn du har brukt før, logger
+                  du rett inn igjen.
                 </p>
                 {erNy ? (
-                  <div className="mt-6">
-                    <Input
-                      autoFocus
-                      value={navn}
-                      onChange={(e) => setNavn(e.target.value)}
-                      placeholder="F.eks. Ola Nordmann"
-                      className="text-lg"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && navn.trim().length >= 2) neste();
-                      }}
-                    />
+                  <div className="mt-6 flex flex-col gap-4">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div>
+                        <Label htmlFor="fornavn">Fornavn</Label>
+                        <Input
+                          id="fornavn"
+                          autoFocus
+                          value={fornavn}
+                          onChange={(e) => endreFornavn(e.target.value)}
+                          placeholder="Ola"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="etternavn">Etternavn</Label>
+                        <Input
+                          id="etternavn"
+                          value={etternavn}
+                          onChange={(e) => setEtternavn(e.target.value)}
+                          placeholder="Nordmann"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="kallenavn">Hva vil du bli kalt?</Label>
+                      <Input
+                        id="kallenavn"
+                        value={navn}
+                        onChange={(e) => endreKallenavn(e.target.value)}
+                        placeholder="Ola"
+                        className="text-lg"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && navnStegKlar) neste();
+                        }}
+                      />
+                      <p className="mt-1.5 text-xs text-fg-faint">
+                        Dette vises til de andre i lekene.
+                      </p>
+                    </div>
                     <Button
                       onClick={neste}
-                      disabled={navn.trim().length < 2}
-                      className="mt-5 w-full"
+                      disabled={!navnStegKlar}
+                      className="w-full"
                     >
                       Neste
                       <ArrowRight size={18} />
                     </Button>
                   </div>
                 ) : (
-                  <form action={startOnboarding} className="mt-6">
-                    <Input
-                      name="navn"
-                      autoFocus
-                      required
-                      minLength={2}
-                      placeholder="F.eks. Ola Nordmann"
-                      className="text-lg"
-                    />
+                  <form
+                    action={startOnboarding}
+                    className="mt-6 flex flex-col gap-4"
+                  >
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div>
+                        <Label htmlFor="fornavn">Fornavn</Label>
+                        <Input
+                          id="fornavn"
+                          name="fornavn"
+                          autoFocus
+                          required
+                          minLength={2}
+                          value={fornavn}
+                          onChange={(e) => endreFornavn(e.target.value)}
+                          placeholder="Ola"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="etternavn">Etternavn</Label>
+                        <Input
+                          id="etternavn"
+                          name="etternavn"
+                          value={etternavn}
+                          onChange={(e) => setEtternavn(e.target.value)}
+                          placeholder="Nordmann"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="kallenavn">Hva vil du bli kalt?</Label>
+                      <Input
+                        id="kallenavn"
+                        name="kallenavn"
+                        required
+                        minLength={2}
+                        value={navn}
+                        onChange={(e) => endreKallenavn(e.target.value)}
+                        placeholder="Ola"
+                        className="text-lg"
+                      />
+                      <p className="mt-1.5 text-xs text-fg-faint">
+                        Dette vises til de andre i lekene.
+                      </p>
+                    </div>
                     <NavnKnapp />
                   </form>
                 )}
@@ -953,8 +1041,14 @@ export default function Onboarding({ startNavn = "", alleDeltagere = [] }: Props
                   Ser dette riktig ut?
                 </h1>
                 <dl className="mt-6 flex flex-col divide-y divide-line rounded-2xl border border-line bg-white/[0.03]">
-                  <Rad merke="Ditt navn" verdi={navn} />
-                  <Rad merke="Navn" verdi={data.lekNavn} />
+                  <Rad merke="Du blir kalt" verdi={navn} />
+                  {(fornavn.trim() || etternavn.trim()) && (
+                    <Rad
+                      merke="Fullt navn"
+                      verdi={`${fornavn.trim()} ${etternavn.trim()}`.trim()}
+                    />
+                  )}
+                  <Rad merke="Lek" verdi={data.lekNavn} />
                   {data.opprettType === "turnering" ? (
                     <>
                       <Rad merke="Type" verdi="Turnering" />

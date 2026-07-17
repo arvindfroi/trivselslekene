@@ -11,6 +11,7 @@ import TurneringsBracket, { type TurneringMedData } from "@/components/Turnering
 import Avatar from "@/components/Avatar";
 import { Trophy, Trash2 } from "lucide-react";
 import LiveRefresh from "@/components/LiveRefresh";
+import { erAvslort, visLekNavn } from "@/lib/avsloring";
 
 const statusBadge: Record<string, "planlagt" | "pagaar" | "fullfort"> = {
   PLANLAGT: "planlagt",
@@ -29,6 +30,7 @@ export default async function TurneringSide() {
   if (!session?.user) redirect("/bli-med");
 
   const sesong = await sikreAktivSesong();
+  const avslort = erAvslort();
 
   const turneringer = await prisma.turnering.findMany({
     where: { sesongId: sesong.id },
@@ -51,6 +53,7 @@ export default async function TurneringSide() {
       ovelse: {
         select: {
           id: true,
+          vertId: true,
           individuelleResultater: {
             include: { user: { select: { id: true, navn: true, bildeUrl: true } } },
             orderBy: { plassering: "asc" },
@@ -119,7 +122,13 @@ export default async function TurneringSide() {
                     <div>
                       <div className="flex items-center gap-2">
                         <Trophy size={18} className="text-accent-2" />
-                        <h3 className="font-display text-xl text-fg">{t.navn}</h3>
+                        <h3 className="font-display text-xl text-fg">
+                          {visLekNavn(
+                            t.navn,
+                            session.user.id === t.ovelse?.vertId,
+                            avslort,
+                          )}
+                        </h3>
                         <Badge
                           variant={statusBadge[t.status] ?? "planlagt"}
                           pulse={t.status === "PAAGAAR"}

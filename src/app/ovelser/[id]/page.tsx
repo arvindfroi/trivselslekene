@@ -13,6 +13,7 @@ import {
 import type { OvelseStatus } from "@prisma/client";
 import { lagFormatTekst, statusTekst, statusVariant } from "@/lib/ovelseLabels";
 import { bildeUrlFor } from "@/lib/bilde";
+import { erAvslort, visLekNavn } from "@/lib/avsloring";
 import KvalitetChip from "@/components/KvalitetChip";
 import FaseNavigator from "@/components/FaseNavigator";
 import ElimineringsPanel from "@/components/ElimineringsPanel";
@@ -100,6 +101,8 @@ export default async function OvelseSide({
   const erVert = session.user.id === ovelse.vertId;
   const harFaser = ovelse.faser.length > 0;
   const laast = ovelse.status === "FULLFORT";
+  // Leknavnet holdes skjult for andre enn verten frem til avsløringstidspunktet.
+  const visNavn = visLekNavn(ovelse.navn, erVert, erAvslort());
 
   // Bilder sendes som små URL-er (cachebare via /api/bilde) i stedet for å
   // inline base64 i payloaden — dette var hovedårsaken til trege knapper.
@@ -149,7 +152,7 @@ export default async function OvelseSide({
               </span>
             )}
           </p>
-          <h1 className="mt-1 font-display text-3xl text-fg">{ovelse.navn}</h1>
+          <h1 className="mt-1 font-display text-3xl text-fg">{visNavn}</h1>
           <p className="mt-1 text-sm text-fg-dim">
             {ovelse.type === "LAG"
               ? `Laglek${
@@ -197,7 +200,7 @@ export default async function OvelseSide({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={ovelseBilde}
-                alt={`Kart for ${ovelse.navn}`}
+                alt={`Kart for ${visNavn}`}
                 className="max-h-96 w-full object-contain bg-black/20"
               />
             </div>

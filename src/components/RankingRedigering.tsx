@@ -7,47 +7,7 @@ import { Input } from "@/components/ui/Field";
 import { lagreResultaterIndividuellMasse } from "@/lib/actions/ovelser";
 import type { OvelseStatus } from "@prisma/client";
 import { autoLagreTekst, useAutoLagre } from "@/lib/useAutoLagre";
-
-// Standard poeng for plassering 1–8+. Utover 8. plass = 0 poeng.
-const STANDARD_POENG = [10, 8, 6, 5, 4, 3, 2, 1];
-
-function standardPoengFor(plass: number): number {
-  if (plass < 1) return 0;
-  const idx = plass - 1;
-  return idx < STANDARD_POENG.length ? STANDARD_POENG[idx] : 0;
-}
-
-/**
- * Beregner plasseringer med støtte for delt plassering.
- * `delPlass[i]` = true betyr at rad i deler plassering med rad i-1.
- * Returnerer et array der tiede rader får samme plassering, og
- * neste plassering hoppes over tilsvarende.
- *
- * Eks: 5 rader, delPlass = [false, true, false, false, false]
- *   → plasseringer = [1, 1, 3, 4, 5]
- */
-function beregnPlasseringer(delPlass: boolean[]): number[] {
-  const n = delPlass.length;
-  const ut: number[] = new Array(n);
-  let i = 0;
-  let plass = 1;
-
-  while (i < n) {
-    // Finn slutten av tie-gruppen som starter på rad i
-    let j = i;
-    while (j + 1 < n && delPlass[j + 1]) {
-      j++;
-    }
-    // Alle rader fra i til j deler plassering `plass`
-    for (let k = i; k <= j; k++) {
-      ut[k] = plass;
-    }
-    plass += j - i + 1; // hopp over gruppens størrelse
-    i = j + 1;
-  }
-
-  return ut;
-}
+import { STANDARD_POENG, beregnPlasseringer, standardPoengFor } from "@/lib/rangering";
 
 interface DeltakerRad {
   key: string;
@@ -113,8 +73,8 @@ export default function RankingRedigering({
       const plasseringer = beregnPlasseringer(delPlassFlags);
 
       const resultater = r.map((rad, i) => {
-        const plassering = plasseringer[i];
-        const stdPoeng = standardPoengFor(plassering);
+        const { plassering, poengPlassering } = plasseringer[i];
+        const stdPoeng = standardPoengFor(poengPlassering);
         return {
           userId: rad.userId,
           plassering,
@@ -237,8 +197,8 @@ export default function RankingRedigering({
           className="flex flex-col"
         >
           {rader.map((rad, i) => {
-            const plass = plasseringer[i];
-            const stdPoeng = standardPoengFor(plass);
+            const plass = plasseringer[i].plassering;
+            const stdPoeng = standardPoengFor(plasseringer[i].poengPlassering);
             const iTie = erITie[i];
             const erTieStart =
               i < rader.length - 1 && rader[i + 1].delPlass;
@@ -440,9 +400,11 @@ export default function RankingRedigering({
       )}
 
       {/* Poeng-forklaring */}
-      <p className="mt-4 text-center text-[10px] text-fg-faint">
+      <p className="mt-4 text-center text-[10px] leading-relaxed text-fg-faint">
         Poeng = standard ({STANDARD_POENG.slice(0, 3).join(", ")}, …) + bonus.
-        Bruk lenke-ikonet for å dele plassering mellom to deltakere.
+        Trykk på lenke-ikonet <Link2 size={11} className="inline align-text-bottom" /> for
+        å la to deltakere dele plassering (uavgjort). Da deler de den laveste
+        poengsummen — deler du 1. og 2. plass, får begge {STANDARD_POENG[1]} poeng.
         Endringer lagres automatisk.
       </p>
     </div>

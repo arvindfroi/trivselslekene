@@ -12,12 +12,14 @@ import Avatar from "@/components/Avatar";
 import { statusTekst, statusVariant } from "@/lib/ovelseLabels";
 import { MapPin, Swords, Trash2, Trophy } from "lucide-react";
 import LiveRefresh from "@/components/LiveRefresh";
+import { erAvslort, visLekNavn } from "@/lib/avsloring";
 
 export default async function FotballKampSide() {
   const session = await auth();
   if (!session?.user) redirect("/bli-med");
 
   const sesong = await sikreAktivSesong();
+  const avslort = erAvslort();
 
   const kamper = await prisma.ovelse.findMany({
     where: {
@@ -83,7 +85,7 @@ export default async function FotballKampSide() {
                         <div className="flex items-center gap-2">
                           <Swords size={18} className="text-accent-2" />
                           <h3 className="font-display text-lg text-fg">
-                            {kamp.navn}
+                            {visLekNavn(kamp.navn, erVert, avslort)}
                           </h3>
                           <Badge
                             variant={statusVariant[kamp.status]}

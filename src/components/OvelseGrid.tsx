@@ -2,9 +2,10 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { ArrowRight, ChevronDown, MapPin, Trash2, Trophy, Users } from "lucide-react";
+import { ArrowRight, ChevronDown, Lock, MapPin, Trash2, Trophy, Users } from "lucide-react";
 import type { Kvalitet, OvelseStatus, OvelseType } from "@prisma/client";
 import { kvalitetIkon, statusTekst, statusVariant } from "@/lib/ovelseLabels";
+import { visLekNavn } from "@/lib/avsloring";
 import { antallFyllCeller, BENTO_GRID, bentoSpenn } from "@/lib/bento";
 import { slettOvelse, nesteOvelseStatus } from "@/lib/actions/ovelser";
 import { slettTurnering } from "@/lib/actions/turnering";
@@ -32,9 +33,11 @@ export type SpillKort = {
 export default function OvelseGrid({
   spill,
   currentUserId,
+  avslort,
 }: {
   spill: SpillKort[];
   currentUserId: string;
+  avslort: boolean;
 }) {
   const [apen, setApen] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -55,6 +58,9 @@ export default function OvelseGrid({
         const spenn = spennPerFlis[i];
         const hero =
           !er && grunn.includes("col-span-2") && grunn.includes("row-span-2");
+        const erEier = s.vertId === currentUserId;
+        const skjult = !avslort && !erEier;
+        const visningsNavn = visLekNavn(s.navn, erEier, avslort);
 
         return (
           <button
@@ -88,8 +94,16 @@ export default function OvelseGrid({
                   hero ? "text-2xl" : "text-lg"
                 )}
               >
-                {s.type === "TURNERING" && <Trophy size={hero ? 20 : 16} className="text-accent-2 shrink-0" />}
-                {s.navn}
+                {skjult ? (
+                  <Lock size={hero ? 18 : 14} className="text-fg-faint shrink-0" />
+                ) : (
+                  s.type === "TURNERING" && (
+                    <Trophy size={hero ? 20 : 16} className="text-accent-2 shrink-0" />
+                  )
+                )}
+                <span className={skjult ? "text-fg-dim italic" : undefined}>
+                  {visningsNavn}
+                </span>
               </h3>
               <div className="flex shrink-0 items-center gap-2">
                 {er ? (

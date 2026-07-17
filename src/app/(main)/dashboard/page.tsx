@@ -13,6 +13,8 @@ import Avatar from "@/components/Avatar";
 import FinaleInngang from "@/components/FinaleInngang";
 import { ArrowRight, BarChart3, Swords, User } from "lucide-react";
 import LiveRefresh from "@/components/LiveRefresh";
+import Nedtelling from "@/components/Nedtelling";
+import { AVSLORINGSTIDSPUNKT_ISO, erAvslort } from "@/lib/avsloring";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: "Dashboard" };
@@ -36,6 +38,7 @@ export default async function HjemSide() {
   const minIndex = stilling.findIndex((s) => s.userId === session.user!.id);
   const min = minIndex >= 0 ? stilling[minIndex] : null;
   const topp = stilling.slice(0, 3);
+  const avslort = erAvslort();
 
   return (
     <>
@@ -43,12 +46,33 @@ export default async function HjemSide() {
       <p className="animate-fade-up text-xs tracking-[0.3em] text-accent-2 uppercase">
         {sesong.navn}
       </p>
-      <h1 className="animate-fade-up mt-1 font-display text-4xl text-fg">
-        Hei, {session.user.name}!
-      </h1>
+      <div className="animate-fade-up mt-1 flex items-center gap-3">
+        {/* Profilbilde — klikk fører til profilsiden */}
+        <Link
+          href="/profil"
+          aria-label="Gå til profilen din"
+          className="shrink-0 rounded-full outline-none transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:ring-accent-2"
+        >
+          <Avatar
+            navn={min?.navn ?? session.user.name ?? ""}
+            bildeUrl={min?.bildeUrl}
+            farge={min?.farge}
+            size={52}
+          />
+        </Link>
+        <h1 className="font-display text-4xl text-fg">
+          Hei, {session.user.name}!
+        </h1>
+      </div>
       <p className="animate-fade-up mt-2 text-sm text-fg-dim">
         Velkommen tilbake til lekene.
       </p>
+
+      {!avslort && (
+        <div className="mt-6 animate-fade-up">
+          <Nedtelling maalISO={AVSLORINGSTIDSPUNKT_ISO} />
+        </div>
+      )}
 
       <div className="mt-6 grid grid-cols-3 gap-3 sm:gap-4">
         <StatCard

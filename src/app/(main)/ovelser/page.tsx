@@ -9,6 +9,8 @@ import Button, { LinkButton } from "@/components/ui/Button";
 import OvelseGrid, { type SpillKort } from "@/components/OvelseGrid";
 import { Plus } from "lucide-react";
 import LiveRefresh from "@/components/LiveRefresh";
+import Nedtelling from "@/components/Nedtelling";
+import { AVSLORINGSTIDSPUNKT_ISO, erAvslort } from "@/lib/avsloring";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: "Øvelser" };
@@ -19,6 +21,7 @@ export default async function OvelserSide() {
   if (!session?.user) redirect("/bli-med");
 
   const sesong = await sikreAktivSesong();
+  const avslort = erAvslort();
 
   const ovelser = await prisma.ovelse.findMany({
     where: { sesongId: sesong.id },
@@ -111,6 +114,12 @@ export default async function OvelserSide() {
           </LinkButton>
         </div>
 
+        {!avslort && (
+          <div className="mt-6">
+            <Nedtelling maalISO={AVSLORINGSTIDSPUNKT_ISO} />
+          </div>
+        )}
+
       {ovelser.length === 0 ? (
         <Card className="mt-8 text-center" padding="p-10">
           <p className="text-sm text-fg-dim">Ingen leker er opprettet ennå.</p>
@@ -122,7 +131,7 @@ export default async function OvelserSide() {
         </Card>
       ) : (
         <div className="mt-8">
-          <OvelseGrid spill={spill} currentUserId={session.user.id} />
+          <OvelseGrid spill={spill} currentUserId={session.user.id} avslort={avslort} />
         </div>
       )}
     </>

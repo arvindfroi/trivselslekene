@@ -8,7 +8,23 @@ export default async function BliMedSide() {
   const session = await auth();
   if (session?.user) redirect("/dashboard");
 
-  const navn = (await cookies()).get("onboarding_navn")?.value ?? "";
+  const jar = await cookies();
+  const navn = jar.get("onboarding_navn")?.value ?? "";
+  let startFornavn = "";
+  let startEtternavn = "";
+  const navnedata = jar.get("onboarding_navnedata")?.value;
+  if (navnedata) {
+    try {
+      const parsed = JSON.parse(navnedata) as {
+        fornavn?: string;
+        etternavn?: string;
+      };
+      startFornavn = parsed.fornavn ?? "";
+      startEtternavn = parsed.etternavn ?? "";
+    } catch {
+      // ugyldig cookie — ignorer
+    }
+  }
 
   // Hent eksisterende brukere så nye kan velge deltagere til sin første lek
   const brukere = await prisma.user.findMany({
@@ -23,6 +39,8 @@ export default async function BliMedSide() {
     <Onboarding
       key={navn || "ny"}
       startNavn={navn}
+      startFornavn={startFornavn}
+      startEtternavn={startEtternavn}
       alleDeltagere={alleDeltagere}
     />
   );

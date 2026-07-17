@@ -16,29 +16,43 @@ import { opprettTurneringData } from "@/lib/actions/turnering";
 import { opprettLagkampData } from "@/lib/actions/fotballkamp";
 
 const NAVN_COOKIE = "onboarding_navn";
+const NAVNEDATA_COOKIE = "onboarding_navnedata";
 
 /**
- * Steg 1 i onboardingen. Finnes navnet fra før: logg inn og send til dashbordet.
- * Er navnet nytt: lagre navnet i en cookie og last veiviseren videre. Alt går
- * via redirect (pålitelig), så vi slipper å lese en returverdi på klienten.
+ * Steg 1 i onboardingen. Brukeren oppgir for-/etternavn og hva de vil bli kalt
+ * (kallenavn). Kallenavnet er identiteten. Finnes kallenavnet fra før: logg inn
+ * og send til dashbordet. Er det nytt: lagre navnene i en cookie og last
+ * veiviseren videre. Alt går via redirect (pålitelig), så vi slipper å lese en
+ * returverdi på klienten.
  */
 export async function startOnboarding(formData: FormData) {
-  const navn = normaliserNavn(String(formData.get("navn") ?? ""));
-  if (navn.length < 2) redirect("/bli-med");
+  const fornavn = normaliserNavn(String(formData.get("fornavn") ?? ""));
+  const etternavn = normaliserNavn(String(formData.get("etternavn") ?? ""));
+  // Kallenavn er valgfritt i skjemaet — faller tilbake til fornavnet.
+  const kallenavn = normaliserNavn(String(formData.get("kallenavn") ?? "")) || fornavn;
 
-  const finnes = await finnBrukerVedNavn(navn);
+  if (kallenavn.length < 2) redirect("/bli-med");
+
+  const finnes = await finnBrukerVedNavn(kallenavn);
   if (finnes) {
-    await signIn("credentials", { navn, redirectTo: "/dashboard" });
+    await signIn("credentials", { navn: kallenavn, redirectTo: "/dashboard" });
     return;
   }
 
   const jar = await cookies();
-  jar.set(NAVN_COOKIE, navn, { maxAge: 3600, path: "/", sameSite: "lax" });
+  jar.set(NAVN_COOKIE, kallenavn, { maxAge: 3600, path: "/", sameSite: "lax" });
+  jar.set(NAVNEDATA_COOKIE, JSON.stringify({ fornavn, etternavn }), {
+    maxAge: 3600,
+    path: "/",
+    sameSite: "lax",
+  });
   redirect("/bli-med");
 }
 
 export type OnboardingData = {
   navn: string;
+  fornavn?: string;
+  etternavn?: string;
   opprettType: "ovelse" | "lagkamp" | "turnering";
   lekNavn: string;
   // Øvelse-felter
@@ -68,11 +82,16 @@ export async function fullforOnboarding(data: OnboardingData) {
     return { feil: "Mangler navn eller lek-navn." };
   }
 
-  const user = await finnEllerOpprettBruker(navn);
+  const user = await finnEllerOpprettBruker(navn, {
+    fornavn: data.fornavn,
+    etternavn: data.etternavn,
+  });
   if (!user) return { feil: "Kunne ikke opprette bruker." };
 
   const sesong = await sikreAktivSesong();
-  (await cookies()).delete(NAVN_COOKIE);
+  const jar = await cookies();
+  jar.delete(NAVN_COOKIE);
+  jar.delete(NAVNEDATA_COOKIE);
 
   let redirectTo = "/dashboard";
 
