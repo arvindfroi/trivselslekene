@@ -120,6 +120,9 @@ function erSpoilerInnslag(innslag: Innslag): boolean {
   if (innslag.slag === "comeback" || innslag.slag === "fall") return true;
   if (innslag.slag === "rival") return true;
   if (innslag.slag === "avvik" && innslag.variant === "sluttspurt") return true;
+  // Ledertrøya viser hvem som toppet sammendraget flest etapper — featurer den
+  // vinneren, røper den kåringen midt i showet.
+  if (innslag.slag === "ledertroye") return true;
   return false;
 }
 

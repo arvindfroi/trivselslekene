@@ -1020,7 +1020,11 @@ export function byggFinaleData(
   }
 
   // Ledertrøya: hvem toppet sammendraget flest etapper — mest verdt når
-  // trøya faktisk skiftet eier underveis.
+  // trøya faktisk skiftet eier underveis. Spoiler-vern: bar den kommende
+  // vinneren trøya flest etapper, ville innslaget røpet kåringen midt i
+  // «Historien», så da hopper vi over det (den historien fortelles uansett av
+  // vendepunktet rett før kåringen). Da featurer vi bare en «falsk leder» som
+  // gikk foran en stund, men ble forbigått — som også peker bort fra vinneren.
   if (tidslinje.length >= 2) {
     const antallPerLeder = new Map<string, number>();
     for (const steg of tidslinje) {
@@ -1029,7 +1033,7 @@ export function byggFinaleData(
       }
     }
     const topp = [...antallPerLeder.entries()].sort((a, b) => b[1] - a[1])[0];
-    if (topp) {
+    if (topp && topp[0] !== vinnerId) {
       const bytter = tidslinje.filter((s, i) => i > 0 && s.lederbytte).length;
       kandidater.push({
         vekt: Math.min(80, 34 + bytter * 9),
