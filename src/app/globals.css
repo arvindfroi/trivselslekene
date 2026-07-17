@@ -172,18 +172,23 @@ body {
 }
 
 /* Sakte gradient-sveip — lett "levende" teaser til finale-inngangen,
-   uten WebGL (den tunge shaderen er reservert til selve showet). */
+   uten WebGL (den tunge shaderen er reservert til selve showet).
+   NB: gradienten er ikke periodisk (grønn → gull), så den må IKKE flislegges
+   (background-repeat) — da møtes gull-enden og den grønne starten i en hard
+   skjøt som feide over kortet. Vi bruker no-repeat og sveiper posisjonen fram
+   og tilbake (alternate) innenfor den ene, 200 % brede gradienten. */
 @keyframes gradient-drift {
   0% {
     background-position: 0% 50%;
   }
   100% {
-    background-position: 200% 50%;
+    background-position: 100% 50%;
   }
 }
 .animate-gradient-drift {
   background-size: 200% 200%;
-  animation: gradient-drift 7s linear infinite;
+  background-repeat: no-repeat;
+  animation: gradient-drift 9s ease-in-out infinite alternate;
   will-change: background-position;
 }
 
