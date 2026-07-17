@@ -8,14 +8,14 @@ const KVAL: Kvalitet[] = ["PRESISJON"];
 const base = new Date("2026-07-01T12:00:00Z").getTime();
 
 type Spiller = { id: string; navn: string };
-type Lek = { vertId: string; poeng: Record<string, number> };
+type Lek = { vertId: string; poeng: Record<string, number>; kvaliteter?: Kvalitet[] };
 
 /** Bygger en minimal, deterministisk sesong for byggFinaleData. */
 function byggSesong(spillere: Spiller[], leker: Lek[]) {
   const ovelser: FinaleOvelseRad[] = leker.map((lek, j) => ({
     id: `o${j}`,
     navn: `Lek ${j}`,
-    kvaliteter: KVAL,
+    kvaliteter: lek.kvaliteter ?? KVAL,
     vertId: lek.vertId,
     fullfortTid: new Date(base + j * 86400000),
     createdAt: new Date(base),
@@ -41,7 +41,7 @@ function byggSesong(spillere: Spiller[], leker: Lek[]) {
                 ovelseId: o.id,
                 plassering: null,
                 poeng: r.poeng,
-                ovelse: { id: o.id, kvaliteter: KVAL },
+                ovelse: { id: o.id, kvaliteter: o.kvaliteter },
               }
             : null;
         })
@@ -188,6 +188,38 @@ describe("poengfest krever ekte bonuspott", () => {
       erPoengfest([
         { vertId: "v", poeng: { a: 15, b: 8, c: 6 } }, // +5 over standardpott
         { vertId: "v", poeng: { a: 10, b: 8, c: 6 } },
+        { vertId: "v", poeng: { b: 10, a: 8, c: 6 } },
+      ]),
+    ).toBe(true);
+  });
+});
+
+describe("flakspriser krever minst to flaksleker", () => {
+  const spillere = [
+    { id: "a", navn: "Aa Aa" },
+    { id: "b", navn: "Bb Bb" },
+    { id: "c", navn: "Cc Cc" },
+    { id: "v", navn: "Vv Vv" },
+  ];
+  const flaks: Kvalitet[] = ["FLAKS"];
+  const harUflaks = (leker: Lek[]) =>
+    byggSesong(spillere, leker).priser.some((p) => p.key === "uflaks");
+
+  it("gir ingen flakspris med bare én flakslek", () => {
+    expect(
+      harUflaks([
+        { vertId: "v", poeng: { a: 10, b: 8, c: 6 }, kvaliteter: flaks },
+        { vertId: "v", poeng: { a: 10, b: 8, c: 6 } },
+        { vertId: "v", poeng: { b: 10, a: 8, c: 6 } },
+      ]),
+    ).toBe(false);
+  });
+
+  it("gir flakspris med to flaksleker", () => {
+    expect(
+      harUflaks([
+        { vertId: "v", poeng: { a: 10, b: 8, c: 6 }, kvaliteter: flaks },
+        { vertId: "v", poeng: { a: 10, b: 8, c: 6 }, kvaliteter: flaks },
         { vertId: "v", poeng: { b: 10, a: 8, c: 6 } },
       ]),
     ).toBe(true);

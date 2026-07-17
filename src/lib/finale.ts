@@ -1549,8 +1549,11 @@ export function byggFinaleData(
   const priser: Pris[] = [];
 
   const flaksFilter = (o: KronOvelse) => o.kvaliteter.includes("FLAKS");
-  const harFlaksLeker = kronologisk.some(flaksFilter);
-  if (harFlaksLeker) {
+  // Krever MINST TO flaksleker: med bare én blir «snittplass» ett enkelt
+  // resultat — ren terningkast-støy — og en flakspris på det ville vært
+  // meningsløs. Med to eller flere begynner et mønster å bety noe.
+  const antallFlaks = kronologisk.filter(flaksFilter).length;
+  if (antallFlaks >= 2) {
     const flaksKandidater = medPoeng
       .map((r) => {
         const ranks = ranksFor(r.userId, flaksFilter);
@@ -1558,7 +1561,6 @@ export function byggFinaleData(
       })
       .filter((k) => k.antall >= 1);
     if (flaksKandidater.length >= 2) {
-      const antallFlaks = kronologisk.filter(flaksFilter).length;
       const lekTekst = (n: number) => `${n} flakslek${n === 1 ? "" : "er"}`;
       const verst = [...flaksKandidater].sort(
         (a, b) => b.snitt - a.snitt || b.antall - a.antall,
@@ -1570,7 +1572,7 @@ export function byggFinaleData(
         key: "uflaks",
         navn: "Uflaksprisen",
         emoji: "🎲",
-        begrunnelse: `Til den som tapte mest der flaksen rådde — av ${antallFlaks === 1 ? "årets flakslek" : lekTekst(antallFlaks)} gikk ingen deltakerens vei.`,
+        begrunnelse: `Til den som tapte mest der flaksen rådde — av ${lekTekst(antallFlaks)} gikk ingen deltakerens vei.`,
         userId: verst.userId,
         verdi: `snittplass ${verst.snitt.toFixed(1)} i ${lekTekst(verst.antall)}`,
       });

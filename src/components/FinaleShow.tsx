@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Crown,
+  Download,
   LineChart,
   MoveRight,
   PartyPopper,
@@ -2526,6 +2527,41 @@ function TalleneSlide({ data }: { data: FinaleData }) {
     }
   };
 
+  // Last ned hele sesongen som CSV: sammendrag per deltaker + kumulative poeng
+  // etter hver lek. Semikolon-separert med BOM så æøå åpner rett i Excel.
+  const lastNed = useCallback(() => {
+    const lekKolonner = data.tidslinje.map((t) => t.ovelseNavn);
+    const header = [
+      "Plass", "Deltaker", "Poeng", "Seire", "Pall", "Rekord", "Snitt", "Leker",
+      ...lekKolonner,
+    ];
+    const rader = [...data.deltakere]
+      .sort((a, b) => a.plass - b.plass)
+      .map((d) => {
+        const kumulativ = data.tidslinje.map(
+          (t) => t.stilling.find((s) => s.userId === d.userId)?.poeng ?? 0,
+        );
+        return [
+          d.plass, d.navn, d.totalPoeng, d.seire, d.pall, d.rekord,
+          d.snitt.toFixed(1), d.antallOvelser, ...kumulativ,
+        ];
+      });
+    const esc = (v: string | number) => {
+      const s = String(v);
+      return /[";\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const csv = [header, ...rader].map((r) => r.map(esc).join(";")).join("\r\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${data.sesongNavn.replace(/\s+/g, "-")}-resultater.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }, [data]);
+
   // Kumulative poengserier til grafen
   const W = 880;
   const H = 380;
@@ -2559,6 +2595,21 @@ function TalleneSlide({ data }: { data: FinaleData }) {
       >
         Utforsk hele sesongen — klikk deg rundt i grafen og tabellen.
       </motion.p>
+
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.4 }}
+        className="mt-4"
+      >
+        <button
+          onClick={lastNed}
+          className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-line bg-bg-elev/70 px-5 py-2 text-sm font-medium text-fg-dim transition-colors hover:border-line-strong hover:text-fg"
+        >
+          <Download size={15} />
+          Last ned resultater (CSV)
+        </button>
+      </motion.div>
 
       {harGraf && (
         <div className="mt-5 inline-flex rounded-full border border-line bg-bg-elev/70 p-1">

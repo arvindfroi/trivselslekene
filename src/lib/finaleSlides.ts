@@ -70,7 +70,6 @@ export type Slide =
 
 export function byggSlides(data: FinaleData): Slide[] {
   const slides: Slide[] = [{ key: "intro", type: "intro" }];
-  let kapittel = 0;
 
   // Et lite tilbakeblikk til forrige utgave før vi går inn i årets show —
   // fjorårets pall og et par tall, som en «tidligere i lekene»-vignett.
@@ -82,41 +81,22 @@ export function byggSlides(data: FinaleData): Slide[] {
     slides.push({ key: "vifte", type: "vifte" });
   }
 
-  if (data.innslag.length > 0) {
-    kapittel += 1;
-    slides.push({
-      key: "kap-historien",
-      type: "kapittel",
-      nr: kapittel,
-      tittel: "Historien",
-      tekst: "Øyeblikkene og funnene tallene ikke kunne skjule",
-    });
-    data.innslag.forEach((innslag, i) => {
-      slides.push({ key: `innslag-${innslag.slag}-${i}`, type: "innslag", innslag });
-    });
+  // Innslagene flyter rett inn — ingen egne kapittelkort; overgangene er
+  // tydelige nok i seg selv.
+  data.innslag.forEach((innslag, i) => {
+    slides.push({ key: `innslag-${innslag.slag}-${i}`, type: "innslag", innslag });
+  });
+
+  for (const p of data.priser) {
+    slides.push({ key: `pris-${p.key}`, type: "pris", pris: p });
+  }
+  if (data.hederlige.length > 0) {
+    slides.push({ key: "hederlig", type: "hederlig" });
   }
 
-  if (data.priser.length > 0 || data.hederlige.length > 0) {
-    kapittel += 1;
-    slides.push({
-      key: "kap-priser",
-      type: "kapittel",
-      nr: kapittel,
-      tittel: "Prisutdelingen",
-      tekst: "Ære, berømmelse og evig heder",
-    });
-    for (const p of data.priser) {
-      slides.push({ key: `pris-${p.key}`, type: "pris", pris: p });
-    }
-    if (data.hederlige.length > 0) {
-      slides.push({ key: "hederlig", type: "hederlig" });
-    }
-  }
-
-  // Siste kapittel: vendepunktet setter opp tidslinjen og kåringen
-  if (data.vendepunkt) {
-    slides.push({ key: "vendepunkt", type: "vendepunkt", vendepunkt: data.vendepunkt });
-  }
+  // Merk: vendepunktet er bevisst utelatt fra selve showet — det navngir
+  // vinneren rett før kåringen og røper dermed slutten. Dataene finnes fortsatt
+  // (data.vendepunkt) til en framtidig «lek deg i statistikken»-side.
   if (data.tidslinje.length > 0) {
     slides.push({ key: "tidslinje", type: "tidslinje" });
   }

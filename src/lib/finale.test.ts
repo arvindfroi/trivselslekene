@@ -216,6 +216,13 @@ describe("finaleshowets invarianter (Monte Carlo over 400 sesonger)", () => {
       // 6) Showet har alltid en fornuftig lengde (intro + vifte + … + tallene)
       expect(slides[0].type, `starter på intro (${ctx})`).toBe("intro");
       expect(slides[slides.length - 1].type, `ender på tallene (${ctx})`).toBe("tallene");
+
+      // 7) Ingen kapittelkort, og ingen vendepunkt-slide (sistnevnte røper
+      //    vinneren rett før kåringen — bevisst holdt ute av selve showet)
+      expect(
+        slides.some((s) => s.type === "kapittel" || s.type === "vendepunkt"),
+        `verken kapittel eller vendepunkt (${ctx})`,
+      ).toBe(false);
     }
   });
 
