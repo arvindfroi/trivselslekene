@@ -99,7 +99,6 @@ function innslagSpillere(innslag: Innslag): string[] {
       return [innslag.vinner.userId, innslag.taper.userId];
     case "comeback":
     case "fall":
-    case "rekord":
     case "ledertroye":
     case "avvik":
       return [innslag.userId];

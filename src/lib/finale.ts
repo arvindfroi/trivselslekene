@@ -80,16 +80,6 @@ export type ReiseInnslag = {
   til: number;
 };
 
-/** Sesongens høyeste enkeltscore — vises som telleverk */
-export type RekordInnslag = {
-  slag: "rekord";
-  tittel: string;
-  emoji: string;
-  tekst: string;
-  userId: string;
-  poeng: number;
-  ovelseNavn: string;
-};
 
 /** Innbyrdes oppgjør mellom de to jevneste deltakerne (utenom vinneren) */
 export type RivalInnslag = {
@@ -179,8 +169,10 @@ export type TetsjiktInnslag = {
   medlemmer: { userId: string; poeng: number }[];
 };
 
-/** En deltakers heteste eller kaldeste periode: tre påfølgende leker med
- *  høyest (topp) eller lavest (svikt) samlet poengsum. */
+/** En deltakers heteste eller kaldeste periode over tre påfølgende leker.
+ *  - «topp»: høyest samlet poengsum (rå opptur).
+ *  - «svikt»: størst underprestering mot eget snitt (statistisk bølgedal);
+ *     `forventet` er hva snittet skulle tilsi over perioden. */
 export type FormInnslag = {
   slag: "form";
   variant: "topp" | "svikt";
@@ -189,6 +181,8 @@ export type FormInnslag = {
   tekst: string;
   userId: string;
   sum: number;
+  /** Forventet sum ut fra deltakerens sesongsnitt (kun «svikt»; ellers null) */
+  forventet: number | null;
   /** De tre lekene i perioden, i kronologisk rekkefølge */
   perLek: { ovelseNr: number; ovelseNavn: string; poeng: number }[];
 };
@@ -209,7 +203,6 @@ export type SpesialistInnslag = {
 export type Innslag =
   | DuellInnslag
   | ReiseInnslag
-  | RekordInnslag
   | RivalInnslag
   | LedertroyeInnslag
   | AvvikInnslag
@@ -445,6 +438,8 @@ type Kandidat = {
     | "skala"
     | "form"
     | "spesialist";
+  // (tidligere «teller» for enkeltrekord — fjernet: en enkeltscore er bare en
+  //  plassering i poengskjemaet, så «sesongens høyeste» ga ikke mening.)
   featured: string[];
   /** Kronologisk forankring (leksnummer) — null for sesong-overgripende innslag */
   kronNr: number | null;
@@ -971,43 +966,10 @@ export function byggFinaleData(
     }
   }
 
-  // Rekorden: sesongens høyeste enkeltscore. Hopper over kandidater som
-  // allerede er hovedpersonen i en duell i samme lek — unngår reprise.
-  {
-    const duellVinnere = new Set(
-      [storseier, thriller, knockout]
-        .filter((d): d is NonNullable<typeof d> => d !== null)
-        .map((d) => `${d.o.nr}:${d.vinner.userId}`),
-    );
-    const alle = kronologisk
-      .flatMap((o) => o.resultater.map((r) => ({ o, ...r })))
-      .filter((r) => r.poeng > 0)
-      .sort((a, b) => b.poeng - a.poeng);
-    // Med standard poengskjema får hver leksvinner samme sum — en
-    // "rekord" er bare ekte hvis nøyaktig ett resultat holder toppverdien
-    const erEkteRekord =
-      alle.length > 0 && alle.filter((r) => r.poeng === alle[0].poeng).length === 1;
-    const rekord = erEkteRekord
-      ? alle.find((r) => !duellVinnere.has(`${r.o.nr}:${r.userId}`))
-      : undefined;
-    if (rekord) {
-      kandidater.push({
-        vekt: Math.min(60, 35 + rekord.poeng * 0.8),
-        visuell: "teller",
-        featured: [rekord.userId],
-        kronNr: rekord.o.nr,
-        innslag: {
-          slag: "rekord",
-          tittel: "Rekorden",
-          emoji: "🔥",
-          tekst: `Ingen enkeltprestasjon ga mer enn da ${fornavnAv(rekord.userId)} håvet inn ${rekord.poeng} poeng i «${rekord.o.navn}». Sesongens høyeste enkeltscore!`,
-          userId: rekord.userId,
-          poeng: rekord.poeng,
-          ovelseNavn: rekord.o.navn,
-        },
-      });
-    }
-  }
+  // (Enkeltrekorden er fjernet: i poengskjemaet er en enkeltscore bare en
+  //  plassering — «sesongens høyeste enkeltscore» ble derfor typisk bare «kom
+  //  1. i en lek», og verdien ga ingen mening. Poengfokuset ligger nå på
+  //  PERIODER i stedet — se Formtoppen og Bølgedalen lenger ned.)
 
   // Rivaloppgjøret: de to jevneste i sammendraget (utenom vinneren),
   // fortalt gjennom innbyrdes oppgjør lek for lek.
@@ -1409,46 +1371,64 @@ export function byggFinaleData(
     }
   }
 
-  // Formtoppen / Formsvikt: heteste og kaldeste periode på tre påfølgende
-  // leker. For hver deltaker ser vi på hvert vindu av tre leker på rad de
-  // faktisk var med i alle tre, og summerer poengene. Toppen kan være hvem som
-  // helst (en formtopp røper ikke sammenlagt), men svikten holder vinneren
-  // utenfor — det ville vært en underlig hilsen til mesteren.
-  if (kronologisk.length >= 3) {
+  // Formtoppen og Bølgedalen: poengfokus over en PERIODE (tre påfølgende leker
+  // deltakeren var med i alle tre), ikke enkeltscorer — for i poengskjemaet er
+  // en enkeltscore bare en plassering.
+  //   • Formtoppen  = rå opptur: flest poeng samlet i et vindu (hvem som helst).
+  //   • Bølgedalen  = statistisk underprestering: størst gap mellom hva
+  //     deltakerens eget sesongsnitt tilsier og hva hen faktisk fikk i vinduet.
+  //     Det gir en ekte «dry spell»-historie (en normalt god spiller som kjølnet)
+  //     framfor bare å henge ut den svakeste. Vinneren holdes utenfor.
+  const FORM_VINDU = 3;
+  if (kronologisk.length >= FORM_VINDU) {
     const FORM_TOPP_MIN = 20; // ~7 i snitt over tre leker = en ekte opptur
-    const FORM_SVIKT_MAKS = 9; // ~3 i snitt over tre leker = en ekte bølgedal
+    const SVIKT_MIN_LEKER = 4; // nok leker til at snittet betyr noe
+    const SVIKT_MIN_GAP = 6; // ~2 poeng/lek under eget nivå = reell bølgedal
     const poengILek = kronologisk.map((o) => {
       const m = new Map<string, number>();
       for (const r of o.resultater) m.set(r.userId, r.poeng);
       return m;
     });
-    const vindu = (uid: string, i: number) => {
-      const p0 = poengILek[i].get(uid);
-      const p1 = poengILek[i + 1].get(uid);
-      const p2 = poengILek[i + 2].get(uid);
-      if (p0 === undefined || p1 === undefined || p2 === undefined) return null;
-      return [p0, p1, p2];
-    };
-
-    let topp: { userId: string; sum: number; i: number } | null = null;
-    let svikt: { userId: string; sum: number; i: number } | null = null;
-    for (const r of medPoeng) {
-      for (let i = 0; i + 3 <= kronologisk.length; i++) {
-        const ps = vindu(r.userId, i);
-        if (!ps) continue;
-        const sum = ps[0] + ps[1] + ps[2];
-        if (!topp || sum > topp.sum) topp = { userId: r.userId, sum, i };
-        if (r.userId !== vinnerId && (!svikt || sum < svikt.sum)) {
-          svikt = { userId: r.userId, sum, i };
-        }
+    const snittAv = new Map(
+      medPoeng.map((r) => [
+        r.userId,
+        r.antallOvelser > 0 ? r.totalPoeng / r.antallOvelser : 0,
+      ]),
+    );
+    const vinduPoeng = (uid: string, i: number) => {
+      const ps: number[] = [];
+      for (let d = 0; d < FORM_VINDU; d++) {
+        const p = poengILek[i + d].get(uid);
+        if (p === undefined) return null;
+        ps.push(p);
       }
-    }
-
+      return ps;
+    };
     const perLekFor = (uid: string, i: number) =>
-      [0, 1, 2].map((d) => {
+      Array.from({ length: FORM_VINDU }, (_, d) => {
         const o = kronologisk[i + d];
         return { ovelseNr: o.nr, ovelseNavn: o.navn, poeng: poengILek[i + d].get(uid)! };
       });
+
+    let topp: { userId: string; sum: number; i: number } | null = null;
+    let svikt: { userId: string; sum: number; forventet: number; gap: number; i: number } | null = null;
+    for (const r of medPoeng) {
+      const snitt = snittAv.get(r.userId) ?? 0;
+      for (let i = 0; i + FORM_VINDU <= kronologisk.length; i++) {
+        const ps = vinduPoeng(r.userId, i);
+        if (!ps) continue;
+        const sum = ps.reduce((a, b) => a + b, 0);
+        if (!topp || sum > topp.sum) topp = { userId: r.userId, sum, i };
+        // Bølgedal: bare for ikke-vinnere med nok leker til et stabilt snitt
+        if (r.userId !== vinnerId && r.antallOvelser >= SVIKT_MIN_LEKER) {
+          const forventet = snitt * FORM_VINDU;
+          const gap = forventet - sum;
+          if (gap > 0 && (!svikt || gap > svikt.gap)) {
+            svikt = { userId: r.userId, sum, forventet, gap, i };
+          }
+        }
+      }
+    }
 
     if (topp && topp.sum >= FORM_TOPP_MIN) {
       const t = topp;
@@ -1457,36 +1437,38 @@ export function byggFinaleData(
         vekt: Math.min(80, 40 + t.sum),
         visuell: "form",
         featured: [t.userId],
-        kronNr: kronologisk[t.i + 2].nr,
+        kronNr: kronologisk[t.i + FORM_VINDU - 1].nr,
         innslag: {
           slag: "form",
           variant: "topp",
           tittel: "Formtoppen",
           emoji: "🔥",
-          tekst: `${fornavnAv(t.userId)} var rødglødende midtveis: ${t.sum} poeng på tre leker på rad («${leker[0].ovelseNavn}», «${leker[1].ovelseNavn}» og «${leker[2].ovelseNavn}») — sesongens heteste periode.`,
+          tekst: `${fornavnAv(t.userId)} var rødglødende: ${t.sum} poeng på tre leker på rad («${leker[0].ovelseNavn}», «${leker[1].ovelseNavn}» og «${leker[2].ovelseNavn}») — sesongens heteste periode.`,
           userId: t.userId,
           sum: t.sum,
+          forventet: null,
           perLek: leker,
         },
       });
     }
 
-    if (svikt && svikt.sum <= FORM_SVIKT_MAKS) {
+    if (svikt && svikt.gap >= SVIKT_MIN_GAP) {
       const s = svikt;
       const leker = perLekFor(s.userId, s.i);
       kandidater.push({
-        vekt: Math.min(74, 46 + (FORM_SVIKT_MAKS - s.sum) * 3),
+        vekt: Math.min(76, 44 + s.gap * 2.5),
         visuell: "form",
         featured: [s.userId],
-        kronNr: kronologisk[s.i + 2].nr,
+        kronNr: kronologisk[s.i + FORM_VINDU - 1].nr,
         innslag: {
           slag: "form",
           variant: "svikt",
           tittel: "Bølgedalen",
           emoji: "🧊",
-          tekst: `Alle har en tung uke: ${fornavnAv(s.userId)} fikk bare ${s.sum} poeng på tre leker på rad («${leker[0].ovelseNavn}», «${leker[1].ovelseNavn}» og «${leker[2].ovelseNavn}»). Sesongens kaldeste periode — men det snudde!`,
+          tekst: `${fornavnAv(s.userId)} pleier å hanke inn rundt ${Math.round(s.forventet)} poeng på tre leker — men i «${leker[0].ovelseNavn}», «${leker[1].ovelseNavn}» og «${leker[2].ovelseNavn}» ble det bare ${s.sum}. Sesongens tyngste periode.`,
           userId: s.userId,
           sum: s.sum,
+          forventet: s.forventet,
           perLek: leker,
         },
       });

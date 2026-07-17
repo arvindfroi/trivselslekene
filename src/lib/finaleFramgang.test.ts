@@ -140,14 +140,34 @@ describe("nye innslag: formtopp, bølgedal og spesialist", () => {
     expect(innslag.some((i) => i.slag === "form" && i.variant === "topp")).toBe(true);
   });
 
-  it("kårer en bølgedal — men aldri for vinneren", () => {
-    const data = byggSesong(spillere, flatt(1));
+  it("kårer en bølgedal for en som underpresterte — aldri for vinneren", () => {
+    // «d» leverer topp i de tre første lekene, men kollapser i de tre siste.
+    // Snittet blir høyt, så den kalde perioden er en ekte statistisk bølgedal.
+    const leker: Lek[] = [
+      { vertId: "v", poeng: { d: 10, a: 8, b: 6, c: 5 } },
+      { vertId: "v", poeng: { d: 10, a: 8, b: 6, c: 5 } },
+      { vertId: "v", poeng: { d: 10, a: 8, b: 6, c: 5 } },
+      { vertId: "v", poeng: { a: 10, b: 8, c: 6, d: 1 } },
+      { vertId: "v", poeng: { a: 10, b: 8, c: 6, d: 1 } },
+      { vertId: "v", poeng: { a: 10, b: 8, c: 6, d: 1 } },
+    ];
+    const data = byggSesong(spillere, leker);
     const svikt = data.innslag.find((i) => i.slag === "form" && i.variant === "svikt");
     expect(svikt).toBeDefined();
     if (svikt && svikt.slag === "form") {
       expect(svikt.userId).toBe("d");
       expect(svikt.userId).not.toBe(data.deltakere[0].userId);
+      // Forventet (ut fra snittet) skal ligge klart over det faktiske
+      expect(svikt.forventet).not.toBeNull();
+      expect(svikt.forventet!).toBeGreaterThan(svikt.sum);
     }
+  });
+
+  it("gir ingen bølgedal for en jevnt svak spiller (ingen underprestering)", () => {
+    // «d» ligger stabilt lavt — da er en lav periode bare normalen, ikke en
+    // bølgedal, og innslaget skal ikke fyre.
+    const data = byggSesong(spillere, flatt(1));
+    expect(data.innslag.some((i) => i.slag === "form" && i.variant === "svikt")).toBe(false);
   });
 
   it("kårer en spesialist med høyt snitt og nok leker i egenskapen", () => {

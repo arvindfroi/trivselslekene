@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { AnimatePresence, animate, motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   ChevronLeft,
   ChevronRight,
@@ -38,7 +38,6 @@ import type {
   PodiumInnslag,
   PoengfestInnslag,
   ReiseInnslag,
-  RekordInnslag,
   RivalInnslag,
   Pris,
   TetsjiktInnslag,
@@ -117,7 +116,6 @@ function slideGlod(slide: Slide): [string, string] {
     case "innslag":
       switch (slide.innslag.slag) {
         case "duell":
-        case "rekord":
         case "ledertroye":
           return [GULL, LILLA];
         case "comeback":
@@ -409,8 +407,6 @@ function InnslagSlide({ innslag, data }: { innslag: Innslag; data: FinaleData })
       return <ComebackSlide innslag={innslag} data={data} />;
     case "fall":
       return <FallSlide innslag={innslag} data={data} />;
-    case "rekord":
-      return <RekordSlide innslag={innslag} data={data} />;
     case "rival":
       return <RivalSlide innslag={innslag} data={data} />;
     case "ledertroye":
@@ -1184,53 +1180,6 @@ function FallSlide({ innslag: o, data }: { innslag: ReiseInnslag; data: FinaleDa
   );
 }
 
-// ─── Rekorden: telleverk ─────────────────────────────────────────
-
-function RekordSlide({ innslag: o, data }: { innslag: RekordInnslag; data: FinaleData }) {
-  const [vis, setVis] = useState(0);
-  useEffect(() => {
-    const kontroll = animate(0, o.poeng, {
-      delay: 0.7,
-      duration: 1.8,
-      ease: "easeOut",
-      onUpdate: (v) => setVis(v),
-    });
-    return () => kontroll.stop();
-  }, [o.poeng]);
-
-  // Fontvekten følger telleren: tallet blir bokstavelig talt tyngre og
-  // tyngre — Amstelvar går fra wght 150 til 900 mens verdien teller opp.
-  const andel = o.poeng > 0 ? vis / o.poeng : 1;
-  const vekt = Math.round(150 + andel * 750);
-
-  return (
-    <div className="text-center">
-      <Kicker emoji={o.emoji} tittel={o.tittel} farge="var(--gold)" />
-      <PersonHeader userId={o.userId} data={data} />
-      <motion.p
-        initial={{ opacity: 0, scale: 0.6 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.55, type: "spring", stiffness: 160, damping: 16 }}
-        className="text-gradient mt-6 font-display text-[9rem] leading-none tabular-nums sm:text-[12rem]"
-        style={{
-          fontVariationSettings: `"wght" ${vekt}, "opsz" 144`,
-          filter: `drop-shadow(0 0 ${Math.round(andel * 42)}px color-mix(in srgb, var(--gold) 40%, transparent))`,
-        }}
-      >
-        {Math.round(vis)}
-      </motion.p>
-      <motion.p
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1 }}
-        className="mt-2 font-display text-2xl text-fg"
-      >
-        poeng i «{o.ovelseNavn}»
-      </motion.p>
-      <SlideTekst tekst={o.tekst} delay={2.2} />
-    </div>
-  );
-}
 
 // ─── Rivaloppgjøret ──────────────────────────────────────────────
 
@@ -1843,10 +1792,23 @@ function FormSlide({ innslag: o, data }: { innslag: FormInnslag; data: FinaleDat
             boxShadow: `0 0 40px -10px ${aksent}`,
           }}
         >
-          <span className="text-[10px] tracking-widest text-fg-faint uppercase">3 leker</span>
+          <span className="text-[10px] tracking-widest text-fg-faint uppercase">
+            {o.perLek.length} leker
+          </span>
           <span className="font-display text-4xl font-bold tabular-nums" style={{ color: aksent }}>
             {o.sum}p
           </span>
+          {/* Bølgedalen: hva snittet skulle tilsi, og hvor mye som mangler */}
+          {o.forventet != null && (
+            <>
+              <span className="mt-1 text-[11px] text-fg-dim tabular-nums">
+                av ~{Math.round(o.forventet)}p forventet
+              </span>
+              <span className="mt-1 rounded-full bg-[color-mix(in_srgb,var(--accent-2)_20%,transparent)] px-2 py-0.5 text-[11px] font-bold text-accent-2 tabular-nums">
+                ▼{Math.round(o.forventet - o.sum)}p
+              </span>
+            </>
+          )}
         </motion.div>
       </div>
 
