@@ -120,3 +120,76 @@ describe("duell-innslag med fast poengskjema", () => {
     expect(dueller.some((i) => i.slag === "duell" && i.variant === "storseier")).toBe(true);
   });
 });
+
+describe("nye innslag: formtopp, bølgedal og spesialist", () => {
+  const spillere = [
+    { id: "a", navn: "Aa Aa" },
+    { id: "b", navn: "Bb Bb" },
+    { id: "c", navn: "Cc Cc" },
+    { id: "d", navn: "Dd Dd" },
+    { id: "v", navn: "Vv Vv" },
+  ];
+  const flatt = (dPoeng: number): Lek[] =>
+    Array.from({ length: 4 }, () => ({
+      vertId: "v",
+      poeng: { a: 10, b: 8, c: 6, d: dPoeng },
+    }));
+
+  it("kårer en formtopp for en het tre-leks periode", () => {
+    const innslag = byggSesong(spillere, flatt(5)).innslag;
+    expect(innslag.some((i) => i.slag === "form" && i.variant === "topp")).toBe(true);
+  });
+
+  it("kårer en bølgedal — men aldri for vinneren", () => {
+    const data = byggSesong(spillere, flatt(1));
+    const svikt = data.innslag.find((i) => i.slag === "form" && i.variant === "svikt");
+    expect(svikt).toBeDefined();
+    if (svikt && svikt.slag === "form") {
+      expect(svikt.userId).toBe("d");
+      expect(svikt.userId).not.toBe(data.deltakere[0].userId);
+    }
+  });
+
+  it("kårer en spesialist med høyt snitt og nok leker i egenskapen", () => {
+    const spes = byggSesong(spillere, flatt(5)).innslag.find((i) => i.slag === "spesialist");
+    expect(spes).toBeDefined();
+    if (spes && spes.slag === "spesialist") {
+      expect(spes.userId).toBe("a");
+      expect(spes.snitt).toBeGreaterThanOrEqual(6);
+      expect(spes.antall).toBeGreaterThanOrEqual(3);
+    }
+  });
+});
+
+describe("poengfest krever ekte bonuspott", () => {
+  const spillere = [
+    { id: "a", navn: "Aa Aa" },
+    { id: "b", navn: "Bb Bb" },
+    { id: "c", navn: "Cc Cc" },
+    { id: "v", navn: "Vv Vv" },
+  ];
+  const erPoengfest = (leker: Lek[]) =>
+    byggSesong(spillere, leker).innslag.some(
+      (i) => i.slag === "poengfest" && i.variant === "poengfest",
+    );
+
+  it("fyrer ikke uten bonus", () => {
+    expect(
+      erPoengfest([
+        { vertId: "v", poeng: { a: 10, b: 8, c: 6 } },
+        { vertId: "v", poeng: { a: 10, b: 8, c: 6 } },
+        { vertId: "v", poeng: { b: 10, a: 8, c: 6 } },
+      ]),
+    ).toBe(false);
+  });
+
+  it("fyrer når bonuspoeng blåser opp potten", () => {
+    expect(
+      erPoengfest([
+        { vertId: "v", poeng: { a: 15, b: 8, c: 6 } }, // +5 over standardpott
+        { vertId: "v", poeng: { a: 10, b: 8, c: 6 } },
+        { vertId: "v", poeng: { b: 10, a: 8, c: 6 } },
+      ]),
+    ).toBe(true);
+  });
+});

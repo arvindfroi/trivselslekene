@@ -59,7 +59,7 @@ export type Posisjoner = {
 /** To personer, én lek, stor eller liten margin — vises som duell med barer */
 export type DuellInnslag = {
   slag: "duell";
-  variant: "storseier" | "thriller" | "knockout";
+  variant: "storseier" | "thriller" | "knockout" | "oppgjor";
   tittel: string;
   emoji: string;
   tekst: string;
@@ -179,6 +179,33 @@ export type TetsjiktInnslag = {
   medlemmer: { userId: string; poeng: number }[];
 };
 
+/** En deltakers heteste eller kaldeste periode: tre påfølgende leker med
+ *  høyest (topp) eller lavest (svikt) samlet poengsum. */
+export type FormInnslag = {
+  slag: "form";
+  variant: "topp" | "svikt";
+  tittel: string;
+  emoji: string;
+  tekst: string;
+  userId: string;
+  sum: number;
+  /** De tre lekene i perioden, i kronologisk rekkefølge */
+  perLek: { ovelseNr: number; ovelseNavn: string; poeng: number }[];
+};
+
+/** Deltakeren med høyest poengsnitt innen én egenskap — «spesialisten» —
+ *  blant dem som spilte nok leker i den egenskapen til at det teller. */
+export type SpesialistInnslag = {
+  slag: "spesialist";
+  tittel: string;
+  emoji: string;
+  tekst: string;
+  userId: string;
+  kvalitet: string;
+  snitt: number;
+  antall: number;
+};
+
 export type Innslag =
   | DuellInnslag
   | ReiseInnslag
@@ -189,7 +216,9 @@ export type Innslag =
   | TvillingInnslag
   | PodiumInnslag
   | PoengfestInnslag
-  | TetsjiktInnslag;
+  | TetsjiktInnslag
+  | FormInnslag
+  | SpesialistInnslag;
 
 /** Øyeblikket der vinneren grep ledelsen for godt — vises rett før tidslinjen */
 export type Vendepunkt = {
@@ -248,6 +277,18 @@ const UTMERKELSE_TITTEL: Record<string, string> = {
 };
 
 // ─── Småhjelpere ─────────────────────────────────────────────────
+
+/** Standard poengskjema (speiler RankingRedigering): 1. plass = 10, 2. = 8, … */
+const STANDARD_POENG = [10, 8, 6, 5, 4, 3, 2, 1];
+
+/** Forventet total pott i en lek med n deltakere uten bonus/likhet — summen av
+ *  standardpoengene for plass 1..n (0 fra 9. plass og ned). Brukes til å skille
+ *  en ekte bonus-drevet «poengfest» fra en lek som bare hadde mange deltakere. */
+function standardPott(n: number): number {
+  let sum = 0;
+  for (let i = 0; i < n; i++) sum += STANDARD_POENG[i] ?? 0;
+  return sum;
+}
 
 function hashTall(s: string): number {
   let h = 0;
@@ -401,7 +442,9 @@ type Kandidat = {
     | "sparkline"
     | "podium"
     | "resultatliste"
-    | "skala";
+    | "skala"
+    | "form"
+    | "spesialist";
   featured: string[];
   /** Kronologisk forankring (leksnummer) — null for sesong-overgripende innslag */
   kronNr: number | null;
@@ -409,9 +452,11 @@ type Kandidat = {
 
 const MAKS_INNSLAG = 9;
 const MAKS_MED_DEKNING = 11;
-const VISUELL_MAKS: Record<string, number> = { duell: 2 };
+// Duellen og formperioden har to lovlige varianter hver (stor/tett seier,
+// hett/kaldt) — de kan derfor forekomme to ganger; alt annet maks én gang.
+const VISUELL_MAKS: Record<string, number> = { duell: 2, form: 2 };
 /** Fortellerrekkefølge for innslag som ikke er bundet til én lek */
-const ARC_REKKEFOLGE = ["ribbon", "podium", "rival", "skala", "sparkline", "tall", "fall", "graf"];
+const ARC_REKKEFOLGE = ["ribbon", "podium", "rival", "skala", "spesialist", "sparkline", "tall", "form", "fall", "graf"];
 
 function velgInnslag(
   kandidater: Kandidat[],
@@ -827,7 +872,12 @@ export function byggFinaleData(
     });
   }
 
-  // Den store smellen: største avstand fra topp til bunn i én lek
+  // Oppgjøret / Den store smellen: leken med størst sprik fra 1. til sist.
+  // Er spriket reelt stort (≥ 6 p) er det en ekte «smell» med dempet ordlyd
+  // som feirer vinneren framfor å henge ut sisteplassen; ellers vises det som
+  // et nøkternt oppgjør. Dette innslaget er samtidig showets brede sikkerhets-
+  // nett i små felt (to spillere per lek), der en duell ER hele feltet.
+  const KNOCKOUT_STOR_SPRIK = 6;
   const knockout = dueller
     .filter((d) => d.o.nr !== storseier?.o.nr && d.knockout > 0)
     .reduce<(typeof dueller)[number] | null>(
@@ -835,17 +885,22 @@ export function byggFinaleData(
       null,
     );
   if (knockout) {
+    const stor = knockout.knockout >= KNOCKOUT_STOR_SPRIK;
     kandidater.push({
-      vekt: Math.min(78, 40 + knockout.knockout * 2.5),
+      vekt: stor
+        ? Math.min(78, 40 + knockout.knockout * 2.5)
+        : Math.min(48, 26 + knockout.knockout * 3),
       visuell: "duell",
       featured: [knockout.vinner.userId, knockout.sisteMann.userId],
       kronNr: knockout.o.nr,
       innslag: {
         slag: "duell",
-        variant: "knockout",
-        tittel: "Den store smellen",
-        emoji: "💥",
-        tekst: `«${knockout.o.navn}» ble et mareritt for ${fornavnAv(knockout.sisteMann.userId)}: ${fornavnAv(knockout.vinner.userId)} dro inn ${knockout.knockout} poeng mer, og avstanden sved i sammendraget.`,
+        variant: stor ? "knockout" : "oppgjor",
+        tittel: stor ? "Den store smellen" : "Oppgjøret",
+        emoji: stor ? "💥" : "🥊",
+        tekst: stor
+          ? `I «${knockout.o.navn}» var ${fornavnAv(knockout.vinner.userId)} i en klasse for seg — ${knockout.knockout} poeng klar av nederst på lista. En real opptur!`
+          : `«${knockout.o.navn}» ble et rent oppgjør: ${fornavnAv(knockout.vinner.userId)} slo ${fornavnAv(knockout.sisteMann.userId)} med ${knockout.knockout} poeng.`,
         ovelseNavn: knockout.o.navn,
         ovelseNr: knockout.o.nr,
         vinner: knockout.vinner,
@@ -1086,10 +1141,10 @@ export function byggFinaleData(
           variant: "sjokk",
           tittel: "Ingen så det komme",
           emoji: "🤯",
-          tekst: `Statistisk sett skulle ${fornavnAv(s.userId)} endt rundt ${s.snittRank.toFixed(1)}. plass i «${s.o.navn}» — i stedet ble det ${s.rank}. plass. Et avvik på ${s.z.toFixed(1)} standardavvik!`,
+          tekst: `Til vanlig endte ${fornavnAv(s.userId)} rundt ${s.snittRank.toFixed(1)}. plass — men i «${s.o.navn}» smalt det plutselig til ${s.rank}. plass. Årets største overraskelse!`,
           userId: s.userId,
           fraVerdi: `${s.snittRank.toFixed(1)}.`,
-          fraLabel: "plass i snitt ellers",
+          fraLabel: "pleier å ende",
           tilVerdi: `${s.rank}.`,
           tilLabel: `plass i «${s.o.navn}»`,
         },
@@ -1176,8 +1231,8 @@ export function byggFinaleData(
           tittel: positiv ? "Tvillingene" : "Motpolene",
           emoji: positiv ? "👯" : "🧲",
           tekst: positiv
-            ? `Tallene avslører noe rart: ${fornavnAv(k.aId)} og ${fornavnAv(k.bId)} fulgte hverandre som skygger — plasseringene deres samvarierer ${prosent} %. Gikk den ene opp, gikk den andre opp.`
-            : `Tallene avslører noe rart: ${fornavnAv(k.aId)} og ${fornavnAv(k.bId)} er rene motpoler — når den ene lykkes, sliter den andre. Plasseringene deres er ${prosent} % motsatt korrelert.`,
+            ? `Tallene avslører noe rart: ${fornavnAv(k.aId)} og ${fornavnAv(k.bId)} fulgte hverandre som skygger. Gikk den ene opp, gikk den andre opp — de gikk i takt ${prosent} % av lekene.`
+            : `Tallene avslører noe rart: ${fornavnAv(k.aId)} og ${fornavnAv(k.bId)} er rene motpoler. Når den ene gjorde det bra, slet den andre — de gikk i utakt ${prosent} % av lekene.`,
           aId: k.aId,
           bId: k.bId,
           aRanks: k.aRanks,
@@ -1223,21 +1278,22 @@ export function byggFinaleData(
     }
   }
 
-  // Poengfesten: leken der flest poeng ble delt ut. NB: standardskjemaet
-  // deler ut omtrent lik pott i hver lek, så dette innslaget genereres
-  // bare når den største potten faktisk skiller seg klart fra medianen
-  // (bonuspoeng, ekstra deltakere e.l.) — ellers tar Jordskjelvet plassen.
+  // Poengfesten: leken der det ble delt ut MER poeng enn skjemaet tilsier.
+  // Med fast poengskjema er den «største potten» ellers bare leken med flest
+  // deltakere — ikke en ekte fest. Vi ser derfor på hvor mye potten oversteg
+  // standardpotten for feltstørrelsen (dvs. bonuspoeng), og krever et reelt
+  // bonuspåslag. Er det ingen bonus, tar Jordskjelvet «hele feltet»-plassen.
+  const POENGFEST_MIN_BONUS = 5;
   {
     const potter = kronologisk
       .filter((o) => o.resultater.length >= 3)
-      .map((o) => ({
-        o,
-        total: o.resultater.reduce((sum, r) => sum + r.poeng, 0),
-      }))
-      .sort((a, b) => b.total - a.total);
+      .map((o) => {
+        const total = o.resultater.reduce((sum, r) => sum + r.poeng, 0);
+        return { o, total, bonus: total - standardPott(o.resultater.length) };
+      })
+      .sort((a, b) => b.bonus - a.bonus);
     const fest = potter[0];
-    const median = potter[Math.floor(potter.length / 2)]?.total ?? 0;
-    if (fest && median > 0 && fest.total >= median * 1.25) {
+    if (fest && fest.bonus >= POENGFEST_MIN_BONUS) {
       const resultater = [...fest.o.resultater].sort((a, b) => b.poeng - a.poeng);
       kandidater.push({
         // Vektes høyt: hele feltet på én gang, à la resultatskjermen i Mario Party
@@ -1250,8 +1306,8 @@ export function byggFinaleData(
           variant: "poengfest",
           tittel: "Poengfesten",
           emoji: "🎆",
-          tekst: `«${fest.o.navn}» var årets gavebord: ${fest.total} poeng ble delt ut på én og samme lek — mer enn i noen annen.`,
-          undertekst: `${fest.total} poeng i potten`,
+          tekst: `«${fest.o.navn}» var årets gavebord: ${fest.total} poeng i potten — hele ${fest.bonus} mer enn skjemaet tilsier, takket være bonuspoeng.`,
+          undertekst: `+${fest.bonus} bonuspoeng i potten`,
           ovelseNavn: fest.o.navn,
           ovelseNr: fest.o.nr,
           resultater,
@@ -1348,6 +1404,142 @@ export function byggFinaleData(
               : `Her er det trangt: bare ${beste.spenn} poeng skiller ${navneliste} i sammendraget — alt kan snu neste år!`,
           spenn: beste.spenn,
           medlemmer: beste.medlemmer,
+        },
+      });
+    }
+  }
+
+  // Formtoppen / Formsvikt: heteste og kaldeste periode på tre påfølgende
+  // leker. For hver deltaker ser vi på hvert vindu av tre leker på rad de
+  // faktisk var med i alle tre, og summerer poengene. Toppen kan være hvem som
+  // helst (en formtopp røper ikke sammenlagt), men svikten holder vinneren
+  // utenfor — det ville vært en underlig hilsen til mesteren.
+  if (kronologisk.length >= 3) {
+    const FORM_TOPP_MIN = 20; // ~7 i snitt over tre leker = en ekte opptur
+    const FORM_SVIKT_MAKS = 9; // ~3 i snitt over tre leker = en ekte bølgedal
+    const poengILek = kronologisk.map((o) => {
+      const m = new Map<string, number>();
+      for (const r of o.resultater) m.set(r.userId, r.poeng);
+      return m;
+    });
+    const vindu = (uid: string, i: number) => {
+      const p0 = poengILek[i].get(uid);
+      const p1 = poengILek[i + 1].get(uid);
+      const p2 = poengILek[i + 2].get(uid);
+      if (p0 === undefined || p1 === undefined || p2 === undefined) return null;
+      return [p0, p1, p2];
+    };
+
+    let topp: { userId: string; sum: number; i: number } | null = null;
+    let svikt: { userId: string; sum: number; i: number } | null = null;
+    for (const r of medPoeng) {
+      for (let i = 0; i + 3 <= kronologisk.length; i++) {
+        const ps = vindu(r.userId, i);
+        if (!ps) continue;
+        const sum = ps[0] + ps[1] + ps[2];
+        if (!topp || sum > topp.sum) topp = { userId: r.userId, sum, i };
+        if (r.userId !== vinnerId && (!svikt || sum < svikt.sum)) {
+          svikt = { userId: r.userId, sum, i };
+        }
+      }
+    }
+
+    const perLekFor = (uid: string, i: number) =>
+      [0, 1, 2].map((d) => {
+        const o = kronologisk[i + d];
+        return { ovelseNr: o.nr, ovelseNavn: o.navn, poeng: poengILek[i + d].get(uid)! };
+      });
+
+    if (topp && topp.sum >= FORM_TOPP_MIN) {
+      const t = topp;
+      const leker = perLekFor(t.userId, t.i);
+      kandidater.push({
+        vekt: Math.min(80, 40 + t.sum),
+        visuell: "form",
+        featured: [t.userId],
+        kronNr: kronologisk[t.i + 2].nr,
+        innslag: {
+          slag: "form",
+          variant: "topp",
+          tittel: "Formtoppen",
+          emoji: "🔥",
+          tekst: `${fornavnAv(t.userId)} var rødglødende midtveis: ${t.sum} poeng på tre leker på rad («${leker[0].ovelseNavn}», «${leker[1].ovelseNavn}» og «${leker[2].ovelseNavn}») — sesongens heteste periode.`,
+          userId: t.userId,
+          sum: t.sum,
+          perLek: leker,
+        },
+      });
+    }
+
+    if (svikt && svikt.sum <= FORM_SVIKT_MAKS) {
+      const s = svikt;
+      const leker = perLekFor(s.userId, s.i);
+      kandidater.push({
+        vekt: Math.min(74, 46 + (FORM_SVIKT_MAKS - s.sum) * 3),
+        visuell: "form",
+        featured: [s.userId],
+        kronNr: kronologisk[s.i + 2].nr,
+        innslag: {
+          slag: "form",
+          variant: "svikt",
+          tittel: "Bølgedalen",
+          emoji: "🧊",
+          tekst: `Alle har en tung uke: ${fornavnAv(s.userId)} fikk bare ${s.sum} poeng på tre leker på rad («${leker[0].ovelseNavn}», «${leker[1].ovelseNavn}» og «${leker[2].ovelseNavn}»). Sesongens kaldeste periode — men det snudde!`,
+          userId: s.userId,
+          sum: s.sum,
+          perLek: leker,
+        },
+      });
+    }
+  }
+
+  // Spesialisten: høyest poengsnitt innen én egenskap, blant dem som spilte
+  // nok leker i den egenskapen til at snittet betyr noe.
+  {
+    const SPESIALIST_MIN_LEKER = 3;
+    const SPESIALIST_MIN_SNITT = 6; // klart over midten av skalaen
+    const perKvalitet = new Map<Kvalitet, Map<string, number[]>>();
+    for (const o of kronologisk) {
+      for (const k of o.kvaliteter) {
+        let um = perKvalitet.get(k);
+        if (!um) {
+          um = new Map();
+          perKvalitet.set(k, um);
+        }
+        for (const res of o.resultater) {
+          const arr = um.get(res.userId) ?? [];
+          arr.push(res.poeng);
+          um.set(res.userId, arr);
+        }
+      }
+    }
+    let best: { userId: string; kvalitet: Kvalitet; snitt: number; antall: number } | null = null;
+    for (const [k, um] of perKvalitet) {
+      for (const [uid, arr] of um) {
+        if (arr.length < SPESIALIST_MIN_LEKER) continue;
+        const s = snitt(arr);
+        if (!best || s > best.snitt || (s === best.snitt && arr.length > best.antall)) {
+          best = { userId: uid, kvalitet: k, snitt: s, antall: arr.length };
+        }
+      }
+    }
+    if (best && best.snitt >= SPESIALIST_MIN_SNITT) {
+      const b = best;
+      const label = kvalitetTekst[b.kvalitet];
+      kandidater.push({
+        vekt: Math.min(76, 34 + b.snitt * 4),
+        visuell: "spesialist",
+        featured: [b.userId],
+        kronNr: null,
+        innslag: {
+          slag: "spesialist",
+          tittel: "Spesialisten",
+          emoji: "🎯",
+          tekst: `Ingen mestret ${label.toLowerCase()} som ${fornavnAv(b.userId)}: ${b.snitt.toFixed(1)} poeng i snitt over ${b.antall} leker som testet nettopp det.`,
+          userId: b.userId,
+          kvalitet: label,
+          snitt: b.snitt,
+          antall: b.antall,
         },
       });
     }

@@ -112,6 +112,9 @@ function innslagSpillere(innslag: Innslag): string[] {
       return innslag.resultater.map((r) => r.userId);
     case "tetsjikt":
       return innslag.medlemmer.map((m) => m.userId);
+    case "form":
+    case "spesialist":
+      return [innslag.userId];
   }
 }
 
@@ -186,7 +189,7 @@ describe("finaleshowets invarianter (Monte Carlo over 400 sesonger)", () => {
       const antallPerType = new Map<string, number>();
       for (const i of data.innslag) antallPerType.set(i.slag, (antallPerType.get(i.slag) ?? 0) + 1);
       for (const [slag, antall] of antallPerType) {
-        const tak = slag === "duell" ? 2 : 1;
+        const tak = slag === "duell" || slag === "form" ? 2 : 1;
         expect(antall, `${slag} gjentas maks ${tak} (${ctx})`).toBeLessThanOrEqual(tak);
       }
       // ingen tre påfølgende innslag av samme visualiseringstype

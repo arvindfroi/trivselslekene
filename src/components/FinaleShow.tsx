@@ -43,6 +43,8 @@ import type {
   TetsjiktInnslag,
   TidslinjePerson,
   TvillingInnslag,
+  FormInnslag,
+  SpesialistInnslag,
   Vendepunkt,
 } from "@/lib/finale";
 
@@ -127,6 +129,10 @@ function slideGlod(slide: Slide): [string, string] {
           return [GULL, BLAA];
         case "tetsjikt":
           return [ROD, BLAA];
+        case "form":
+          return slide.innslag.variant === "topp" ? [ROD, GULL] : [BLAA, LILLA];
+        case "spesialist":
+          return [GRONN, GULL];
         default:
           return [LILLA, BLAA];
       }
@@ -418,6 +424,10 @@ function InnslagSlide({ innslag, data }: { innslag: Innslag; data: FinaleData })
       return <PoengfestSlide innslag={innslag} data={data} />;
     case "tetsjikt":
       return <TetsjiktSlide innslag={innslag} data={data} />;
+    case "form":
+      return <FormSlide innslag={innslag} data={data} />;
+    case "spesialist":
+      return <SpesialistSlide innslag={innslag} data={data} />;
   }
 }
 
@@ -1517,7 +1527,7 @@ function TvillingSlide({ innslag: o, data }: { innslag: TvillingInnslag; data: F
         transition={{ delay: 2.6, type: "spring", stiffness: 240, damping: 14 }}
         className="mt-5 inline-block rounded-full border-2 border-accent-3/60 bg-accent-3/10 px-5 py-2 font-display text-xl font-bold text-accent-3"
       >
-        {o.prosent} % {o.variant === "tvillinger" ? "samsvar" : "motsatt"}
+        {o.prosent} % {o.variant === "tvillinger" ? "i takt" : "i utakt"}
       </motion.span>
 
       <SlideTekst tekst={o.tekst} delay={3} />
@@ -1777,6 +1787,105 @@ function TetsjiktSlide({ innslag: o, data }: { innslag: TetsjiktInnslag; data: F
       </div>
 
       <SlideTekst tekst={o.tekst} delay={1.3 + o.medlemmer.length * 0.22} />
+    </div>
+  );
+}
+
+// ─── Formtoppen / Bølgedalen: tre leker på rad ───────────────────
+
+function FormSlide({ innslag: o, data }: { innslag: FormInnslag; data: FinaleData }) {
+  const topp = o.variant === "topp";
+  const aksent = topp ? "var(--gold)" : "var(--accent-2)";
+  const maks = Math.max(1, ...o.perLek.map((l) => l.poeng), 10);
+
+  return (
+    <div className="text-center">
+      <Kicker emoji={o.emoji} tittel={o.tittel} farge={aksent} />
+      <PersonHeader userId={o.userId} data={data} />
+
+      <div className="mx-auto mt-10 flex max-w-3xl items-stretch justify-center gap-3 sm:gap-4">
+        {o.perLek.map((lek, i) => {
+          const hoyde = Math.max(0.16, lek.poeng / maks) * 120;
+          return (
+            <motion.div
+              key={lek.ovelseNr}
+              initial={{ opacity: 0, y: 24, scale: 0.85 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ delay: 0.5 + i * 0.25, type: "spring", stiffness: 200, damping: 18 }}
+              className="flex w-28 flex-col items-center justify-end sm:w-36"
+            >
+              <span className="font-display text-2xl font-bold tabular-nums" style={{ color: aksent }}>
+                {lek.poeng}p
+              </span>
+              <div
+                className="mt-2 w-full rounded-t-xl"
+                style={{
+                  height: hoyde,
+                  background: `linear-gradient(180deg, color-mix(in srgb, ${aksent} 80%, white), color-mix(in srgb, ${aksent} 55%, black))`,
+                  boxShadow: `inset 0 1.5px 0 rgba(255,255,255,0.4), 0 10px 30px -12px ${aksent}`,
+                }}
+              />
+              <span className="mt-2 line-clamp-2 text-xs text-fg-dim">«{lek.ovelseNavn}»</span>
+            </motion.div>
+          );
+        })}
+
+        {/* Sum-stempelet */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.5, rotate: 6 }}
+          animate={{ opacity: 1, scale: 1, rotate: 0 }}
+          transition={{ delay: 0.5 + o.perLek.length * 0.25 + 0.2, type: "spring", stiffness: 220, damping: 15 }}
+          className="flex flex-col items-center justify-center self-center rounded-2xl border-2 px-4 py-3"
+          style={{
+            borderColor: `color-mix(in srgb, ${aksent} 60%, transparent)`,
+            background: `color-mix(in srgb, ${aksent} 10%, transparent)`,
+            boxShadow: `0 0 40px -10px ${aksent}`,
+          }}
+        >
+          <span className="text-[10px] tracking-widest text-fg-faint uppercase">3 leker</span>
+          <span className="font-display text-4xl font-bold tabular-nums" style={{ color: aksent }}>
+            {o.sum}p
+          </span>
+        </motion.div>
+      </div>
+
+      <SlideTekst tekst={o.tekst} delay={0.9 + o.perLek.length * 0.25} />
+    </div>
+  );
+}
+
+// ─── Spesialisten: høyest snitt i én egenskap ────────────────────
+
+function SpesialistSlide({ innslag: o, data }: { innslag: SpesialistInnslag; data: FinaleData }) {
+  return (
+    <div className="text-center">
+      <Kicker emoji={o.emoji} tittel={o.tittel} farge="var(--accent)" />
+      <h2 className="mt-4 font-display text-5xl sm:text-7xl">
+        <KinetiskTittel tekst={o.kvalitet} gradient delay={0.2} steg={0.06} />
+      </h2>
+      <PersonHeader userId={o.userId} data={data} />
+
+      <motion.div
+        initial={{ opacity: 0, scale: 0.6 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.6, type: "spring", stiffness: 170, damping: 15 }}
+        className="mt-6 flex items-baseline justify-center gap-2"
+      >
+        <span className="text-gradient font-display text-[6rem] leading-none font-bold tabular-nums sm:text-[8rem]">
+          {o.snitt.toFixed(1)}
+        </span>
+        <span className="font-display text-2xl text-fg-dim">p i snitt</span>
+      </motion.div>
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1 }}
+        className="mt-2 text-sm tracking-widest text-fg-faint uppercase"
+      >
+        over {o.antall} leker som testet {o.kvalitet.toLowerCase()}
+      </motion.p>
+
+      <SlideTekst tekst={o.tekst} delay={1.6} />
     </div>
   );
 }
