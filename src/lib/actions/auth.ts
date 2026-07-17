@@ -82,10 +82,7 @@ export async function fullforOnboarding(data: OnboardingData) {
     return { feil: "Mangler navn eller lek-navn." };
   }
 
-  const user = await finnEllerOpprettBruker(navn, {
-    fornavn: data.fornavn,
-    etternavn: data.etternavn,
-  });
+  const user = await finnEllerOpprettBruker(navn);
   if (!user) return { feil: "Kunne ikke opprette bruker." };
 
   const sesong = await sikreAktivSesong();

@@ -22,37 +22,20 @@ export async function finnBrukerVedNavn(raaNavn: string) {
 /**
  * Finner en bruker basert på navn (kallenavn), eller oppretter en ny hvis
  * navnet ikke finnes fra før. Ingen passord – navnet (kallenavnet) er nøkkelen,
- * og huskes via en varig session. Ved oppretting kan for-/etternavn oppgis;
- * finnes brukeren fra før fylles disse inn dersom de mangler.
+ * og huskes via en varig session.
+ *
+ * Merk: onboardingen samler også inn for-/etternavn, men disse lagres ikke
+ * ennå (krever en databasekolonne som ikke er lagt til). De ignoreres derfor
+ * her inntil kolonnene finnes.
  */
-export async function finnEllerOpprettBruker(
-  raaNavn: string,
-  ekstra?: { fornavn?: string | null; etternavn?: string | null },
-) {
+export async function finnEllerOpprettBruker(raaNavn: string) {
   const navn = normaliserNavn(raaNavn);
 
   const parsed = brukerNavnSchema.safeParse(navn);
   if (!parsed.success) return null;
 
-  const fornavn = ekstra?.fornavn ? normaliserNavn(ekstra.fornavn) : null;
-  const etternavn = ekstra?.etternavn ? normaliserNavn(ekstra.etternavn) : null;
-
   const eksisterende = await finnBrukerVedNavn(navn);
-  if (eksisterende) {
-    // Fyll inn manglende for-/etternavn hvis vi nettopp fikk dem oppgitt.
-    if ((fornavn && !eksisterende.fornavn) || (etternavn && !eksisterende.etternavn)) {
-      return prisma.user.update({
-        where: { id: eksisterende.id },
-        data: {
-          fornavn: eksisterende.fornavn ?? fornavn,
-          etternavn: eksisterende.etternavn ?? etternavn,
-        },
-      });
-    }
-    return eksisterende;
-  }
+  if (eksisterende) return eksisterende;
 
-  return prisma.user.create({
-    data: { navn: parsed.data, fornavn, etternavn, farge: await tildelFarge() },
-  });
+  return prisma.user.create({ data: { navn: parsed.data, farge: await tildelFarge() } });
 }
