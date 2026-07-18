@@ -7,12 +7,16 @@ import {
   ChevronLeft,
   ChevronRight,
   Crown,
+  Dna,
   Download,
+  Lightbulb,
   LineChart,
   MoveRight,
   PartyPopper,
   Sparkles,
+  Swords,
   Table2,
+  TrendingUp,
   Volume2,
   VolumeX,
   X,
@@ -20,7 +24,7 @@ import {
 import Avatar from "@/components/Avatar";
 import IridiserendeBakgrunn from "@/components/IridiserendeBakgrunn";
 import { ShowLyd } from "@/lib/showLyd";
-import { byggSlides, type FramgangPost, type Slide } from "@/lib/finaleSlides";
+import { byggFunn, byggSlides, type FramgangPost, type Funn, type Slide } from "@/lib/finaleSlides";
 import {
   FJORARET_AAR,
   FJORARET_NAVN,
@@ -38,6 +42,7 @@ import type {
   PodiumInnslag,
   PoengfestInnslag,
   ReiseInnslag,
+  RekkeInnslag,
   RivalInnslag,
   Pris,
   TetsjiktInnslag,
@@ -130,6 +135,8 @@ function slideGlod(slide: Slide): [string, string] {
           return [ROD, BLAA];
         case "form":
           return slide.innslag.variant === "topp" ? [ROD, GULL] : [BLAA, LILLA];
+        case "rekke":
+          return [GULL, ROD];
         case "spesialist":
           return [GRONN, GULL];
         default:
@@ -137,6 +144,8 @@ function slideGlod(slide: Slide): [string, string] {
       }
     case "ifjor":
       return [GULL, BLAA];
+    case "uavgjort":
+      return [GULL, ROD];
     case "framgang":
       return [GRONN, BLAA];
     case "pris":
@@ -171,6 +180,7 @@ function slideOvergang(type: Slide["type"], retning: number) {
         transition: { duration: 0.55, ease: [0.16, 1, 0.3, 1] as const },
       };
     case "trommevirvel":
+    case "uavgjort":
     case "vinner":
       // Klimaks: zoomer inn mot seeren
       return {
@@ -352,8 +362,11 @@ export default function FinaleShow({ data }: { data: FinaleData }) {
             {slide.type === "trommevirvel" && (
               <TrommevirvelSlide data={data} lyd={lyd} />
             )}
+            {slide.type === "uavgjort" && (
+              <UavgjortSlide vinnere={slide.vinnere} data={data} lyd={lyd} />
+            )}
             {slide.type === "vinner" && (
-              <VinnerSlide deltaker={slide.deltaker} data={data} lyd={lyd} />
+              <VinnerSlide vinnere={slide.vinnere} data={data} lyd={lyd} />
             )}
             {slide.type === "framgang" && <FramgangSlide framgang={slide.framgang} />}
             {slide.type === "tallene" && <TalleneSlide data={data} />}
@@ -423,6 +436,8 @@ function InnslagSlide({ innslag, data }: { innslag: Innslag; data: FinaleData })
       return <TetsjiktSlide innslag={innslag} data={data} />;
     case "form":
       return <FormSlide innslag={innslag} data={data} />;
+    case "rekke":
+      return <RekkeSlide innslag={innslag} data={data} />;
     case "spesialist":
       return <SpesialistSlide innslag={innslag} data={data} />;
   }
@@ -794,8 +809,10 @@ function DuellSlide({ innslag: o, data }: { innslag: DuellInnslag; data: FinaleD
   const taper = data.personer[o.taper.userId];
   const maks = Math.max(1, o.vinner.poeng);
   const diff = o.vinner.poeng - o.taper.poeng;
-  const diffTekst =
-    o.variant === "thriller" ? (diff === 0 ? "dødt løp!" : `bare ${diff}p!`) : `+${diff}p`;
+  // Dødt løp: begge er «vinnere» — poengmargin nevnes bare når den faktisk
+  // betyr noe (summert over en periode); i et enkeltoppgjør vises kun utfallet.
+  const doedtLoep = o.variant === "thriller";
+  const diffTekst = doedtLoep ? "dødt løp!" : o.variant === "periode" ? `+${diff}p` : "🥇";
 
   const rad = (
     person: typeof vinner,
@@ -873,12 +890,14 @@ function DuellSlide({ innslag: o, data }: { innslag: DuellInnslag; data: FinaleD
         transition={{ delay: 0.3 }}
         className="mt-2 text-xs tracking-widest text-fg-faint uppercase"
       >
-        Øvelse {o.ovelseNr} av {data.antallFullfort}
+        {o.leker
+          ? o.leker.map((navn) => `«${navn}»`).join("  ·  ")
+          : `Øvelse ${o.ovelseNr} av ${data.antallFullfort}`}
       </motion.p>
 
       <div className="relative mx-auto mt-10 flex max-w-3xl flex-col gap-4">
         {rad(vinner, o.vinner.poeng, true, 0.45)}
-        {rad(taper, o.taper.poeng, false, 0.65)}
+        {rad(taper, o.taper.poeng, doedtLoep, 0.65)}
         <motion.div
           initial={{ opacity: 0, scale: 0, rotate: -14 }}
           animate={{ opacity: 1, scale: 1, rotate: -6 }}
@@ -1817,6 +1836,61 @@ function FormSlide({ innslag: o, data }: { innslag: FormInnslag; data: FinaleDat
   );
 }
 
+// ─── Seiersrekka: pokal på pokal, lek etter lek ──────────────────
+
+function RekkeSlide({ innslag: o, data }: { innslag: RekkeInnslag; data: FinaleData }) {
+  const person = data.personer[o.userId];
+  const lys = lysFarge(person?.farge);
+  return (
+    <div className="text-center">
+      <Kicker emoji={o.emoji} tittel={o.tittel} farge="var(--gold)" />
+      <PersonHeader userId={o.userId} data={data} ring="ring-2 ring-[var(--gold)]" />
+
+      <div className="mx-auto mt-10 flex max-w-3xl flex-wrap items-center justify-center gap-3">
+        {o.leker.map((l, i) => (
+          <motion.div
+            key={l.ovelseNr}
+            initial={{ opacity: 0, y: 26, rotate: -7, scale: 0.8 }}
+            animate={{ opacity: 1, y: 0, rotate: 0, scale: 1 }}
+            transition={{ delay: 0.5 + i * 0.35, type: "spring", stiffness: 220, damping: 15 }}
+            className="flex w-40 flex-col items-center gap-2 rounded-2xl border px-4 py-5"
+            style={{
+              borderColor: `color-mix(in srgb, ${lys} 45%, transparent)`,
+              background: `linear-gradient(180deg, color-mix(in srgb, ${lys} 14%, transparent), transparent)`,
+              boxShadow: `0 14px 44px -18px ${lys}`,
+            }}
+          >
+            <motion.span
+              className="text-3xl"
+              aria-hidden
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.7 + i * 0.35, type: "spring", stiffness: 300, damping: 12 }}
+            >
+              🏆
+            </motion.span>
+            <span className="text-sm font-medium text-fg">{l.ovelseNavn}</span>
+            <span className="text-[11px] tracking-wider text-fg-faint uppercase">
+              Lek {l.ovelseNr}
+            </span>
+          </motion.div>
+        ))}
+      </div>
+
+      <motion.p
+        initial={{ opacity: 0, scale: 0.7 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.6 + o.leker.length * 0.35, type: "spring", stiffness: 220, damping: 15 }}
+        className="mt-7 font-display text-2xl text-[var(--gold)]"
+      >
+        {o.lengde} strake seire!
+      </motion.p>
+
+      <SlideTekst tekst={o.tekst} delay={0.9 + o.leker.length * 0.35} />
+    </div>
+  );
+}
+
 // ─── Spesialisten: høyest snitt i én egenskap ────────────────────
 
 function SpesialistSlide({ innslag: o, data }: { innslag: SpesialistInnslag; data: FinaleData }) {
@@ -2263,18 +2337,133 @@ function Konfetti() {
   );
 }
 
-function VinnerSlide({
-  deltaker: d,
+// ─── Uavgjort: dommerbordet melder om FULLSTENDIG poenglikhet ────
+
+function UavgjortSlide({
+  vinnere,
   data,
   lyd,
 }: {
-  deltaker: FinaleDeltaker;
+  vinnere: FinaleDeltaker[];
+  data: FinaleData;
+  lyd: ShowLyd;
+}) {
+  useEffect(() => {
+    lyd.uavgjort();
+  }, [lyd]);
+
+  const navneliste = vinnere
+    .map((v) => v.fornavn)
+    .join(", ")
+    .replace(/, ([^,]*)$/, " og $1");
+  const poeng = vinnere[0]?.totalPoeng ?? 0;
+
+  return (
+    <div className="text-center">
+      <Kicker emoji="🚨" tittel="Ekstraordinær melding" farge="var(--gold)" />
+
+      <h2 className="mt-5 font-display text-5xl text-fg sm:text-7xl">
+        <KinetiskTittel tekst="VENT LITT …" delay={0.3} steg={0.07} />
+      </h2>
+
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1 }}
+        className="mt-5 text-lg text-fg-dim"
+      >
+        Dommerbordet ber om ro i salen. Det telles … og telles … og telles en
+        gang til … 🧮
+      </motion.p>
+
+      {/* Vektskåla: perfekt balanse — ingen av dem synker */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1.9 }}
+        className="relative mx-auto mt-10 h-44 w-full max-w-xl"
+      >
+        <motion.div
+          className="absolute left-1/2 top-14 w-[min(26rem,90%)] -translate-x-1/2"
+          animate={{ rotate: [2.2, -2.2, 2.2] }}
+          transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
+          style={{ transformOrigin: "50% 50%" }}
+        >
+          <div
+            className="h-2 rounded-full"
+            style={{
+              background:
+                "linear-gradient(90deg, color-mix(in srgb, var(--gold) 60%, transparent), var(--gold), color-mix(in srgb, var(--gold) 60%, transparent))",
+              boxShadow: "0 0 30px -6px var(--gold)",
+            }}
+          />
+          <div className="absolute inset-x-0 -top-20 flex justify-between px-1">
+            {vinnere.slice(0, 2).map((v) => (
+              <div key={v.userId} className="flex flex-col items-center gap-1.5">
+                <Avatar navn={v.navn} bildeUrl={v.bildeUrl} farge={v.farge} size={64} />
+                <span className="rounded-full border border-line bg-bg-elev/80 px-2.5 py-0.5 text-xs font-bold text-fg tabular-nums">
+                  {v.totalPoeng}p
+                </span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+        <span
+          aria-hidden
+          className="absolute left-1/2 top-16 -translate-x-1/2 text-4xl"
+        >
+          ⚖️
+        </span>
+      </motion.div>
+
+      <motion.p
+        initial={{ opacity: 0, scale: 0.6 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 2.9, type: "spring", stiffness: 240, damping: 13 }}
+        className="mt-8 font-display text-4xl sm:text-6xl"
+      >
+        <span className="text-gradient font-bold">DET STÅR HELT LIKT!</span>
+      </motion.p>
+
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 3.5 }}
+        className="mx-auto mt-5 max-w-xl text-lg text-fg-dim"
+      >
+        Etter {data.antallFullfort} leker står {navneliste} begge på{" "}
+        <span className="font-semibold text-fg">{poeng} poeng</span>. Reglene er
+        klare: da deles tronen!
+      </motion.p>
+
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 4.1 }}
+        className="mt-6 text-xs tracking-widest text-fg-faint uppercase"
+      >
+        Omtelling gjennomført: fortsatt likt · Protest avvist: også likt 📋
+      </motion.p>
+    </div>
+  );
+}
+
+function VinnerSlide({
+  vinnere,
+  data,
+  lyd,
+}: {
+  vinnere: FinaleDeltaker[];
   data: FinaleData;
   lyd: ShowLyd;
 }) {
   useEffect(() => {
     lyd.fanfare();
   }, [lyd]);
+
+  const delt = vinnere.length > 1;
+  const d = vinnere[0];
+  const tittelNavn = delt ? vinnere.map((v) => v.fornavn).join(" & ") : d.navn;
 
   return (
     <div className="relative text-center">
@@ -2284,13 +2473,20 @@ function VinnerSlide({
         initial={{ opacity: 0, y: -30, scale: 0 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ delay: 0.2, type: "spring", stiffness: 200, damping: 12 }}
-        className="inline-block"
+        className="inline-flex items-center gap-3"
       >
         <Crown size={56} className="animate-float text-[var(--gold)]" />
+        {delt && (
+          <Crown
+            size={56}
+            className="animate-float text-[var(--gold)]"
+            style={{ animationDelay: "0.6s" }}
+          />
+        )}
       </motion.div>
 
       <div className="relative inline-block">
-        {/* Gullglød bak vinneren */}
+        {/* Gullglød bak vinnerne */}
         <div
           aria-hidden
           className="pointer-events-none absolute left-1/2 top-1/2 h-[420px] w-[420px] -translate-x-1/2 -translate-y-1/2"
@@ -2299,22 +2495,32 @@ function VinnerSlide({
               "radial-gradient(circle, color-mix(in srgb, var(--gold) 22%, transparent), transparent 65%)",
           }}
         />
-        <motion.div
-          initial={{ opacity: 0, scale: 0.5 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.4, type: "spring", stiffness: 160, damping: 14 }}
-          className="relative mt-4 inline-block rounded-full p-2"
-          style={{
-            background:
-              "conic-gradient(from 0deg, var(--gold), var(--accent-2), var(--accent-3), var(--gold))",
-          }}
-        >
-          <Avatar navn={d.navn} bildeUrl={d.bildeUrl} farge={d.farge} size={190} />
-        </motion.div>
+        <div className="relative mt-4 flex items-center justify-center gap-5">
+          {vinnere.map((v, i) => (
+            <motion.div
+              key={v.userId}
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.4 + i * 0.25, type: "spring", stiffness: 160, damping: 14 }}
+              className="inline-block rounded-full p-2"
+              style={{
+                background:
+                  "conic-gradient(from 0deg, var(--gold), var(--accent-2), var(--accent-3), var(--gold))",
+              }}
+            >
+              <Avatar
+                navn={v.navn}
+                bildeUrl={v.bildeUrl}
+                farge={v.farge}
+                size={delt ? 150 : 190}
+              />
+            </motion.div>
+          ))}
+        </div>
       </div>
 
-      <h2 className="mt-6 font-display text-6xl sm:text-8xl">
-        <KinetiskTittel tekst={d.navn} gradient delay={0.8} steg={0.08} />
+      <h2 className={`mt-6 font-display ${delt ? "text-5xl sm:text-7xl" : "text-6xl sm:text-8xl"}`}>
+        <KinetiskTittel tekst={tittelNavn} gradient delay={0.8} steg={0.08} />
       </h2>
 
       <motion.p
@@ -2323,7 +2529,9 @@ function VinnerSlide({
         transition={{ delay: 1 }}
         className="mt-4 font-display text-2xl text-fg sm:text-3xl"
       >
-        🏆 Vinner av {data.sesongNavn} 🏆
+        {delt
+          ? `🏆 Delt seier i ${data.sesongNavn} 🏆`
+          : `🏆 Vinner av ${data.sesongNavn} 🏆`}
       </motion.p>
 
       <motion.p
@@ -2332,8 +2540,9 @@ function VinnerSlide({
         transition={{ delay: 1.25 }}
         className="mt-3 text-lg text-fg-dim"
       >
-        {d.totalPoeng} poeng · {d.seire}{" "}
-        {d.seire === 1 ? "seier" : "seire"} · {d.antallOvelser} leker
+        {delt
+          ? `${d.totalPoeng} poeng hver — ikke ett poeng skiller · ${vinnere.reduce((s, v) => s + v.seire, 0)} seire til sammen`
+          : `${d.totalPoeng} poeng · ${d.seire} ${d.seire === 1 ? "seier" : "seire"} · ${d.antallOvelser} leker`}
       </motion.p>
 
       <motion.p
@@ -2347,8 +2556,9 @@ function VinnerSlide({
 
       {(() => {
         const ifjorVinner = fjoraretStilling()[0];
-        const forsvarte =
-          ifjorVinner.navn.toLowerCase() === d.fornavn.toLowerCase();
+        const forsvarer = vinnere.find(
+          (v) => ifjorVinner.navn.toLowerCase() === v.fornavn.toLowerCase(),
+        );
         return (
           <motion.p
             initial={{ opacity: 0 }}
@@ -2356,9 +2566,13 @@ function VinnerSlide({
             transition={{ delay: 1.75 }}
             className="mx-auto mt-4 max-w-xl text-sm text-fg-faint"
           >
-            {forsvarte
+            {forsvarer && !delt
               ? `👑 Forsvarte tronen fra ${FJORARET_AAR} — to på rad!`
-              : `Ny mester på tronen — ${ifjorVinner.navn} vant i ${FJORARET_AAR}.`}
+              : forsvarer
+                ? `👑 ${forsvarer.fornavn} forsvarte tronen fra ${FJORARET_AAR} — men må dele den i år!`
+                : delt
+                  ? `To nye mestere på tronen — ${ifjorVinner.navn} vant i ${FJORARET_AAR}.`
+                  : `Ny mester på tronen — ${ifjorVinner.navn} vant i ${FJORARET_AAR}.`}
           </motion.p>
         );
       })()}
@@ -2456,9 +2670,15 @@ const TABELL_KOLONNER: TabellKolonne[] = [
   { key: "ovelser", label: "Øvelser", verdi: (d) => d.antallOvelser, format: (d) => String(d.antallOvelser) },
 ];
 
+type TalleneVisning = "graf" | "plassering" | "moter" | "egenskaper" | "funn" | "tabell";
+
 function TalleneSlide({ data }: { data: FinaleData }) {
   const harGraf = data.tidslinje.length >= 2;
-  const [visning, setVisning] = useState<"graf" | "tabell">(harGraf ? "graf" : "tabell");
+  const leker = data.leker ?? [];
+  const harMoter = leker.length > 0 && data.deltakere.length >= 2;
+  const harEgenskaper = leker.some((l) => l.kvaliteter.length > 0);
+  const funn = useMemo(() => byggFunn(data), [data]);
+  const [visning, setVisning] = useState<TalleneVisning>(harGraf ? "graf" : "tabell");
   const [valgte, setValgte] = useState<Set<string>>(
     () => new Set(data.deltakere.slice(0, 3).map((d) => d.userId)),
   );
@@ -2555,7 +2775,8 @@ function TalleneSlide({ data }: { data: FinaleData }) {
         transition={{ delay: 0.25 }}
         className="mx-auto mt-3 max-w-xl text-base text-fg-dim"
       >
-        Utforsk hele sesongen — klikk deg rundt i grafen og tabellen.
+        Utforsk hele sesongen — grafer, innbyrdes oppgjør, egenskapsprofiler
+        og funn du kan slå i bordet med på neste familiemiddag.
       </motion.p>
 
       <motion.div
@@ -2573,29 +2794,37 @@ function TalleneSlide({ data }: { data: FinaleData }) {
         </button>
       </motion.div>
 
-      {harGraf && (
-        <div className="mt-5 inline-flex rounded-full border border-line bg-bg-elev/70 p-1">
-          {(
-            [
-              { id: "graf" as const, label: "Poenggraf", Ikon: LineChart },
-              { id: "tabell" as const, label: "Tabell", Ikon: Table2 },
-            ]
-          ).map(({ id, label, Ikon }) => (
-            <button
-              key={id}
-              onClick={() => setVisning(id)}
-              className={`flex items-center gap-2 rounded-full px-5 py-2 text-sm font-medium transition-colors ${
-                visning === id ? "bg-white/10 text-fg" : "text-fg-dim hover:text-fg"
-              }`}
-            >
-              <Ikon size={15} />
-              {label}
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="mt-5 inline-flex flex-wrap justify-center rounded-full border border-line bg-bg-elev/70 p-1">
+        {(
+          [
+            ...(harGraf
+              ? [
+                  { id: "graf" as const, label: "Poenggraf", Ikon: LineChart },
+                  { id: "plassering" as const, label: "Plasseringer", Ikon: TrendingUp },
+                ]
+              : []),
+            ...(harMoter ? [{ id: "moter" as const, label: "Møter", Ikon: Swords }] : []),
+            ...(harEgenskaper
+              ? [{ id: "egenskaper" as const, label: "Egenskaper", Ikon: Dna }]
+              : []),
+            ...(funn.length > 0 ? [{ id: "funn" as const, label: "Funn", Ikon: Lightbulb }] : []),
+            { id: "tabell" as const, label: "Tabell", Ikon: Table2 },
+          ] satisfies { id: TalleneVisning; label: string; Ikon: typeof Table2 }[]
+        ).map(({ id, label, Ikon }) => (
+          <button
+            key={id}
+            onClick={() => setVisning(id)}
+            className={`flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-medium transition-colors sm:gap-2 sm:px-4 ${
+              visning === id ? "bg-white/10 text-fg" : "text-fg-dim hover:text-fg"
+            }`}
+          >
+            <Ikon size={15} />
+            {label}
+          </button>
+        ))}
+      </div>
 
-      {visning === "graf" && harGraf ? (
+      {visning === "graf" && harGraf && (
         <div className="mt-4">
           <svg viewBox={`0 0 ${W} ${H}`} className="mx-auto w-full max-w-4xl" role="img" aria-label="Kumulative poeng gjennom lekene">
             <defs>
@@ -2708,38 +2937,24 @@ function TalleneSlide({ data }: { data: FinaleData }) {
             })()}
           </svg>
 
-          {/* Deltakervelger */}
-          <div className="mx-auto mt-3 flex max-w-3xl flex-wrap items-center justify-center gap-2">
-            {data.deltakere.map((d) => {
-              const aktiv = valgte.has(d.userId);
-              const lys = lysFarge(d.farge);
-              return (
-                <button
-                  key={d.userId}
-                  onClick={() => toggle(d.userId)}
-                  aria-pressed={aktiv}
-                  className={`flex items-center gap-1.5 rounded-full border py-1 pl-1 pr-3 text-xs font-medium transition-all ${
-                    aktiv ? "" : "border-line text-fg-faint opacity-60 hover:opacity-100"
-                  }`}
-                  style={
-                    aktiv
-                      ? {
-                          color: lys,
-                          borderColor: `color-mix(in srgb, ${lys} 55%, transparent)`,
-                          backgroundColor: `color-mix(in srgb, ${lys} 12%, transparent)`,
-                          boxShadow: `0 0 20px -8px ${lys}`,
-                        }
-                      : undefined
-                  }
-                >
-                  <Avatar navn={d.navn} bildeUrl={d.bildeUrl} farge={d.farge} size={22} />
-                  {d.fornavn}
-                </button>
-              );
-            })}
-          </div>
+          <DeltakerVelger data={data} valgte={valgte} toggle={toggle} />
         </div>
-      ) : (
+      )}
+
+      {visning === "plassering" && harGraf && (
+        <div className="mt-4">
+          <PlasseringsRace data={data} valgte={valgte} />
+          <DeltakerVelger data={data} valgte={valgte} toggle={toggle} />
+        </div>
+      )}
+
+      {visning === "moter" && harMoter && <MoteMatrise data={data} />}
+
+      {visning === "egenskaper" && harEgenskaper && <EgenskapsProfil data={data} />}
+
+      {visning === "funn" && <FunnKort funn={funn} />}
+
+      {visning === "tabell" && (
         <div className="surface mx-auto mt-5 max-w-4xl overflow-x-auto rounded-3xl">
           <table className="w-full text-sm">
             <thead>
@@ -2789,6 +3004,350 @@ function TalleneSlide({ data }: { data: FinaleData }) {
           </table>
         </div>
       )}
+    </div>
+  );
+}
+
+/** Felles avkrysningschips for graf-visningene */
+function DeltakerVelger({
+  data,
+  valgte,
+  toggle,
+}: {
+  data: FinaleData;
+  valgte: Set<string>;
+  toggle: (userId: string) => void;
+}) {
+  return (
+    <div className="mx-auto mt-3 flex max-w-3xl flex-wrap items-center justify-center gap-2">
+      {data.deltakere.map((d) => {
+        const aktiv = valgte.has(d.userId);
+        const lys = lysFarge(d.farge);
+        return (
+          <button
+            key={d.userId}
+            onClick={() => toggle(d.userId)}
+            aria-pressed={aktiv}
+            className={`flex items-center gap-1.5 rounded-full border py-1 pl-1 pr-3 text-xs font-medium transition-all ${
+              aktiv ? "" : "border-line text-fg-faint opacity-60 hover:opacity-100"
+            }`}
+            style={
+              aktiv
+                ? {
+                    color: lys,
+                    borderColor: `color-mix(in srgb, ${lys} 55%, transparent)`,
+                    backgroundColor: `color-mix(in srgb, ${lys} 12%, transparent)`,
+                    boxShadow: `0 0 20px -8px ${lys}`,
+                  }
+                : undefined
+            }
+          >
+            <Avatar navn={d.navn} bildeUrl={d.bildeUrl} farge={d.farge} size={22} />
+            {d.fornavn}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Plasseringsracet: sammenlagtposisjon etter hver lek, som «bump chart» */
+function PlasseringsRace({ data, valgte }: { data: FinaleData; valgte: Set<string> }) {
+  const { posisjoner, personer } = data;
+  const steg = posisjoner.ovelser.length;
+  const antall = Math.max(2, posisjoner.serier.length);
+  const W = 880;
+  const H = Math.min(430, 130 + antall * 34);
+  const padL = 40;
+  const padR = 120;
+  const padT = 20;
+  const padB = 34;
+  const x = (i: number) => padL + (i * (W - padL - padR)) / Math.max(1, steg - 1);
+  const y = (r: number) => padT + ((r - 1) * (H - padT - padB)) / Math.max(1, antall - 1);
+
+  const tilPunkter = (ranks: (number | null)[]) =>
+    ranks
+      .map((r, i) => (r === null ? null : ([x(i), y(r)] as const)))
+      .filter((p): p is readonly [number, number] => p !== null);
+  const tilPath = (pts: (readonly [number, number])[]) =>
+    pts.map(([px, py], i) => `${i === 0 ? "M" : "L"}${px},${py}`).join(" ");
+
+  // Skyv sluttetikettene fra hverandre når plasseringene er tette
+  const aktive = posisjoner.serier
+    .filter((s) => valgte.has(s.userId))
+    .sort(
+      (a, b) =>
+        (a.ranks[steg - 1] ?? antall) - (b.ranks[steg - 1] ?? antall),
+    );
+  const labelY = new Map<string, number>();
+  let forrigeY = -Infinity;
+  for (const s of aktive) {
+    const siste = s.ranks[steg - 1];
+    const oensket = (siste === null ? H - padB : y(siste)) + 4;
+    const plassert = Math.max(oensket, forrigeY + 16);
+    labelY.set(s.userId, plassert);
+    forrigeY = plassert;
+  }
+
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      className="mx-auto w-full max-w-4xl"
+      role="img"
+      aria-label="Sammenlagtplassering etter hver lek"
+    >
+      {Array.from({ length: antall }, (_, i) => i + 1).map((r) => (
+        <g key={r}>
+          <line
+            x1={padL}
+            x2={W - padR}
+            y1={y(r)}
+            y2={y(r)}
+            stroke="rgba(255,255,255,0.07)"
+            strokeDasharray="1 7"
+            strokeLinecap="round"
+          />
+          {(antall <= 9 || r === 1 || r === antall || r % 2 === 1) && (
+            <text x={padL - 10} y={y(r) + 4} textAnchor="end" fontSize={12} fill="var(--fg-faint)">
+              {r}.
+            </text>
+          )}
+        </g>
+      ))}
+      {Array.from({ length: steg }, (_, i) => (
+        <text key={i} x={x(i)} y={H - 10} textAnchor="middle" fontSize={11} fill="var(--fg-faint)">
+          {i + 1}
+        </text>
+      ))}
+
+      {/* Umarkerte bakerst, valgte foran med glød og sluttetikett */}
+      {[...posisjoner.serier.filter((s) => !valgte.has(s.userId)), ...aktive].map((s) => {
+        const aktiv = valgte.has(s.userId);
+        const lys = lysFarge(personer[s.userId]?.farge);
+        const pts = tilPunkter(s.ranks);
+        if (pts.length === 0) return null;
+        const siste = pts[pts.length - 1];
+        return (
+          <g key={s.userId}>
+            {pts.length >= 2 && (
+              <path
+                d={tilPath(pts)}
+                fill="none"
+                stroke={lys}
+                strokeOpacity={aktiv ? 1 : 0.14}
+                strokeWidth={aktiv ? 3.5 : 1.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            )}
+            {aktiv && (
+              <>
+                {pts.map(([px, py], i) => (
+                  <circle key={i} cx={px} cy={py} r={4} fill={lys} stroke="var(--bg)" strokeWidth={1.5} />
+                ))}
+                <text
+                  x={siste[0] + 12}
+                  y={labelY.get(s.userId) ?? siste[1] + 4}
+                  fontSize={13}
+                  fontWeight={600}
+                  fill={lys}
+                >
+                  {personer[s.userId]?.fornavn ?? "?"} · {s.ranks[steg - 1] ?? "–"}.
+                </text>
+              </>
+            )}
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+/** Innbyrdes møter: hvem slo hvem, på tvers av alle leker */
+function MoteMatrise({ data }: { data: FinaleData }) {
+  const deltakere = data.deltakere;
+
+  // seire.get("a|b") = antall leker der a fikk flere poeng enn b
+  const seire = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const l of data.leker ?? []) {
+      for (const a of l.resultater) {
+        for (const b of l.resultater) {
+          if (a.userId === b.userId || a.poeng <= b.poeng) continue;
+          const k = `${a.userId}|${b.userId}`;
+          m.set(k, (m.get(k) ?? 0) + 1);
+        }
+      }
+    }
+    return m;
+  }, [data.leker]);
+  const vs = (a: string, b: string) => seire.get(`${a}|${b}`) ?? 0;
+
+  return (
+    <div className="mt-5">
+      <div className="surface mx-auto max-w-4xl overflow-x-auto rounded-3xl">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-line">
+              <th className="px-3 py-3" />
+              {deltakere.map((d) => (
+                <th key={d.userId} className="px-2 py-3">
+                  <span className="flex justify-center">
+                    <Avatar navn={d.navn} bildeUrl={d.bildeUrl} farge={d.farge} size={26} />
+                  </span>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {deltakere.map((rad) => (
+              <tr key={rad.userId} className="border-b border-line/50 last:border-0">
+                <td className="px-3 py-2">
+                  <span className="flex items-center gap-2 text-fg">
+                    <Avatar navn={rad.navn} bildeUrl={rad.bildeUrl} farge={rad.farge} size={24} />
+                    <span className="hidden sm:inline">{rad.fornavn}</span>
+                  </span>
+                </td>
+                {deltakere.map((kol) => {
+                  if (kol.userId === rad.userId) {
+                    return (
+                      <td key={kol.userId} className="px-2 py-2 text-center text-fg-faint">
+                        —
+                      </td>
+                    );
+                  }
+                  const v = vs(rad.userId, kol.userId);
+                  const t = vs(kol.userId, rad.userId);
+                  const bg =
+                    v > t
+                      ? `color-mix(in srgb, var(--accent) ${Math.min(38, 10 + (v - t) * 7)}%, transparent)`
+                      : v < t
+                        ? `color-mix(in srgb, #f87171 ${Math.min(38, 10 + (t - v) * 7)}%, transparent)`
+                        : "rgba(255,255,255,0.03)";
+                  return (
+                    <td
+                      key={kol.userId}
+                      className="px-2 py-2 text-center text-fg tabular-nums"
+                      style={{ backgroundColor: bg }}
+                    >
+                      {v}–{t}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="mt-3 text-xs tracking-widest text-fg-faint uppercase">
+        Radens seire mot kolonnens deltaker · grønt = overtak · rødt = undertak
+      </p>
+    </div>
+  );
+}
+
+/** Egenskapsprofilen: snittpoeng per deltaker innen hver egenskap */
+function EgenskapsProfil({ data }: { data: FinaleData }) {
+  const kvaliteter = useMemo(() => {
+    const antallPer = new Map<string, number>();
+    for (const l of data.leker ?? []) {
+      for (const k of l.kvaliteter) antallPer.set(k, (antallPer.get(k) ?? 0) + 1);
+    }
+    return [...antallPer.entries()].sort((a, b) => b[1] - a[1]);
+  }, [data.leker]);
+
+  const snittFor = (userId: string, kval: string): number | null => {
+    const poeng: number[] = [];
+    for (const l of data.leker ?? []) {
+      if (!l.kvaliteter.includes(kval)) continue;
+      const r = l.resultater.find((x) => x.userId === userId);
+      if (r) poeng.push(r.poeng);
+    }
+    return poeng.length
+      ? poeng.reduce((a, b) => a + b, 0) / poeng.length
+      : null;
+  };
+
+  return (
+    <div className="mt-5">
+      <div className="surface mx-auto max-w-4xl overflow-x-auto rounded-3xl">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-line text-fg-dim">
+              <th className="px-3 py-3 text-left font-medium">Deltaker</th>
+              {kvaliteter.map(([k, antall]) => (
+                <th key={k} className="px-2 py-3 text-center font-medium">
+                  {k}
+                  <span className="block text-[10px] font-normal text-fg-faint">
+                    {antall} {antall === 1 ? "lek" : "leker"}
+                  </span>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {data.deltakere.map((d) => (
+              <tr key={d.userId} className="border-b border-line/50 last:border-0">
+                <td className="px-3 py-2">
+                  <span className="flex items-center gap-2 text-fg">
+                    <Avatar navn={d.navn} bildeUrl={d.bildeUrl} farge={d.farge} size={24} />
+                    <span className="hidden sm:inline">{d.fornavn}</span>
+                  </span>
+                </td>
+                {kvaliteter.map(([k]) => {
+                  const snitt = snittFor(d.userId, k);
+                  return (
+                    <td
+                      key={k}
+                      className="px-2 py-2 text-center text-fg tabular-nums"
+                      style={
+                        snitt !== null
+                          ? {
+                              backgroundColor: `color-mix(in srgb, var(--accent-2) ${Math.min(45, (snitt / 10) * 45)}%, transparent)`,
+                            }
+                          : undefined
+                      }
+                    >
+                      {snitt === null ? (
+                        <span className="text-fg-faint">–</span>
+                      ) : (
+                        snitt.toFixed(1)
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="mt-3 text-xs tracking-widest text-fg-faint uppercase">
+        Snittpoeng per lek innen hver egenskap · sterkere farge = sterkere spesialitet
+      </p>
+    </div>
+  );
+}
+
+/** Funn: automatisk gravde godbiter som små kort */
+function FunnKort({ funn }: { funn: Funn[] }) {
+  return (
+    <div className="mx-auto mt-6 grid max-w-4xl grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {funn.map((f, i) => (
+        <motion.div
+          key={`${f.emoji}-${f.label}`}
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 + i * 0.07, type: "spring", stiffness: 220, damping: 20 }}
+          className="surface flex flex-col items-center justify-center gap-1.5 rounded-2xl px-4 py-5 text-center"
+        >
+          <span className="text-2xl" aria-hidden>
+            {f.emoji}
+          </span>
+          <span className="font-display text-2xl text-fg">{f.verdi}</span>
+          <span className="text-xs tracking-wider text-fg-faint uppercase">{f.label}</span>
+          {f.detalj && <span className="text-sm text-fg-dim">{f.detalj}</span>}
+        </motion.div>
+      ))}
     </div>
   );
 }

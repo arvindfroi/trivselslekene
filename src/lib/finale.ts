@@ -28,8 +28,8 @@ export type FinaleDeltaker = {
   besteKvalitet: string | null;
   utmerkelser: string[];
   kommentar: string;
-  /** Deltakerens beste enkeltlek — brukes i hederlige omtaler */
-  besteOvelse: { navn: string; poeng: number } | null;
+  /** Deltakerens beste enkeltlek (beste plassering) — brukes i hederlige omtaler */
+  besteOvelse: { navn: string; poeng: number; plass: number } | null;
 };
 
 export type TidslinjeSteg = {
@@ -56,17 +56,33 @@ export type Posisjoner = {
 
 // ─── Innslag: byggeklossene showet settes sammen av ──────────────
 
-/** To personer, én lek, stor eller liten margin — vises som duell med barer */
+/** To personer — enten én lek (dødt løp / oppgjør) eller en periode på flere
+ *  leker (maktperioden, med summerte poeng). Vises som duell med barer. */
 export type DuellInnslag = {
   slag: "duell";
-  variant: "storseier" | "thriller" | "knockout" | "oppgjor";
+  variant: "periode" | "thriller" | "oppgjor";
   tittel: string;
   emoji: string;
   tekst: string;
   ovelseNavn: string;
   ovelseNr: number;
+  /** Lek-navnene perioden dekker (kun variant "periode") */
+  leker?: string[];
   vinner: { userId: string; poeng: number };
   taper: { userId: string; poeng: number };
+};
+
+/** Seiersrekka: flest strake lekseire — en periodehistorie der prestasjonen
+ *  er å toppe leken gang på gang, ikke en poengmargin. */
+export type RekkeInnslag = {
+  slag: "rekke";
+  tittel: string;
+  emoji: string;
+  tekst: string;
+  userId: string;
+  lengde: number;
+  /** Lekene i rekka, i kronologisk rekkefølge */
+  leker: { ovelseNr: number; ovelseNavn: string }[];
 };
 
 /** En reise gjennom stillingen: comeback (posisjonsgraf) eller fall (fallscene) */
@@ -202,6 +218,7 @@ export type SpesialistInnslag = {
 
 export type Innslag =
   | DuellInnslag
+  | RekkeInnslag
   | ReiseInnslag
   | RivalInnslag
   | LedertroyeInnslag
@@ -238,6 +255,17 @@ export type Hederlig = {
   stat: string;
 };
 
+/** Én fullført lek med full resultatliste — råstoffet «Tallenes tale»
+ *  utforsker fritt (innbyrdes møter, egenskapsprofiler, funn). */
+export type LekOppsummering = {
+  nr: number;
+  navn: string;
+  /** Egenskapene leken testet, ferdig oversatt til visningstekst */
+  kvaliteter: string[];
+  /** Sortert med flest poeng øverst; plass er delt ved poenglikhet */
+  resultater: { userId: string; poeng: number; plass: number }[];
+};
+
 export type FinaleData = {
   sesongNavn: string;
   aar: number;
@@ -253,6 +281,8 @@ export type FinaleData = {
   hederlige: Hederlig[];
   vendepunkt: Vendepunkt | null;
   priser: Pris[];
+  /** Alle fullførte leker med fulle resultatlister, kronologisk */
+  leker: LekOppsummering[];
 };
 
 // ─── Utmerkelse-titler (speiler stilling-siden) ──────────────────
@@ -351,7 +381,15 @@ function lagKommentar(d: {
   seire: number;
   pall: number;
   utmerkelser: string[];
+  deltSeier: boolean;
 }): string {
+  if (d.plass === 1 && d.deltSeier) {
+    return velg(d.userId, [
+      "Delt trone! To mestere, én pokal — og dobbelt så mye jubel!",
+      "Helt likt til siste poeng. Tronen deles — men æren er hel!",
+      "Uavgjort på toppen! Historikerne får noe å krangle om i årevis.",
+    ]);
+  }
   if (d.plass === 1) {
     return velg(d.userId, [
       "Suveren fra start til mål — bøy dere i støvet!",
@@ -426,6 +464,7 @@ type Kandidat = {
   vekt: number;
   visuell:
     | "duell"
+    | "rekke"
     | "graf"
     | "fall"
     | "teller"
@@ -451,7 +490,7 @@ const MAKS_MED_DEKNING = 11;
 // hett/kaldt) — de kan derfor forekomme to ganger; alt annet maks én gang.
 const VISUELL_MAKS: Record<string, number> = { duell: 2, form: 2 };
 /** Fortellerrekkefølge for innslag som ikke er bundet til én lek */
-const ARC_REKKEFOLGE = ["ribbon", "podium", "rival", "skala", "spesialist", "sparkline", "tall", "form", "fall", "graf"];
+const ARC_REKKEFOLGE = ["ribbon", "podium", "rival", "skala", "spesialist", "sparkline", "tall", "rekke", "form", "fall", "graf"];
 
 function velgInnslag(
   kandidater: Kandidat[],
@@ -672,6 +711,11 @@ export function byggFinaleData(
   const sluttPlassAv = new Map(medPoeng.map((r, i) => [r.userId, plasser[i]]));
   const totalPoengAv = new Map(medPoeng.map((r) => [r.userId, r.totalPoeng]));
   const vinnerId = medPoeng[0]?.userId;
+  // Ved poenglikhet på toppen deler flere førsteplassen — alle regnes som
+  // vinnere (delt seier), og spoiler-vernet må gjelde samtlige.
+  const vinnerIds = new Set(
+    medPoeng.filter((_, i) => plasser[i] === 1).map((r) => r.userId),
+  );
 
   // ─── Tidslinje: kumulativ stilling etter hver fullførte lek ──
   // Ved poenglikhet må tidslinjen rangere likt som sluttstillingen, ellers
@@ -727,6 +771,16 @@ export function byggFinaleData(
       .map(({ ranker }) => ranker.get(userId))
       .filter((r): r is number => r !== undefined);
 
+  // Full leksliste til «Tallenes tale» — resultater med plass, sortert
+  const lekerUt: LekOppsummering[] = ovelseRankerAlle.map(({ o, ranker }) => ({
+    nr: o.nr,
+    navn: o.navn,
+    kvaliteter: o.kvaliteter.map((k) => kvalitetTekst[k]),
+    resultater: [...o.resultater]
+      .sort((a, b) => b.poeng - a.poeng)
+      .map((r) => ({ ...r, plass: ranker.get(r.userId) ?? 0 })),
+  }));
+
   // ─── Deltakerliste ──────────────────────────────────────────────
   const deltakere: FinaleDeltaker[] = medPoeng.map((r, i) => {
     const d = detaljer[r.userId];
@@ -740,11 +794,19 @@ export function byggFinaleData(
     const pallVerdi = pallUtm?.alle.find((a) => a.userId === r.userId)?.verdi;
     const pall = pallVerdi ? parseInt(pallVerdi, 10) || 0 : 0;
 
+    // Beste enkeltlek målt i PLASSERING (poeng i én lek er jo bare
+    // plasseringen i forkledning) — poengene følger med som kuriosa.
     let besteOvelse: FinaleDeltaker["besteOvelse"] = null;
-    for (const o of kronologisk) {
+    for (const { o, ranker } of ovelseRankerAlle) {
       const egen = o.resultater.find((x) => x.userId === r.userId);
-      if (egen && (!besteOvelse || egen.poeng > besteOvelse.poeng)) {
-        besteOvelse = { navn: o.navn, poeng: egen.poeng };
+      const plass = ranker.get(r.userId);
+      if (!egen || plass === undefined) continue;
+      if (
+        !besteOvelse ||
+        plass < besteOvelse.plass ||
+        (plass === besteOvelse.plass && egen.poeng > besteOvelse.poeng)
+      ) {
+        besteOvelse = { navn: o.navn, poeng: egen.poeng, plass };
       }
     }
 
@@ -770,6 +832,7 @@ export function byggFinaleData(
         seire: d?.seire ?? 0,
         pall,
         utmerkelser: mine,
+        deltSeier: vinnerIds.size > 1,
       }),
       besteOvelse,
     };
@@ -778,17 +841,16 @@ export function byggFinaleData(
   // ─── Kandidat-generatorer ───────────────────────────────────────
   const kandidater: Kandidat[] = [];
 
-  // Poengskjemaet er fast: 1. plass gir 10, 2. plass 8, 3. plass 6, … så den
-  // NORMALE avstanden mellom to nabo­plasseringer er 2 poeng. Marginbaserte
-  // innslag må derfor slå klart utenom dette for å bety noe — ellers ender vi
-  // opp med å kalle et helt vanlig napp både en «maktdemonstrasjon» og en
-  // «fotofinish» (samme 2-poengs luke), som ikke gir mening. En ekte storseier
-  // krever minst to plasseringers forsprang (≥ 4 p, typisk via bonuspoeng), og
-  // en ekte fotofinish krever tettere enn ett hakk (uavgjort eller bonusbrøk).
-  const STORSEIER_MIN_MARGIN = 4;
-  const THRILLER_MAKS_MARGIN = 1;
+  // Poengskjemaet er fast (10-8-6-5-…), så poengmarginen i én enkelt lek er i
+  // praksis gitt av plasseringene og forteller ingenting i seg selv. Duellene
+  // bygges derfor på det som faktisk er informativt:
+  //   • Dødt løp i én lek — det eneste enkeltlek-utfallet skjemaet ikke gir.
+  //   • Dominans over en PERIODE av leker, der summerte poeng er et ekte mål.
+  //   • Seiersrekker — å toppe leken gang på gang er selve prestasjonen.
+  // (Ett nøkternt enkeltlek-«oppgjør» beholdes med lav vekt som sikkerhetsnett
+  //  for bittesmå felt, men uten å dvele ved marginen.)
 
-  // Margindata per lek med minst to deltakere
+  // Toppduell per lek med minst to deltakere
   const dueller = kronologisk
     .filter((o) => o.resultater.length >= 2)
     .map((o) => {
@@ -799,107 +861,171 @@ export function byggFinaleData(
         toer: sortert[1],
         sisteMann: sortert[sortert.length - 1],
         margin: sortert[0].poeng - sortert[1].poeng,
-        knockout: sortert[0].poeng - sortert[sortert.length - 1].poeng,
       };
     });
 
-  // Maktdemonstrasjonen: største seiersmargin — men bare når noen faktisk
-  // dro klart fra feltet (≥ to plasseringers forsprang), ikke et vanlig napp.
-  const storseier = dueller
-    .filter((d) => d.margin >= STORSEIER_MIN_MARGIN)
+  // Fotofinishen: leken der toppen endte HELT likt — en ekte thriller, siden
+  // delt lekseier er det eneste enkeltlek-resultatet poengskjemaet ikke gir.
+  const doedtLoep = dueller
+    .filter((d) => d.margin === 0)
     .reduce<(typeof dueller)[number] | null>(
-      (m, d) => (!m || d.margin > m.margin ? d : m),
+      (m, d) => (!m || d.vinner.poeng > m.vinner.poeng ? d : m),
       null,
     );
-  if (storseier) {
+  if (doedtLoep) {
     kandidater.push({
-      vekt: Math.min(85, 45 + storseier.margin * 4),
+      vekt: 72,
       visuell: "duell",
-      featured: [storseier.vinner.userId, storseier.toer.userId],
-      kronNr: storseier.o.nr,
-      innslag: {
-        slag: "duell",
-        variant: "storseier",
-        tittel: "Maktdemonstrasjonen",
-        emoji: "💪",
-        tekst: `I «${storseier.o.navn}» knuste ${fornavnAv(storseier.vinner.userId)} all motstand — hele ${storseier.margin} poeng foran ${fornavnAv(storseier.toer.userId)} på andreplass.`,
-        ovelseNavn: storseier.o.navn,
-        ovelseNr: storseier.o.nr,
-        vinner: storseier.vinner,
-        taper: storseier.toer,
-      },
-    });
-  }
-
-  // Fotofinishen: minste margin (i en annen lek enn storseieren) — men bare
-  // når det virkelig var tett (uavgjort eller under ett plasseringshakk).
-  // Et standard 2-poengs napp er ikke en fotofinish, det er bare en seier.
-  const thriller = dueller
-    .filter((d) => d.o.nr !== storseier?.o.nr)
-    .reduce<(typeof dueller)[number] | null>(
-      (m, d) => (!m || d.margin < m.margin ? d : m),
-      null,
-    );
-  if (
-    thriller &&
-    thriller.margin <= THRILLER_MAKS_MARGIN &&
-    (!storseier || thriller.margin < storseier.margin)
-  ) {
-    kandidater.push({
-      vekt: Math.max(30, 72 - thriller.margin * 8),
-      visuell: "duell",
-      featured: [thriller.vinner.userId, thriller.toer.userId],
-      kronNr: thriller.o.nr,
+      featured: [doedtLoep.vinner.userId, doedtLoep.toer.userId],
+      kronNr: doedtLoep.o.nr,
       innslag: {
         slag: "duell",
         variant: "thriller",
         tittel: "Fotofinishen",
         emoji: "📸",
-        tekst:
-          thriller.margin === 0
-            ? `«${thriller.o.navn}» endte i dødt løp — ${fornavnAv(thriller.vinner.userId)} og ${fornavnAv(thriller.toer.userId)} var ikke til å skille!`
-            : `«${thriller.o.navn}» ble avgjort med knappe ${thriller.margin} poeng — ${fornavnAv(thriller.vinner.userId)} snek seg forbi ${fornavnAv(thriller.toer.userId)} på målstreken.`,
-        ovelseNavn: thriller.o.navn,
-        ovelseNr: thriller.o.nr,
-        vinner: thriller.vinner,
-        taper: thriller.toer,
+        tekst: `«${doedtLoep.o.navn}» endte i dødt løp — ${fornavnAv(doedtLoep.vinner.userId)} og ${fornavnAv(doedtLoep.toer.userId)} var ikke til å skille på toppen!`,
+        ovelseNavn: doedtLoep.o.navn,
+        ovelseNr: doedtLoep.o.nr,
+        vinner: doedtLoep.vinner,
+        taper: doedtLoep.toer,
       },
     });
   }
 
-  // Oppgjøret / Den store smellen: leken med størst sprik fra 1. til sist.
-  // Er spriket reelt stort (≥ 6 p) er det en ekte «smell» med dempet ordlyd
-  // som feirer vinneren framfor å henge ut sisteplassen; ellers vises det som
-  // et nøkternt oppgjør. Dette innslaget er samtidig showets brede sikkerhets-
-  // nett i små felt (to spillere per lek), der en duell ER hele feltet.
-  const KNOCKOUT_STOR_SPRIK = 6;
-  const knockout = dueller
-    .filter((d) => d.o.nr !== storseier?.o.nr && d.knockout > 0)
+  // Maktperioden: størst innbyrdes poengavstand over tre leker på rad der
+  // begge deltok. Summert over en periode betyr marginen faktisk noe —
+  // terskelen tilsvarer to plasseringshakk per lek gjennom hele perioden.
+  const PERIODE_VINDU = 3;
+  const PERIODE_MIN_GAP = 12;
+  if (kronologisk.length >= PERIODE_VINDU) {
+    const poengILekene = kronologisk.map(
+      (o) => new Map(o.resultater.map((r) => [r.userId, r.poeng])),
+    );
+    let makt: { aId: string; bId: string; aSum: number; bSum: number; fra: number } | null = null;
+    for (let i = 0; i + PERIODE_VINDU <= kronologisk.length; i++) {
+      for (let ai = 0; ai < medPoeng.length; ai++) {
+        for (let bi = ai + 1; bi < medPoeng.length; bi++) {
+          let aSum = 0;
+          let bSum = 0;
+          let felles = true;
+          for (let d = 0; d < PERIODE_VINDU; d++) {
+            const pa = poengILekene[i + d].get(medPoeng[ai].userId);
+            const pb = poengILekene[i + d].get(medPoeng[bi].userId);
+            if (pa === undefined || pb === undefined) {
+              felles = false;
+              break;
+            }
+            aSum += pa;
+            bSum += pb;
+          }
+          if (!felles) continue;
+          const [hoyId, hoySum, lavId, lavSum] =
+            aSum >= bSum
+              ? [medPoeng[ai].userId, aSum, medPoeng[bi].userId, bSum]
+              : [medPoeng[bi].userId, bSum, medPoeng[ai].userId, aSum];
+          if (!makt || hoySum - lavSum > makt.aSum - makt.bSum) {
+            makt = { aId: hoyId, bId: lavId, aSum: hoySum, bSum: lavSum, fra: i };
+          }
+        }
+      }
+    }
+    if (makt && makt.aSum - makt.bSum >= PERIODE_MIN_GAP) {
+      const m = makt;
+      const periode = kronologisk.slice(m.fra, m.fra + PERIODE_VINDU);
+      kandidater.push({
+        vekt: Math.min(82, 30 + (m.aSum - m.bSum) * 2.5),
+        visuell: "duell",
+        featured: [m.aId, m.bId],
+        kronNr: periode[periode.length - 1].nr,
+        innslag: {
+          slag: "duell",
+          variant: "periode",
+          tittel: "Maktperioden",
+          emoji: "💪",
+          tekst: `Over «${periode[0].navn}», «${periode[1].navn}» og «${periode[2].navn}» var ${fornavnAv(m.aId)} i sin egen liga: ${m.aSum} poeng mot ${fornavnAv(m.bId)} sine ${m.bSum} — dominans over en hel periode, ikke bare én lek.`,
+          ovelseNavn: `Lek ${periode[0].nr}–${periode[periode.length - 1].nr}`,
+          ovelseNr: periode[periode.length - 1].nr,
+          leker: periode.map((l) => l.navn),
+          vinner: { userId: m.aId, poeng: m.aSum },
+          taper: { userId: m.bId, poeng: m.bSum },
+        },
+      });
+    }
+  }
+
+  // Seiersrekka: flest strake lekseire (leker deltakeren satt over — f.eks.
+  // som vert — bryter ikke rekka; delt lekseier teller som seier).
+  {
+    let besteRekke: { userId: string; idxs: number[] } | null = null;
+    for (const r of medPoeng) {
+      let run: number[] = [];
+      for (let idx = 0; idx < ovelseRankerAlle.length; idx++) {
+        const rank = ovelseRankerAlle[idx].ranker.get(r.userId);
+        if (rank === undefined) continue;
+        if (rank === 1) {
+          run.push(idx);
+          if (!besteRekke || run.length > besteRekke.idxs.length) {
+            besteRekke = { userId: r.userId, idxs: [...run] };
+          }
+        } else {
+          run = [];
+        }
+      }
+    }
+    if (besteRekke && besteRekke.idxs.length >= 2) {
+      const b = besteRekke;
+      const rekkeLeker = b.idxs.map((i) => ({
+        ovelseNr: kronologisk[i].nr,
+        ovelseNavn: kronologisk[i].navn,
+      }));
+      const n = rekkeLeker.length;
+      kandidater.push({
+        vekt: Math.min(84, 18 + n * 14),
+        visuell: "rekke",
+        featured: [b.userId],
+        kronNr: rekkeLeker[n - 1].ovelseNr,
+        innslag: {
+          slag: "rekke",
+          tittel: "Seiersrekka",
+          emoji: "🏆",
+          tekst:
+            n === 2
+              ? `${fornavnAv(b.userId)} tok to strake lekseire — først «${rekkeLeker[0].ovelseNavn}», så «${rekkeLeker[1].ovelseNavn}». Ingen tilfeldighet lenger.`
+              : `${fornavnAv(b.userId)} var ustoppelig: ${n} strake lekseire, fra «${rekkeLeker[0].ovelseNavn}» til «${rekkeLeker[n - 1].ovelseNavn}».`,
+          userId: b.userId,
+          lengde: n,
+          leker: rekkeLeker,
+        },
+      });
+    }
+  }
+
+  // Oppgjøret: showets brede sikkerhetsnett i små felt (to spillere per lek),
+  // der én duell ER hele feltet. Lav vekt — velges normalt bare når bredere
+  // innslag ikke finnes — og teksten dveler ved utfallet, ikke poengmarginen
+  // (den er jo gitt av skjemaet). Vi viser den bredeste leken.
+  const oppgjoer = dueller
+    .filter((d) => d.o.nr !== doedtLoep?.o.nr && d.vinner.poeng > d.sisteMann.poeng)
     .reduce<(typeof dueller)[number] | null>(
-      (m, d) => (!m || d.knockout > m.knockout ? d : m),
+      (m, d) => (!m || d.o.resultater.length > m.o.resultater.length ? d : m),
       null,
     );
-  if (knockout) {
-    const stor = knockout.knockout >= KNOCKOUT_STOR_SPRIK;
+  if (oppgjoer) {
     kandidater.push({
-      vekt: stor
-        ? Math.min(78, 40 + knockout.knockout * 2.5)
-        : Math.min(48, 26 + knockout.knockout * 3),
+      vekt: 24,
       visuell: "duell",
-      featured: [knockout.vinner.userId, knockout.sisteMann.userId],
-      kronNr: knockout.o.nr,
+      featured: [oppgjoer.vinner.userId, oppgjoer.sisteMann.userId],
+      kronNr: oppgjoer.o.nr,
       innslag: {
         slag: "duell",
-        variant: stor ? "knockout" : "oppgjor",
-        tittel: stor ? "Den store smellen" : "Oppgjøret",
-        emoji: stor ? "💥" : "🥊",
-        tekst: stor
-          ? `I «${knockout.o.navn}» var ${fornavnAv(knockout.vinner.userId)} i en klasse for seg — ${knockout.knockout} poeng klar av nederst på lista. En real opptur!`
-          : `«${knockout.o.navn}» ble et rent oppgjør: ${fornavnAv(knockout.vinner.userId)} slo ${fornavnAv(knockout.sisteMann.userId)} med ${knockout.knockout} poeng.`,
-        ovelseNavn: knockout.o.navn,
-        ovelseNr: knockout.o.nr,
-        vinner: knockout.vinner,
-        taper: knockout.sisteMann,
+        variant: "oppgjor",
+        tittel: "Oppgjøret",
+        emoji: "🥊",
+        tekst: `I «${oppgjoer.o.navn}» sto ${fornavnAv(oppgjoer.vinner.userId)} igjen øverst da støvet la seg — ${fornavnAv(oppgjoer.sisteMann.userId)} måtte bite i gresset denne gangen.`,
+        ovelseNavn: oppgjoer.o.navn,
+        ovelseNr: oppgjoer.o.nr,
+        vinner: oppgjoer.vinner,
+        taper: oppgjoer.sisteMann,
       },
     });
   }
@@ -911,7 +1037,7 @@ export function byggFinaleData(
     let kollaps: { userId: string; fall: number; topp: number; toppSteg: number } | null = null;
 
     for (const serie of posisjoner.serier) {
-      if (serie.userId === vinnerId) continue;
+      if (vinnerIds.has(serie.userId)) continue;
       const slutt = sluttPlassAv.get(serie.userId);
       if (slutt === undefined) continue;
       for (let steg = 0; steg < serie.ranks.length - 1; steg++) {
@@ -974,7 +1100,7 @@ export function byggFinaleData(
   // Rivaloppgjøret: de to jevneste i sammendraget (utenom vinneren),
   // fortalt gjennom innbyrdes oppgjør lek for lek.
   {
-    const ikkeVinnere = medPoeng.filter((r) => r.userId !== vinnerId);
+    const ikkeVinnere = medPoeng.filter((r) => !vinnerIds.has(r.userId));
     let besteRival: {
       aId: string;
       bId: string;
@@ -1050,7 +1176,7 @@ export function byggFinaleData(
       }
     }
     const topp = [...antallPerLeder.entries()].sort((a, b) => b[1] - a[1])[0];
-    if (topp && topp[0] !== vinnerId) {
+    if (topp && !vinnerIds.has(topp[0])) {
       const bytter = tidslinje.filter((s, i) => i > 0 && s.lederbytte).length;
       kandidater.push({
         vekt: Math.min(80, 34 + bytter * 9),
@@ -1119,7 +1245,7 @@ export function byggFinaleData(
   {
     let spurt: { userId: string; foer: number; etter: number; delta: number } | null = null;
     for (const r of medPoeng) {
-      if (r.userId === vinnerId) continue;
+      if (vinnerIds.has(r.userId)) continue;
       const ranks = ranksFor(r.userId);
       if (ranks.length < 4) continue;
       const halv = Math.ceil(ranks.length / 2);
@@ -1330,7 +1456,7 @@ export function byggFinaleData(
   // Tetsjiktet: den tetteste klyngen i sammendraget (utenom vinneren) —
   // tre eller fire deltakere skilt av noen fattige poeng.
   {
-    const felt = medPoeng.filter((r) => r.userId !== vinnerId);
+    const felt = medPoeng.filter((r) => !vinnerIds.has(r.userId));
     let beste: { medlemmer: { userId: string; poeng: number }[]; spenn: number; vekt: number } | null = null;
     for (const stoerrelse of [3, 4]) {
       for (let i = 0; i + stoerrelse <= felt.length; i++) {
@@ -1420,7 +1546,7 @@ export function byggFinaleData(
         const sum = ps.reduce((a, b) => a + b, 0);
         if (!topp || sum > topp.sum) topp = { userId: r.userId, sum, i };
         // Bølgedal: bare for ikke-vinnere med nok leker til et stabilt snitt
-        if (r.userId !== vinnerId && r.antallOvelser >= SVIKT_MIN_LEKER) {
+        if (!vinnerIds.has(r.userId) && r.antallOvelser >= SVIKT_MIN_LEKER) {
           const forventet = snitt * FORM_VINDU;
           const gap = forventet - sum;
           if (gap > 0 && (!svikt || gap > svikt.gap)) {
@@ -1635,7 +1761,7 @@ export function byggFinaleData(
   // Vinneren dekkes av kåringen, prisvinnere av prisutdelingen. Alle andre
   // må inn i et innslag — eller få hederlig omtale.
   const maaDekkes = new Set(medPoeng.map((r) => r.userId));
-  if (vinnerId) maaDekkes.delete(vinnerId);
+  for (const id of vinnerIds) maaDekkes.delete(id);
   for (const p of valgtePriser) maaDekkes.delete(p.userId);
 
   const { valgte, dekket } = velgInnslag(kandidater, maaDekkes);
@@ -1650,13 +1776,14 @@ export function byggFinaleData(
           : d.pall >= 1
             ? `${d.pall} pallplass${d.pall === 1 ? "" : "er"} 🥈`
             : d.besteOvelse
-              ? `${d.besteOvelse.poeng}p i «${d.besteOvelse.navn}» 🔥`
+              ? `${d.besteOvelse.plass}. plass i «${d.besteOvelse.navn}» 🔥`
               : `stilte i ${d.antallOvelser} leker ⚔️`,
     }));
 
   // ─── Vendepunktet: da vinneren grep ledelsen for godt ───────────
+  // (Utelates ved delt seier — historien om ÉN som grep ledelsen finnes ikke.)
   let vendepunkt: Vendepunkt | null = null;
-  if (vinnerId && tidslinje.length >= 2) {
+  if (vinnerId && vinnerIds.size === 1 && tidslinje.length >= 2) {
     let sisteStegUtenLedelse = -1;
     tidslinje.forEach((steg, i) => {
       if (steg.lederId !== vinnerId) sisteStegUtenLedelse = i;
@@ -1707,5 +1834,6 @@ export function byggFinaleData(
     hederlige,
     vendepunkt,
     priser: valgtePriser,
+    leker: lekerUt,
   };
 }

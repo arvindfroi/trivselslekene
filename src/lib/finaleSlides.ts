@@ -64,7 +64,8 @@ export type Slide =
   | { key: string; type: "vendepunkt"; vendepunkt: Vendepunkt }
   | { key: string; type: "tidslinje" }
   | { key: string; type: "trommevirvel" }
-  | { key: string; type: "vinner"; deltaker: FinaleDeltaker }
+  | { key: string; type: "uavgjort"; vinnere: FinaleDeltaker[] }
+  | { key: string; type: "vinner"; vinnere: FinaleDeltaker[] }
   | { key: string; type: "framgang"; framgang: FramgangPost[] }
   | { key: string; type: "tallene" };
 
@@ -100,10 +101,16 @@ export function byggSlides(data: FinaleData): Slide[] {
   if (data.tidslinje.length > 0) {
     slides.push({ key: "tidslinje", type: "tidslinje" });
   }
-  const vinner = data.deltakere[0];
-  if (vinner) {
+  // Alle med plass 1 er vinnere — ved poenglikhet på toppen deles tronen
+  const vinnere = data.deltakere.filter((d) => d.plass === 1);
+  if (vinnere.length > 0) {
     slides.push({ key: "trommevirvel", type: "trommevirvel" });
-    slides.push({ key: "vinner", type: "vinner", deltaker: vinner });
+    // Delt seier: showet tar en humoristisk sving innom dommerbordet
+    // («VENT LITT … det står HELT likt!») før BEGGE mesterne avsløres.
+    if (vinnere.length >= 2) {
+      slides.push({ key: "uavgjort", type: "uavgjort", vinnere });
+    }
+    slides.push({ key: "vinner", type: "vinner", vinnere });
     // Etter kåringen (ingen spoiler-fare): hvem løftet seg fra i fjor?
     const framgang = byggFramgang(data);
     if (framgang.length > 0) {
@@ -112,4 +119,251 @@ export function byggSlides(data: FinaleData): Slide[] {
     slides.push({ key: "tallene", type: "tallene" });
   }
   return slides;
+}
+
+// ─── Funn: automatisk gravde godbiter til «Tallenes tale» ────────
+
+/** Et lite, artig funn — én tallverdi med kontekst, til funn-kortene */
+export type Funn = {
+  emoji: string;
+  verdi: string;
+  label: string;
+  detalj?: string;
+};
+
+/** Graver fram en bunke småfunn fra sesongdataene — ren funksjon, så
+ *  utvalget kan testes. Rekkefølgen er fast; kort uten datagrunnlag
+ *  utelates i stedet for å vises tomme. */
+export function byggFunn(data: FinaleData): Funn[] {
+  const funn: Funn[] = [];
+  const navnAv = (id: string) => data.personer[id]?.fornavn ?? "?";
+  const leker = data.leker ?? [];
+  const tl = data.tidslinje;
+
+  // Ledertrøyas vandring
+  if (tl.length >= 2) {
+    const bytter = tl.filter((s, i) => i > 0 && s.lederbytte).length;
+    const etapper = new Map<string, number>();
+    for (const s of tl) {
+      if (s.lederId) etapper.set(s.lederId, (etapper.get(s.lederId) ?? 0) + 1);
+    }
+    const topp = [...etapper.entries()].sort((a, b) => b[1] - a[1])[0];
+    funn.push({
+      emoji: "👑",
+      verdi: String(bytter),
+      label: bytter === 1 ? "lederbytte underveis" : "lederbytter underveis",
+      detalj: topp
+        ? `${navnAv(topp[0])} ledet lengst — ${topp[1]} av ${tl.length} etapper`
+        : undefined,
+    });
+  }
+
+  // Hvor mange ulike vant leker?
+  if (leker.length > 0) {
+    const lekvinnere = new Set<string>();
+    for (const l of leker) {
+      for (const r of l.resultater) if (r.plass === 1) lekvinnere.add(r.userId);
+    }
+    funn.push({
+      emoji: "🥇",
+      verdi: String(lekvinnere.size),
+      label:
+        lekvinnere.size === 1
+          ? "deltaker vant alle lekene"
+          : "ulike deltakere vant leker",
+      detalj: `fordelt på ${leker.length} leker`,
+    });
+  }
+
+  // Lengste seiersrekke (leker man satt over bryter ikke rekka)
+  {
+    let beste: { userId: string; lengde: number } | null = null;
+    for (const d of data.deltakere) {
+      let run = 0;
+      for (const l of leker) {
+        const res = l.resultater.find((r) => r.userId === d.userId);
+        if (!res) continue;
+        run = res.plass === 1 ? run + 1 : 0;
+        if (run > (beste?.lengde ?? 0)) beste = { userId: d.userId, lengde: run };
+      }
+    }
+    if (beste && beste.lengde >= 2) {
+      funn.push({
+        emoji: "🔥",
+        verdi: `${beste.lengde} strake`,
+        label: "lengste seiersrekke",
+        detalj: navnAv(beste.userId),
+      });
+    }
+  }
+
+  // Største byks i sammendraget på én lek
+  {
+    let byks: { userId: string; opp: number; steg: number } | null = null;
+    for (const serie of data.posisjoner.serier) {
+      for (let i = 1; i < serie.ranks.length; i++) {
+        const foer = serie.ranks[i - 1];
+        const naa = serie.ranks[i];
+        if (foer === null || naa === null) continue;
+        const opp = foer - naa;
+        if (opp > (byks?.opp ?? 0)) byks = { userId: serie.userId, opp, steg: i };
+      }
+    }
+    if (byks && byks.opp >= 2) {
+      funn.push({
+        emoji: "🚀",
+        verdi: `${byks.opp} plasser`,
+        label: "største byks på én lek",
+        detalj: `${navnAv(byks.userId)} etter «${tl[byks.steg]?.ovelseNavn ?? "?"}»`,
+      });
+    }
+  }
+
+  // Dødt løp-leker (delt lekseier)
+  {
+    const delte = leker.filter(
+      (l) => l.resultater.filter((r) => r.plass === 1).length >= 2,
+    ).length;
+    if (delte > 0) {
+      funn.push({
+        emoji: "🤝",
+        verdi: String(delte),
+        label: delte === 1 ? "lek endte i dødt løp" : "leker endte i dødt løp",
+      });
+    }
+  }
+
+  // Tettest på toppen i andre halvdel av sesongen
+  if (tl.length >= 2) {
+    let minst: { gap: number; navn: string } | null = null;
+    for (const s of tl.slice(Math.floor(tl.length / 2))) {
+      if (s.stilling.length < 2) continue;
+      const gap = s.stilling[0].poeng - s.stilling[1].poeng;
+      if (!minst || gap < minst.gap) minst = { gap, navn: s.ovelseNavn };
+    }
+    if (minst) {
+      funn.push({
+        emoji: "😱",
+        verdi: `${minst.gap} poeng`,
+        label: "minste luke på toppen i innspurten",
+        detalj: `etter «${minst.navn}»`,
+      });
+    }
+  }
+
+  // Villeste reise: størst spenn mellom beste og verste sammenlagtplass
+  {
+    let vill: { userId: string; best: number; verst: number } | null = null;
+    for (const serie of data.posisjoner.serier) {
+      const ranks = serie.ranks.filter((r): r is number => r !== null);
+      if (ranks.length < 2) continue;
+      const best = Math.min(...ranks);
+      const verst = Math.max(...ranks);
+      if (!vill || verst - best > vill.verst - vill.best) {
+        vill = { userId: serie.userId, best, verst };
+      }
+    }
+    if (vill && vill.verst - vill.best >= 2) {
+      funn.push({
+        emoji: "🎢",
+        verdi: `${vill.verst - vill.best} plasser`,
+        label: "villeste reise i tabellen",
+        detalj: `${navnAv(vill.userId)} — innom både ${vill.best}. og ${vill.verst}. plass`,
+      });
+    }
+  }
+
+  // Flest innbyrdes møter + fasit
+  if (leker.length > 0 && data.deltakere.length >= 2) {
+    type Par = { aId: string; bId: string; moter: number; aSeire: number; bSeire: number };
+    let beste: Par | null = null;
+    for (let i = 0; i < data.deltakere.length; i++) {
+      for (let j = i + 1; j < data.deltakere.length; j++) {
+        const aId = data.deltakere[i].userId;
+        const bId = data.deltakere[j].userId;
+        let moter = 0;
+        let aSeire = 0;
+        let bSeire = 0;
+        for (const l of leker) {
+          const ra = l.resultater.find((r) => r.userId === aId);
+          const rb = l.resultater.find((r) => r.userId === bId);
+          if (!ra || !rb) continue;
+          moter++;
+          if (ra.poeng > rb.poeng) aSeire++;
+          else if (rb.poeng > ra.poeng) bSeire++;
+        }
+        // Flest møter; ved likhet det jevneste oppgjøret
+        if (
+          moter > 0 &&
+          (!beste ||
+            moter > beste.moter ||
+            (moter === beste.moter &&
+              Math.abs(aSeire - bSeire) < Math.abs(beste.aSeire - beste.bSeire)))
+        ) {
+          beste = { aId, bId, moter, aSeire, bSeire };
+        }
+      }
+    }
+    if (beste && beste.moter >= 3) {
+      funn.push({
+        emoji: "⚔️",
+        verdi: `${beste.aSeire}–${beste.bSeire}`,
+        label: "flest innbyrdes møter",
+        detalj: `${navnAv(beste.aId)} mot ${navnAv(beste.bId)} over ${beste.moter} leker`,
+      });
+    }
+  }
+
+  // Største enkeltfangst — bare interessant hvis over skjemamaks (bonus!)
+  {
+    let fangst: { userId: string; poeng: number; navn: string } | null = null;
+    for (const l of leker) {
+      for (const r of l.resultater) {
+        if (!fangst || r.poeng > fangst.poeng) {
+          fangst = { userId: r.userId, poeng: r.poeng, navn: l.navn };
+        }
+      }
+    }
+    if (fangst && fangst.poeng > 10) {
+      funn.push({
+        emoji: "💎",
+        verdi: `${fangst.poeng} poeng`,
+        label: "største enkeltfangst (bonus!)",
+        detalj: `${navnAv(fangst.userId)} i «${fangst.navn}»`,
+      });
+    }
+  }
+
+  // Mest testede egenskap
+  {
+    const perKval = new Map<string, number>();
+    for (const l of leker) {
+      for (const k of l.kvaliteter) perKval.set(k, (perKval.get(k) ?? 0) + 1);
+    }
+    const topp = [...perKval.entries()].sort((a, b) => b[1] - a[1])[0];
+    if (topp && topp[1] >= 2) {
+      funn.push({
+        emoji: "🧬",
+        verdi: topp[0],
+        label: "mest testede egenskap",
+        detalj: `${topp[1]} leker`,
+      });
+    }
+  }
+
+  // Hele pottens størrelse
+  if (leker.length > 0) {
+    const total = leker.reduce(
+      (sum, l) => sum + l.resultater.reduce((a, r) => a + r.poeng, 0),
+      0,
+    );
+    funn.push({
+      emoji: "💰",
+      verdi: String(total),
+      label: "poeng delt ut i alt",
+      detalj: `over ${leker.length} leker`,
+    });
+  }
+
+  return funn;
 }

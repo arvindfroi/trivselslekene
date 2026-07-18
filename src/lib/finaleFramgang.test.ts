@@ -97,7 +97,8 @@ describe("duell-innslag med fast poengskjema", () => {
     { id: "v", navn: "Vv Vv" },
   ];
 
-  it("lager verken storseier eller fotofinish av vanlige 2-poengsluker", () => {
+  it("lager verken fotofinish eller maktperiode av vanlige 2-poengsluker", () => {
+    // Standardskjemaets luker (2p i én lek, ≤10p over tre) er ikke historier
     const leker: Lek[] = [
       { vertId: "v", poeng: { a: 10, b: 8, c: 6 } },
       { vertId: "v", poeng: { a: 10, b: 8, c: 6 } },
@@ -106,18 +107,54 @@ describe("duell-innslag med fast poengskjema", () => {
     const varianter = byggSesong(spillere, leker)
       .innslag.filter((i) => i.slag === "duell")
       .map((i) => (i.slag === "duell" ? i.variant : ""));
-    expect(varianter).not.toContain("storseier");
     expect(varianter).not.toContain("thriller");
+    expect(varianter).not.toContain("periode");
   });
 
-  it("kårer en storseier når bonuspoeng gir et reelt forsprang", () => {
+  it("kårer fotofinish kun ved ekte dødt løp i en lek", () => {
     const leker: Lek[] = [
-      { vertId: "v", poeng: { a: 15, b: 8, c: 6 } }, // +5 bonus → margin 7
+      { vertId: "v", poeng: { a: 10, b: 10, c: 6 } }, // delt lekseier
       { vertId: "v", poeng: { b: 10, a: 8, c: 6 } },
       { vertId: "v", poeng: { c: 10, b: 8, a: 6 } },
     ];
-    const dueller = byggSesong(spillere, leker).innslag.filter((i) => i.slag === "duell");
-    expect(dueller.some((i) => i.slag === "duell" && i.variant === "storseier")).toBe(true);
+    const thriller = byggSesong(spillere, leker).innslag.find(
+      (i) => i.slag === "duell" && i.variant === "thriller",
+    );
+    expect(thriller).toBeDefined();
+    if (thriller && thriller.slag === "duell") {
+      expect(thriller.vinner.poeng).toBe(thriller.taper.poeng);
+    }
+  });
+
+  it("kårer en maktperiode ved dominans summert over tre leker", () => {
+    // a mot c over tre leker: 30 mot 18 = 12 poeng — en ekte periodehistorie
+    const leker: Lek[] = [
+      { vertId: "v", poeng: { a: 10, b: 8, c: 6 } },
+      { vertId: "v", poeng: { a: 10, b: 8, c: 6 } },
+      { vertId: "v", poeng: { a: 10, b: 8, c: 6 } },
+    ];
+    const periode = byggSesong(spillere, leker).innslag.find(
+      (i) => i.slag === "duell" && i.variant === "periode",
+    );
+    expect(periode).toBeDefined();
+    if (periode && periode.slag === "duell") {
+      expect(periode.vinner.poeng - periode.taper.poeng).toBeGreaterThanOrEqual(12);
+      expect(periode.leker).toHaveLength(3);
+    }
+  });
+
+  it("kårer en seiersrekke ved strake lekseire", () => {
+    const leker: Lek[] = [
+      { vertId: "v", poeng: { a: 10, b: 8, c: 6 } },
+      { vertId: "v", poeng: { a: 10, b: 8, c: 6 } },
+      { vertId: "v", poeng: { b: 10, a: 8, c: 6 } },
+    ];
+    const rekke = byggSesong(spillere, leker).innslag.find((i) => i.slag === "rekke");
+    expect(rekke).toBeDefined();
+    if (rekke && rekke.slag === "rekke") {
+      expect(rekke.userId).toBe("a");
+      expect(rekke.lengde).toBe(2);
+    }
   });
 });
 

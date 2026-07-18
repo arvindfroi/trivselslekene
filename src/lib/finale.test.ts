@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { Kvalitet } from "@prisma/client";
 import { byggFinaleData, type FinaleOvelseRad, type Innslag } from "@/lib/finale";
-import { byggSlides } from "@/lib/finaleSlides";
+import { byggFunn, byggSlides } from "@/lib/finaleSlides";
 import type { SesongData } from "@/lib/stilling";
 
 // ─── Deterministisk RNG (mulberry32) ─────────────────────────────
@@ -112,6 +112,7 @@ function innslagSpillere(innslag: Innslag): string[] {
     case "tetsjikt":
       return innslag.medlemmer.map((m) => m.userId);
     case "form":
+    case "rekke":
     case "spesialist":
       return [innslag.userId];
   }
@@ -141,19 +142,33 @@ describe("finaleshowets invarianter (Monte Carlo over 400 sesonger)", () => {
       const n = data.deltakere.length;
       const ctx = `seed=${seed} deltakere=${n} øvelser=${antallOvelser}`;
 
-      // 1) ALLTID nøyaktig én vinner-slide, og den peker på sammenlagtleder
+      // 1) ALLTID nøyaktig én vinner-slide — med ALLE på delt førsteplass
       const vinnerSlides = slides.filter((s) => s.type === "vinner");
       expect(vinnerSlides.length, `én vinner-slide (${ctx})`).toBe(1);
       const vinnerSlide = vinnerSlides[0];
+      const forventedeVinnere = data.deltakere.filter((d) => d.plass === 1);
       if (vinnerSlide.type === "vinner") {
-        expect(vinnerSlide.deltaker.userId, `vinner = leder (${ctx})`).toBe(
+        expect(vinnerSlide.vinnere[0].userId, `vinner = leder (${ctx})`).toBe(
           data.deltakere[0].userId,
         );
-        expect(vinnerSlide.deltaker.plass, `vinner har 1. plass (${ctx})`).toBe(1);
+        expect(
+          vinnerSlide.vinnere.length,
+          `alle på delt 1. plass kåres (${ctx})`,
+        ).toBe(forventedeVinnere.length);
+        for (const v of vinnerSlide.vinnere) {
+          expect(v.plass, `vinner har 1. plass (${ctx})`).toBe(1);
+        }
       }
-      // og en trommevirvel rett før
+      // og en trommevirvel rett før — ved delt seier ligger dommerbordets
+      // «uavgjort»-slide mellom virvelen og kåringen
       const iVinner = slides.findIndex((s) => s.type === "vinner");
-      expect(slides[iVinner - 1].type, `trommevirvel før vinner (${ctx})`).toBe("trommevirvel");
+      if (forventedeVinnere.length >= 2) {
+        expect(slides[iVinner - 1].type, `uavgjort før delt kåring (${ctx})`).toBe("uavgjort");
+        expect(slides[iVinner - 2].type, `trommevirvel før uavgjort (${ctx})`).toBe("trommevirvel");
+      } else {
+        expect(slides[iVinner - 1].type, `trommevirvel før vinner (${ctx})`).toBe("trommevirvel");
+        expect(slides.some((s) => s.type === "uavgjort"), `ingen uavgjort-slide (${ctx})`).toBe(false);
+      }
 
       // 2) "Noe artig med ≥50 % av spillerne" — hard garanti:
       //    tidslinjen (animert poengrace med ALLE deltakere) er alltid med,
@@ -172,10 +187,11 @@ describe("finaleshowets invarianter (Monte Carlo over 400 sesonger)", () => {
         );
       }
 
-      // 3) Full dekning: hver deltaker er vinner, prisvinner, i et innslag,
-      //    eller får hederlig omtale — ingen blir usynlig
+      // 3) Full dekning: hver deltaker er vinner (alle på delt 1. plass står
+      //    på kåringssliden), prisvinner, i et innslag, eller får hederlig
+      //    omtale — ingen blir usynlig
       const dekket = new Set<string>();
-      dekket.add(data.deltakere[0].userId);
+      for (const v of forventedeVinnere) dekket.add(v.userId);
       for (const p of data.priser) dekket.add(p.userId);
       for (const h of data.hederlige) dekket.add(h.userId);
       for (const i of data.innslag) for (const u of innslagSpillere(i)) dekket.add(u);
@@ -202,14 +218,47 @@ describe("finaleshowets invarianter (Monte Carlo over 400 sesonger)", () => {
         expect(treLike, `ikke tre like innslag på rad (${ctx})`).toBe(false);
       }
 
-      // 5) Spoiler-vern: vinneren dukker ALDRI opp i comeback/fall/rival/sluttspurt
+      // 5) Spoiler-vern: INGEN av vinnerne (også ved delt seier) dukker opp
+      //    i comeback/fall/rival/sluttspurt/ledertrøye
+      const vinnerIds = new Set(forventedeVinnere.map((d) => d.userId));
       for (const i of data.innslag) {
         if (erSpoilerInnslag(i)) {
           expect(
-            innslagSpillere(i).includes(data.deltakere[0].userId),
+            innslagSpillere(i).some((u) => vinnerIds.has(u)),
             `vinner ikke røpet i ${i.slag} (${ctx})`,
           ).toBe(false);
         }
+      }
+
+      // 5b) Dueller fikserer aldri på én leks poengmargin: enten dødt løp
+      //     (ekte likhet), en summert periode, eller et margin-fritt oppgjør
+      for (const i of data.innslag) {
+        if (i.slag === "duell") {
+          expect(["periode", "thriller", "oppgjor"], `duellvariant (${ctx})`).toContain(i.variant);
+          if (i.variant === "thriller") {
+            expect(i.vinner.poeng, `dødt løp er faktisk likt (${ctx})`).toBe(i.taper.poeng);
+          }
+          if (i.variant === "periode") {
+            expect(i.leker?.length, `perioden dekker tre leker (${ctx})`).toBe(3);
+            expect(i.vinner.poeng, `periodesummen har reell margin (${ctx})`).toBeGreaterThan(
+              i.taper.poeng,
+            );
+          }
+        }
+        if (i.slag === "rekke") {
+          expect(i.lengde, `seiersrekke er minst 2 (${ctx})`).toBeGreaterThanOrEqual(2);
+          expect(i.leker.length, `rekas leker følger lengden (${ctx})`).toBe(i.lengde);
+        }
+      }
+
+      // 5c) «Tallenes tale»-grunnlaget: lekslisten er komplett og funnene
+      //     er alltid renslige (ingen NaN/undefined lekket inn i tekstene)
+      expect(data.leker.length, `leker eksportert (${ctx})`).toBe(data.antallFullfort);
+      const funn = byggFunn(data);
+      expect(funn.length, `det finnes alltid funn (${ctx})`).toBeGreaterThanOrEqual(2);
+      for (const f of funn) {
+        const tekst = `${f.verdi} ${f.label} ${f.detalj ?? ""}`;
+        expect(tekst, `funn uten NaN/undefined (${ctx})`).not.toMatch(/NaN|undefined/);
       }
 
       // 6) Showet har alltid en fornuftig lengde (intro + vifte + … + tallene)
@@ -283,5 +332,78 @@ describe("finaleshowets invarianter (Monte Carlo over 400 sesonger)", () => {
     // Den uferdige leken finnes ingensteds i tidslinjen
     expect(data.tidslinje.every((t) => t.ovelseNavn !== "u_open")).toBe(true);
     expect(data.antallFullfort).toBe(2);
+  });
+
+  it("kårer BEGGE ved delt førsteplass — med dommerbordets uavgjort-slide", () => {
+    // Ann og Bo ender på nøyaktig samme sum (18p); Cato og Dag deler 3. plass
+    const brukere = ["Ann", "Bo", "Cato", "Dag"].map((navn, i) => ({
+      id: `u${i}`,
+      navn: `${navn} Etternavn`,
+      bildeUrl: null as string | null,
+      farge: "#334455" as string | null,
+    }));
+    const kval: Kvalitet[] = ["PRESISJON"];
+    const base = new Date("2026-07-01T12:00:00Z").getTime();
+
+    // Poeng per lek: [Ann, Bo, Cato, Dag]
+    const lekPoeng = [
+      { id: "l0", poeng: [10, 8, 6, 5] },
+      { id: "l1", poeng: [8, 10, 5, 6] },
+    ];
+
+    const ovelser: FinaleOvelseRad[] = lekPoeng.map((o, j) => ({
+      id: o.id,
+      navn: `Lek ${j}`,
+      kvaliteter: kval,
+      vertId: "vert",
+      fullfortTid: new Date(base + j * 86400000),
+      createdAt: new Date(base),
+      individuelleResultater: brukere.map((b, i) => ({ userId: b.id, poeng: o.poeng[i] })),
+      lag: [],
+    }));
+
+    const sesongData: SesongData = {
+      brukere: brukere.map((b, i) => ({
+        ...b,
+        individuelleResultater: lekPoeng.map((o) => ({
+          id: `${o.id}-${b.id}`,
+          ovelseId: o.id,
+          plassering: null,
+          poeng: o.poeng[i],
+          ovelse: { id: o.id, kvaliteter: kval },
+        })),
+        lagmedlemskap: [],
+      })),
+      vertPerOvelse: [{ vertId: "vert" }, { vertId: "vert" }],
+    };
+
+    const data = byggFinaleData({ navn: "Test", aar: 2026 }, sesongData, ovelser, 2);
+
+    // Begge topper med delt 1. plass
+    expect(data.deltakere[0].plass).toBe(1);
+    expect(data.deltakere[1].plass).toBe(1);
+    expect(data.deltakere[0].totalPoeng).toBe(18);
+    expect(data.deltakere[1].totalPoeng).toBe(18);
+    // Delt seier-kommentar til begge (aldri «total dominans»-varianter)
+    for (const v of data.deltakere.slice(0, 2)) {
+      expect(v.kommentar).toMatch(/[Dd]el|[Uu]avgjort|likt/);
+    }
+    // Vendepunktet («da vinneren grep ledelsen») finnes ikke ved delt seier
+    expect(data.vendepunkt).toBeNull();
+
+    const slides = byggSlides(data);
+    const iVinner = slides.findIndex((s) => s.type === "vinner");
+    const vinnerSlide = slides[iVinner];
+    expect(vinnerSlide.type).toBe("vinner");
+    if (vinnerSlide.type === "vinner") {
+      expect(vinnerSlide.vinnere.map((v) => v.fornavn).sort()).toEqual(["Ann", "Bo"]);
+    }
+    // Dramaturgien: trommevirvel → «DET STÅR HELT LIKT!» → delt kåring
+    expect(slides[iVinner - 1].type).toBe("uavgjort");
+    expect(slides[iVinner - 2].type).toBe("trommevirvel");
+    const uavgjort = slides[iVinner - 1];
+    if (uavgjort.type === "uavgjort") {
+      expect(uavgjort.vinnere.length).toBe(2);
+    }
   });
 });

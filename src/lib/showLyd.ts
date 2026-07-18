@@ -83,6 +83,15 @@ export class ShowLyd {
     this.tone(2093, 0.02, 0.7, { type: "sine", gain: 0.07 });
   }
 
+  /** «Uavgjort?!»-stikk: to helt like toner (perfekt balanse!) og en
+   *  spørrende glidetone opp — til dommerbord-sliden ved delt seier */
+  uavgjort() {
+    this.stoppTrommevirvel();
+    this.tone(659.25, 0, 0.3, { type: "triangle", gain: 0.22 });
+    this.tone(659.25, 0.38, 0.3, { type: "triangle", gain: 0.22 });
+    this.tone(440, 0.95, 0.55, { type: "sine", gain: 0.18, glideTil: 880 });
+  }
+
   /** Fanfare til vinnerkåringen: tre oppadgående støt og en sluttakkord */
   fanfare() {
     this.stoppTrommevirvel();
