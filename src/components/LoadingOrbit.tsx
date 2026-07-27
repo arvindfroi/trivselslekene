@@ -3,15 +3,15 @@
 import { motion } from "framer-motion";
 
 const BILDER = [
-  "/deltakere/deltaker-1.webp",
-  "/deltakere/deltaker-2.webp",
-  "/deltakere/deltaker-3.webp",
-  "/deltakere/deltaker-4.webp",
-  "/deltakere/deltaker-5.webp",
-  "/deltakere/deltaker-6.webp",
-  "/deltakere/deltaker-7.webp",
-  "/deltakere/deltaker-8.webp",
-  "/deltakere/deltaker-9.webp",
+  "/deltakere/deltaker-1.svg",
+  "/deltakere/deltaker-2.svg",
+  "/deltakere/deltaker-3.svg",
+  "/deltakere/deltaker-4.svg",
+  "/deltakere/deltaker-5.svg",
+  "/deltakere/deltaker-6.svg",
+  "/deltakere/deltaker-7.svg",
+  "/deltakere/deltaker-8.svg",
+  "/deltakere/deltaker-9.svg",
 ];
 
 const INITIAL_RADII = [200, 200, 200, 150, 150, 150, 100, 100, 100];
