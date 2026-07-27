@@ -168,15 +168,17 @@ export default async function TurneringSide() {
 
                   {/* Resultater / stilling */}
                   {(() => {
-                    // Beregn status per deltager fra kamper
+                    // Beregn tap per deltager i én O(K+D)-pass
+                    const tapMap = new Map<string, number>();
+                    for (const k of t.kamper) {
+                      if (k.status !== "FULLFORT" || !k.vinnerId) continue;
+                      const taperId =
+                        k.vinnerId === k.deltager1Id ? k.deltager2Id : k.deltager1Id;
+                      if (taperId) tapMap.set(taperId, (tapMap.get(taperId) ?? 0) + 1);
+                    }
+
                     const deltagerStatus = t.deltagere.map((d) => {
-                      let tap = 0;
-                      for (const k of t.kamper) {
-                        if (k.status !== "FULLFORT") continue;
-                        const erD1 = k.deltager1Id === d.id;
-                        const erD2 = k.deltager2Id === d.id;
-                        if ((erD1 || erD2) && k.vinnerId !== d.id) tap++;
-                      }
+                      const tap = tapMap.get(d.id) ?? 0;
                       let statusLabel: string;
                       let statusColor: string;
                       if (tap === 0) { statusLabel = "Winners bracket"; statusColor = "text-accent-2"; }

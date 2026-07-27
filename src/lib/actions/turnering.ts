@@ -105,7 +105,7 @@ function PFromKamper(kamper: { bracket: string; runde: number }[]): number {
 async function cascadeLosersBracket(turneringId: string, P: number) {
   const LR = losersRunder(P);
 
-  // Hent alle LR-kamper, sortert etter runde og posisjon
+  // Hent ALLE LR-kamper på én gang — ingen re-fetching i løkka
   const lrKamper = await prisma.turneringsKamp.findMany({
     where: { turneringId, bracket: "L" },
     orderBy: [{ runde: "asc" }, { posisjon: "asc" }],
@@ -118,6 +118,10 @@ async function cascadeLosersBracket(turneringId: string, P: number) {
     arr.push(k);
     byRunde.set(k.runde, arr);
   }
+
+  // Samle alle oppdateringer i én batch
+  const kampOppdateringer: { id: string; vinnerId: string }[] = [];
+  const plasseringer: { target: AdvanceTarget; deltagerId: string }[] = [];
 
   // Prosesser LR-runder i rekkefølge
   for (let r = 1; r <= LR; r++) {
@@ -138,38 +142,37 @@ async function cascadeLosersBracket(turneringId: string, P: number) {
       if (!harD1 && !harD2) continue;
 
       // For partallsrunder: hvis D1 finnes men D2 mangler, IKKE auto-avanser.
-      // D2 kommer fra en WR-kamp som ikke er avgjort ennå.
       if (isEven && harD1 && !harD2) continue;
-
-      // For partallsrunder: hvis D1 mangler men D2 finnes, betyr det at
-      // forrige LR-runde var død — D1 kommer aldri. Auto-avanser D2.
-      // For oddetallsrunder: auto-avanser solo-deltager uansett.
-      // For LR1: alltid auto-avanser (tom plass = WR1 bye).
 
       const soloId = harD1 ? kamp.deltager1Id! : kamp.deltager2Id!;
 
-      await prisma.turneringsKamp.update({
-        where: { id: kamp.id },
-        data: { vinnerId: soloId, status: "FULLFORT" },
-      });
+      kampOppdateringer.push({ id: kamp.id, vinnerId: soloId });
 
       const target = nesteKampForVinner(
         { bracket: "L", runde: kamp.runde, posisjon: kamp.posisjon },
         P,
       );
       if (target) {
-        await plasserDeltager(turneringId, target, soloId);
+        plasseringer.push({ target, deltagerId: soloId });
       }
     }
+  }
 
-    // Refresh neste runde
-    if (r < LR) {
-      const nesteKamper = await prisma.turneringsKamp.findMany({
-        where: { turneringId, bracket: "L", runde: r + 1 },
-        orderBy: { posisjon: "asc" },
-      });
-      byRunde.set(r + 1, nesteKamper);
-    }
+  // Utfør alle kamp-oppdateringer i én batch
+  if (kampOppdateringer.length > 0) {
+    await prisma.$transaction(
+      kampOppdateringer.map(({ id, vinnerId }) =>
+        prisma.turneringsKamp.update({
+          where: { id },
+          data: { vinnerId, status: "FULLFORT" },
+        }),
+      ),
+    );
+  }
+
+  // Plasser deltagere (med konflikt-sjekk) — batch per target
+  if (plasseringer.length > 0) {
+    await batchPlasserDeltagere(turneringId, plasseringer);
   }
 }
 
@@ -218,6 +221,11 @@ export async function opprettTurneringData(input: OpprettTurneringInput) {
   const deltagerMap = new Map(turnering.deltagere.map((d) => [d.seed, d.id]));
   const pSeeds = seedRekkefolge(P);
 
+  // Samle bye-oppdateringer og plasseringer for batch
+  const byeOppdateringer: { id: string; data: Record<string, unknown> }[] = [];
+  const byePlasseringer: { target: AdvanceTarget; deltagerId: string }[] = [];
+  const wr1Oppdateringer: { id: string; data: Record<string, unknown> }[] = [];
+
   // WR1-posisjoner: indeks 0,1 → posisjon 1; indeks 2,3 → posisjon 2; osv.
   for (let i = 0; i < pSeeds.length; i += 2) {
     const s1 = pSeeds[i];
@@ -235,8 +243,8 @@ export async function opprettTurneringData(input: OpprettTurneringInput) {
     if (s1Real && !s2Real) {
       const dId = deltagerMap.get(s1);
       if (!dId) continue;
-      await prisma.turneringsKamp.update({
-        where: { id: wr1Kamp.id },
+      byeOppdateringer.push({
+        id: wr1Kamp.id,
         data: { deltager1Id: dId, vinnerId: dId, status: "FULLFORT" },
       });
       const target = nesteKampForVinner(
@@ -244,13 +252,13 @@ export async function opprettTurneringData(input: OpprettTurneringInput) {
         P,
       );
       if (target) {
-        await plasserDeltager(turnering.id, target, dId);
+        byePlasseringer.push({ target, deltagerId: dId });
       }
     } else if (!s1Real && s2Real) {
       const dId = deltagerMap.get(s2);
       if (!dId) continue;
-      await prisma.turneringsKamp.update({
-        where: { id: wr1Kamp.id },
+      byeOppdateringer.push({
+        id: wr1Kamp.id,
         data: { deltager2Id: dId, vinnerId: dId, status: "FULLFORT" },
       });
       const target = nesteKampForVinner(
@@ -258,7 +266,7 @@ export async function opprettTurneringData(input: OpprettTurneringInput) {
         P,
       );
       if (target) {
-        await plasserDeltager(turnering.id, target, dId);
+        byePlasseringer.push({ target, deltagerId: dId });
       }
     }
   }
@@ -274,10 +282,25 @@ export async function opprettTurneringData(input: OpprettTurneringInput) {
     );
     if (!kamp) continue;
 
-    await prisma.turneringsKamp.update({
-      where: { id: kamp.id },
+    wr1Oppdateringer.push({
+      id: kamp.id,
       data: { deltager1Id: d1, deltager2Id: d2, status: "KLAR" },
     });
+  }
+
+  // Utfør alle WR1-oppdateringer i én batch
+  const alleOppdateringer = [...byeOppdateringer, ...wr1Oppdateringer];
+  if (alleOppdateringer.length > 0) {
+    await prisma.$transaction(
+      alleOppdateringer.map(({ id, data }) =>
+        prisma.turneringsKamp.update({ where: { id }, data }),
+      ),
+    );
+  }
+
+  // Plasser bye-vinnere videre
+  if (byePlasseringer.length > 0) {
+    await batchPlasserDeltagere(turnering.id, byePlasseringer);
   }
 
   // Cascade fixup: auto-advance solo LR participants from WR1 bye gaps
@@ -474,6 +497,79 @@ async function plasserDeltager(
       status: annenErSatt ? "KLAR" : "VENTER",
     },
   });
+}
+
+/**
+ * Batch-versjon av plasserDeltager — henter alle mål-kamper i én query,
+ * sjekker konflikter i minnet, og utfører alle oppdateringer i én transaksjon.
+ */
+async function batchPlasserDeltagere(
+  turneringId: string,
+  plasseringer: { target: AdvanceTarget; deltagerId: string }[],
+) {
+  if (plasseringer.length === 0) return;
+
+  // Dedup: siste plassering for hver (bracket, runde, posisjon, somDeltager) vinner
+  const deduped = new Map<string, { target: AdvanceTarget; deltagerId: string }>();
+  for (const p of plasseringer) {
+    const key = `${p.target.bracket}-${p.target.runde}-${p.target.posisjon}-${p.target.somDeltager}`;
+    deduped.set(key, p);
+  }
+
+  // Hent alle relevante kamper i én query
+  // (henter alle for turneringen og filtrerer i minnet siden Prisma ikke
+  //  støtter vilkårlig OR på tvers av ulike felter)
+  const unike = [...deduped.values()];
+  const alleRelevante = await prisma.turneringsKamp.findMany({
+    where: {
+      turneringId,
+      bracket: { in: ["W", "L", "G"] },
+    },
+    select: { id: true, bracket: true, runde: true, posisjon: true, deltager1Id: true, deltager2Id: true },
+  });
+
+  const kampBySlot = new Map<string, typeof alleRelevante[number]>();
+  for (const k of alleRelevante) {
+    kampBySlot.set(`${k.bracket}-${k.runde}-${k.posisjon}`, k);
+  }
+
+  // Bygg oppdateringer
+  const updates: { id: string; data: Record<string, string | null> }[] = [];
+
+  for (const { target, deltagerId } of unike) {
+    const kamp = kampBySlot.get(`${target.bracket}-${target.runde}-${target.posisjon}`);
+    if (!kamp) continue;
+
+    const erDeltager1 = target.somDeltager === 1;
+    const eksisterende = erDeltager1 ? kamp.deltager1Id : kamp.deltager2Id;
+
+    if (eksisterende && eksisterende !== deltagerId) {
+      console.error(
+        `[batchPlasserDeltagere] KONFLIKT: Prøvde å plassere ${deltagerId} i ${target.bracket}-${target.runde}-${target.posisjon} som D${target.somDeltager}, men ${eksisterende} er allerede der. Hopper over.`,
+      );
+      continue;
+    }
+
+    if (eksisterende === deltagerId) continue;
+
+    const annenErSatt = erDeltager1 ? !!kamp.deltager2Id : !!kamp.deltager1Id;
+
+    updates.push({
+      id: kamp.id,
+      data: {
+        [erDeltager1 ? "deltager1Id" : "deltager2Id"]: deltagerId,
+        status: annenErSatt ? "KLAR" : "VENTER",
+      },
+    });
+  }
+
+  if (updates.length > 0) {
+    await prisma.$transaction(
+      updates.map(({ id, data }) =>
+        prisma.turneringsKamp.update({ where: { id }, data }),
+      ),
+    );
+  }
 }
 
 /**

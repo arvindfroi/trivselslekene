@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect, useRef, useCallback } from "react";
+import { useState, useTransition, useEffect, useRef, useCallback, useMemo, memo } from "react";
 import { useRouter } from "next/navigation";
 import Avatar from "@/components/Avatar";
 import { velgVinner } from "@/lib/actions/turnering";
@@ -31,13 +31,18 @@ export type TurneringMedData = {
 
 // ─── Hjelpefunksjoner ────────────────────────────────────────────────────
 
+const PFromKamperCache = new WeakMap<TurneringMedData["kamper"], number>();
 function PFromKamper(kamper: TurneringMedData["kamper"]): number {
-  return kamper.filter((k) => k.bracket === "W" && k.runde === 1).length * 2;
+  const cached = PFromKamperCache.get(kamper);
+  if (cached !== undefined) return cached;
+  const p = kamper.filter((k) => k.bracket === "W" && k.runde === 1).length * 2;
+  PFromKamperCache.set(kamper, p);
+  return p;
 }
 
 // ─── DeltagerLinje ───────────────────────────────────────────────────────
 
-function DeltagerLinje({
+const DeltagerLinje = memo(function DeltagerLinje({
   deltager,
   erVinner,
   erTaper,
@@ -93,11 +98,11 @@ function DeltagerLinje({
       )}
     </div>
   );
-}
+});
 
 // ─── KampKort ────────────────────────────────────────────────────────────
 
-function KampKort({
+const KampKort = memo(function KampKort({
   kamp,
   turneringStatus,
   forventetD1,
@@ -136,14 +141,24 @@ function KampKort({
     optimistiskVinner === kamp.deltager2Id
   );
 
-  function handleVelgVinner(deltagerId: string) {
+  const handleVelgVinner = useCallback((deltagerId: string) => {
     if (isPending) return;
     setOptimistiskVinner(deltagerId);
     startTransition(async () => {
       await velgVinner(kamp.id, deltagerId);
       router.refresh();
     });
-  }
+  }, [kamp.id, isPending, startTransition, router]);
+
+  const onClickD1 = useMemo(() => {
+    if (!kanKlikke || !kamp.deltager1Id) return undefined;
+    return () => handleVelgVinner(kamp.deltager1Id!);
+  }, [kanKlikke, kamp.deltager1Id, handleVelgVinner]);
+
+  const onClickD2 = useMemo(() => {
+    if (!kanKlikke || !kamp.deltager2Id) return undefined;
+    return () => handleVelgVinner(kamp.deltager2Id!);
+  }, [kanKlikke, kamp.deltager2Id, handleVelgVinner]);
 
   return (
     <div
@@ -166,7 +181,7 @@ function KampKort({
         deltager={kamp.deltager1}
         erVinner={erD1Vinner}
         erTaper={erFerdig && !erD1Vinner}
-        onClick={kanKlikke ? () => handleVelgVinner(kamp.deltager1Id!) : undefined}
+        onClick={onClickD1}
         kanKlikke={kanKlikke}
         forventetNavn={forventetD1}
       />
@@ -175,13 +190,13 @@ function KampKort({
         deltager={kamp.deltager2}
         erVinner={erD2Vinner}
         erTaper={erFerdig && !erD2Vinner}
-        onClick={kanKlikke ? () => handleVelgVinner(kamp.deltager2Id!) : undefined}
+        onClick={onClickD2}
         kanKlikke={kanKlikke}
         forventetNavn={forventetD2}
       />
     </div>
   );
-}
+});
 
 // ─── Round-labels ─────────────────────────────────────────────────────────
 
@@ -220,61 +235,73 @@ function BracketLinjer({
   redrawTick: number;
 }) {
   const [paths, setPaths] = useState<string[]>([]);
+  const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
-    const newPaths: string[] = [];
-    const matchEls = container.querySelectorAll<HTMLDivElement>("[data-kamp-id]");
+    // Throttle with requestAnimationFrame
+    const compute = () => {
+      const newPaths: string[] = [];
+      const matchEls = container.querySelectorAll<HTMLDivElement>("[data-kamp-id]");
 
-    const byKey = new Map<string, HTMLDivElement>();
-    for (const el of matchEls) {
-      const b = el.dataset.bracket;
-      const r = el.dataset.runde;
-      const p = el.dataset.posisjon;
-      if (b && r && p) byKey.set(`${b}-${r}-${p}`, el);
-    }
+      const byKey = new Map<string, HTMLDivElement>();
+      for (const el of matchEls) {
+        const b = el.dataset.bracket;
+        const r = el.dataset.runde;
+        const p = el.dataset.posisjon;
+        if (b && r && p) byKey.set(`${b}-${r}-${p}`, el);
+      }
 
-    const cRect = container.getBoundingClientRect();
+      const cRect = container.getBoundingClientRect();
 
-    const addLine = (srcEl: HTMLDivElement, tgtEl: HTMLDivElement) => {
-      const s = srcEl.getBoundingClientRect();
-      const t = tgtEl.getBoundingClientRect();
+      const addLine = (srcEl: HTMLDivElement, tgtEl: HTMLDivElement) => {
+        const s = srcEl.getBoundingClientRect();
+        const t = tgtEl.getBoundingClientRect();
 
-      const x1 = s.right - cRect.left + 4;
-      const y1 = s.top + s.height / 2 - cRect.top;
-      const x2 = t.left - cRect.left - 4;
-      const y2 = t.top + t.height / 2 - cRect.top;
+        const x1 = s.right - cRect.left + 4;
+        const y1 = s.top + s.height / 2 - cRect.top;
+        const x2 = t.left - cRect.left - 4;
+        const y2 = t.top + t.height / 2 - cRect.top;
 
-      const midX = (x1 + x2) / 2;
-      newPaths.push(`M${x1.toFixed(1)},${y1.toFixed(1)} H${midX.toFixed(1)} V${y2.toFixed(1)} H${x2.toFixed(1)}`);
-    };
+        const midX = (x1 + x2) / 2;
+        newPaths.push(`M${x1.toFixed(1)},${y1.toFixed(1)} H${midX.toFixed(1)} V${y2.toFixed(1)} H${x2.toFixed(1)}`);
+      };
 
-    // Winners: position n and n+1 in round r feed into ceil(n/2) in round r+1
-    for (const [key, srcEl] of byKey) {
-      const [bracket, rStr, pStr] = key.split("-");
-      const r = parseInt(rStr);
-      const p = parseInt(pStr);
+      // Winners: position n and n+1 in round r feed into ceil(n/2) in round r+1
+      for (const [key, srcEl] of byKey) {
+        const [bracket, rStr, pStr] = key.split("-");
+        const r = parseInt(rStr);
+        const p = parseInt(pStr);
 
-      if (bracket === "W") {
-        const targetKey = `W-${r + 1}-${Math.ceil(p / 2)}`;
-        const tgt = byKey.get(targetKey);
-        if (tgt) addLine(srcEl, tgt);
-      } else if (bracket === "L") {
-        if (r % 2 === 1) {
-          const targetKey = `L-${r + 1}-${p}`;
+        if (bracket === "W") {
+          const targetKey = `W-${r + 1}-${Math.ceil(p / 2)}`;
           const tgt = byKey.get(targetKey);
           if (tgt) addLine(srcEl, tgt);
-        } else {
-          const targetKey = `L-${r + 1}-${Math.ceil(p / 2)}`;
-          const tgt = byKey.get(targetKey);
-          if (tgt) addLine(srcEl, tgt);
+        } else if (bracket === "L") {
+          if (r % 2 === 1) {
+            const targetKey = `L-${r + 1}-${p}`;
+            const tgt = byKey.get(targetKey);
+            if (tgt) addLine(srcEl, tgt);
+          } else {
+            const targetKey = `L-${r + 1}-${Math.ceil(p / 2)}`;
+            const tgt = byKey.get(targetKey);
+            if (tgt) addLine(srcEl, tgt);
+          }
         }
       }
-    }
 
-    setPaths(newPaths);
+      setPaths(newPaths);
+      rafRef.current = null;
+    };
+
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(compute);
+
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
   }, [containerRef, redrawTick]);
 
   if (paths.length === 0) return null;
@@ -300,6 +327,75 @@ function BracketLinjer({
   );
 }
 
+// ─── BracketKolonne ───────────────────────────────────────────────────────
+
+const BracketKolonne = memo(function BracketKolonne({
+  label,
+  sublabel,
+  kamper,
+  turneringStatus,
+  forventetPerKamp,
+  visSeeding,
+  setKampRef,
+  isGrandFinals,
+}: {
+  label: string;
+  sublabel?: string;
+  kamper: TurneringMedData["kamper"];
+  turneringStatus: string;
+  forventetPerKamp: Map<string, { d1: string | null; d2: string | null }>;
+  visSeeding: boolean;
+  setKampRef: (id: string) => (el: HTMLDivElement | null) => void;
+  isGrandFinals?: boolean;
+}) {
+  const n = kamper.length;
+
+  // Gap between matches: more matches → tighter; fewer → more spread
+  const gap =
+    n >= 8 ? "0.5rem"
+    : n >= 4 ? "1.25rem"
+    : n >= 2 ? "3rem"
+    : "0";
+
+  return (
+    <div className="flex flex-col shrink-0">
+      <div className="text-center mb-2">
+        <p
+          className={`text-[10px] font-semibold uppercase tracking-wider ${
+            isGrandFinals ? "text-yellow-400/90" : "text-fg-faint"
+          }`}
+        >
+          {label}
+        </p>
+        {sublabel && (
+          <p className="text-[9px] text-fg-faint/50">{sublabel}</p>
+        )}
+      </div>
+      <div className="flex flex-col" style={{ gap }}>
+        {kamper.map((kamp) => {
+          const f = forventetPerKamp.get(kamp.id);
+          return (
+            <div key={kamp.id} className="flex flex-col gap-0.5">
+              <KampKort
+                kamp={kamp}
+                turneringStatus={turneringStatus}
+                forventetD1={visSeeding ? f?.d1 ?? null : null}
+                forventetD2={visSeeding ? f?.d2 ?? null : null}
+                kampRef={setKampRef(kamp.id)}
+              />
+              {kamp.bracket === "G" && kamp.runde === 2 && (
+                <p className="text-[9px] text-fg-faint/60 text-center italic">
+                  Reset — vinneren kåres her
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+});
+
 // ─── Hovedkomponent ──────────────────────────────────────────────────────
 
 export default function TurneringsBracket({ turnering }: { turnering: TurneringMedData }) {
@@ -308,63 +404,75 @@ export default function TurneringsBracket({ turnering }: { turnering: TurneringM
   const [redrawTick, setRedrawTick] = useState(0);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
-  const P = PFromKamper(kamper);
+  // Memoize alle tunge beregninger
+  const P = useMemo(() => PFromKamper(kamper), [kamper]);
   const N = deltagere.length;
-  const WR = winnersRunder(P);
-  const LR = losersRunder(P);
+  const WR = useMemo(() => winnersRunder(P), [P]);
+  const LR = useMemo(() => losersRunder(P), [P]);
 
-  // Build seed → navn lookup
-  const seedNavn = new Map<number, string>();
-  for (const d of deltagere) {
-    seedNavn.set(d.seed, d.user.navn);
-  }
-
-  // Expected seeds
-  const seedMap = P >= 4 ? expectedSeedMap(P, N) : null;
-  const forventetPerKamp = new Map<string, { d1: string | null; d2: string | null }>();
-  if (seedMap) {
-    for (const kamp of kamper) {
-      const slotKey = `${kamp.bracket}-${kamp.runde}-${kamp.posisjon}`;
-      const expected = seedMap.get(slotKey);
-      const d1Navn = expected?.d1 != null ? seedNavn.get(expected.d1) ?? null : null;
-      const d2Navn = expected?.d2 != null ? seedNavn.get(expected.d2) ?? null : null;
-      forventetPerKamp.set(kamp.id, { d1: d1Navn, d2: d2Navn });
+  // Build seed → navn lookup (memoized)
+  const seedNavn = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const d of deltagere) {
+      map.set(d.seed, d.user.navn);
     }
-  }
+    return map;
+  }, [deltagere]);
 
-  // Group matches
-  const kamperFor = (bracket: string, runde: number) =>
-    kamper
-      .filter((k) => k.bracket === bracket && k.runde === runde)
-      .sort((a, b) => a.posisjon - b.posisjon);
+  // Expected seeds (memoized — kun når P eller N endres)
+  const seedMap = useMemo(() => (P >= 4 ? expectedSeedMap(P, N) : null), [P, N]);
 
-  // Winners rounds
-  const winnerRounds: { runde: number; label: string; kamper: typeof kamper }[] = [];
-  for (let r = 1; r <= WR; r++) {
-    const k = kamperFor("W", r);
-    if (k.length > 0) winnerRounds.push({ runde: r, label: roundLabel("W", r, P), kamper: k });
-  }
+  // forventetPerKamp (memoized)
+  const forventetPerKamp = useMemo(() => {
+    const map = new Map<string, { d1: string | null; d2: string | null }>();
+    if (seedMap) {
+      for (const kamp of kamper) {
+        const slotKey = `${kamp.bracket}-${kamp.runde}-${kamp.posisjon}`;
+        const expected = seedMap.get(slotKey);
+        const d1Navn = expected?.d1 != null ? seedNavn.get(expected.d1) ?? null : null;
+        const d2Navn = expected?.d2 != null ? seedNavn.get(expected.d2) ?? null : null;
+        map.set(kamp.id, { d1: d1Navn, d2: d2Navn });
+      }
+    }
+    return map;
+  }, [seedMap, kamper, seedNavn]);
 
-  // Losers rounds
-  const loserRounds: { runde: number; label: string; kamper: typeof kamper }[] = [];
-  for (let r = 1; r <= LR; r++) {
-    const k = kamperFor("L", r);
-    if (k.length > 0) loserRounds.push({ runde: r, label: roundLabel("L", r, P), kamper: k });
-  }
+  // Group matches (memoized)
+  const winnerRounds = useMemo(() => {
+    const rounds: { runde: number; label: string; kamper: TurneringMedData["kamper"] }[] = [];
+    for (let r = 1; r <= WR; r++) {
+      const k = kamper.filter((k) => k.bracket === "W" && k.runde === r).sort((a, b) => a.posisjon - b.posisjon);
+      if (k.length > 0) rounds.push({ runde: r, label: roundLabel("W", r, P), kamper: k });
+    }
+    return rounds;
+  }, [kamper, WR, P]);
 
-  // Grand Finals
-  const grandFinals = kamper.filter((k) => k.bracket === "G").sort((a, b) => a.runde - b.runde);
+  const loserRounds = useMemo(() => {
+    const rounds: { runde: number; label: string; kamper: TurneringMedData["kamper"] }[] = [];
+    for (let r = 1; r <= LR; r++) {
+      const k = kamper.filter((k) => k.bracket === "L" && k.runde === r).sort((a, b) => a.posisjon - b.posisjon);
+      if (k.length > 0) rounds.push({ runde: r, label: roundLabel("L", r, P), kamper: k });
+    }
+    return rounds;
+  }, [kamper, LR, P]);
 
-  // Turneringsvinner
-  const sisteG = [...grandFinals].reverse().find((k) => k.status === "FULLFORT");
-  let vinnerNavn: string | null = null;
-  if (sisteG?.vinnerId) {
-    const d1 = sisteG.deltager1Id === sisteG.vinnerId ? sisteG.deltager1 : null;
-    const d2 = sisteG.deltager2Id === sisteG.vinnerId ? sisteG.deltager2 : null;
-    vinnerNavn = (d1 ?? d2)?.user.navn ?? null;
-  }
+  const grandFinals = useMemo(
+    () => kamper.filter((k) => k.bracket === "G").sort((a, b) => a.runde - b.runde),
+    [kamper],
+  );
 
-  // Match refs for bracket lines
+  // Turneringsvinner (memoized)
+  const vinnerNavn = useMemo(() => {
+    const sisteG = [...grandFinals].reverse().find((k) => k.status === "FULLFORT");
+    if (sisteG?.vinnerId) {
+      const d1 = sisteG.deltager1Id === sisteG.vinnerId ? sisteG.deltager1 : null;
+      const d2 = sisteG.deltager2Id === sisteG.vinnerId ? sisteG.deltager2 : null;
+      return (d1 ?? d2)?.user.navn ?? null;
+    }
+    return null;
+  }, [grandFinals]);
+
+  // Match refs for bracket lines (stable callback)
   const kampRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const setKampRef = useCallback(
     (id: string) => (el: HTMLDivElement | null) => {
@@ -374,14 +482,19 @@ export default function TurneringsBracket({ turnering }: { turnering: TurneringM
     [],
   );
 
-  // Redraw SVG on resize and tab switch
+  // Redraw SVG on resize and tab switch (throttled by BracketLinjer's rAF)
   useEffect(() => {
-    const redraw = () => setRedrawTick((n) => n + 1);
+    let rafId: number;
+    const redraw = () => {
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => setRedrawTick((n) => n + 1));
+    };
     window.addEventListener("resize", redraw);
     const handle = setTimeout(redraw, 200);
     return () => {
       window.removeEventListener("resize", redraw);
       clearTimeout(handle);
+      cancelAnimationFrame(rafId);
     };
   }, []);
 
@@ -477,75 +590,6 @@ export default function TurneringsBracket({ turnering }: { turnering: TurneringM
           <p className="text-sm font-display text-accent-2">🏆 {vinnerNavn}</p>
         </div>
       )}
-    </div>
-  );
-}
-
-// ─── BracketKolonne ───────────────────────────────────────────────────────
-
-function BracketKolonne({
-  label,
-  sublabel,
-  kamper,
-  turneringStatus,
-  forventetPerKamp,
-  visSeeding,
-  setKampRef,
-  isGrandFinals,
-}: {
-  label: string;
-  sublabel?: string;
-  kamper: TurneringMedData["kamper"];
-  turneringStatus: string;
-  forventetPerKamp: Map<string, { d1: string | null; d2: string | null }>;
-  visSeeding: boolean;
-  setKampRef: (id: string) => (el: HTMLDivElement | null) => void;
-  isGrandFinals?: boolean;
-}) {
-  const n = kamper.length;
-
-  // Gap between matches: more matches → tighter; fewer → more spread
-  const gap =
-    n >= 8 ? "0.5rem"
-    : n >= 4 ? "1.25rem"
-    : n >= 2 ? "3rem"
-    : "0";
-
-  return (
-    <div className="flex flex-col shrink-0">
-      <div className="text-center mb-2">
-        <p
-          className={`text-[10px] font-semibold uppercase tracking-wider ${
-            isGrandFinals ? "text-yellow-400/90" : "text-fg-faint"
-          }`}
-        >
-          {label}
-        </p>
-        {sublabel && (
-          <p className="text-[9px] text-fg-faint/50">{sublabel}</p>
-        )}
-      </div>
-      <div className="flex flex-col" style={{ gap }}>
-        {kamper.map((kamp) => {
-          const f = forventetPerKamp.get(kamp.id);
-          return (
-            <div key={kamp.id} className="flex flex-col gap-0.5">
-              <KampKort
-                kamp={kamp}
-                turneringStatus={turneringStatus}
-                forventetD1={visSeeding ? f?.d1 ?? null : null}
-                forventetD2={visSeeding ? f?.d2 ?? null : null}
-                kampRef={setKampRef(kamp.id)}
-              />
-              {kamp.bracket === "G" && kamp.runde === 2 && (
-                <p className="text-[9px] text-fg-faint/60 text-center italic">
-                  Reset — vinneren kåres her
-                </p>
-              )}
-            </div>
-          );
-        })}
-      </div>
     </div>
   );
 }
