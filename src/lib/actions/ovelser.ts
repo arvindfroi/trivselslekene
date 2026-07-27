@@ -10,12 +10,10 @@ import type { Kvalitet, LagFormat, OvelseStatus, OvelseType } from "@prisma/clie
 import { ALLE_KVALITETER } from "@/lib/ovelseLabels";
 import { opprettTurnering } from "@/lib/actions/turnering";
 import {
-  analyserLagFormat,
   fordelSpillere,
   validerLagFormat,
   type RankedSpiller,
 } from "@/lib/lagSeeding";
-import { hentStilling, type SesongData } from "@/lib/stilling";
 
 // ─── Zod-skjemaer ──────────────────────────────────────────────────────────
 
