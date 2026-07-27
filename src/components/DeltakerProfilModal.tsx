@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { X } from "lucide-react";
+import { ChevronDown, X } from "lucide-react";
 import Avatar from "@/components/Avatar";
-import { kvalitetIkon, kvalitetTekst } from "@/lib/ovelseLabels";
+import KiviatDiagram from "@/components/KiviatDiagram";
+import { kvalitetIkon, kvalitetTekst, statusTekst } from "@/lib/ovelseLabels";
 import { cn } from "@/lib/utils";
 import type { DeltakerInfo } from "@/lib/actions/deltaker";
+import type { OvelseStatus } from "@prisma/client";
 
 /**
  * Klikkbar wrapper som gjør en deltaker klikkbar. Ved klikk åpnes
@@ -71,7 +73,8 @@ export function KlikkbarDeltaker({
 
 /**
  * Modal som viser en deltakers profilbilde stort + statistikk.
- * Følger samme mønster som StatFlis sin modal.
+ * Har en "Se mer"-knapp som utvider til full profil med vertFor,
+ * resultater og kiviatdiagram.
  */
 export default function DeltakerProfilModal({
   userId,
@@ -88,6 +91,7 @@ export default function DeltakerProfilModal({
 }) {
   const [info, setInfo] = useState<DeltakerInfo | null>(null);
   const [feil, setFeil] = useState<string | null>(null);
+  const [visMer, setVisMer] = useState(false);
 
   const lastInfo = useCallback(async () => {
     try {
@@ -201,6 +205,109 @@ export default function DeltakerProfilModal({
                   Ingen egenskapspoeng ennå.
                 </p>
               )}
+
+              {/* Se mer / Vis mindre */}
+              <div className="mt-4 border-t border-line pt-3">
+                <button
+                  type="button"
+                  onClick={() => setVisMer((v) => !v)}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-medium text-accent-2 transition hover:bg-white/[0.04]"
+                >
+                  {visMer ? "Vis mindre" : "Se mer"}
+                  <ChevronDown
+                    size={16}
+                    className={cn(
+                      "transition-transform",
+                      visMer && "rotate-180",
+                    )}
+                  />
+                </button>
+
+                {visMer && (
+                  <div className="animate-fade-up mt-3 space-y-5">
+                    {/* Arrangerte leker */}
+                    <div>
+                      <p className="text-[11px] tracking-widest text-fg-faint uppercase">
+                        Arrangerte leker
+                      </p>
+                      {info.vertFor.length > 0 ? (
+                        <div className="mt-2 flex flex-col gap-1.5">
+                          {info.vertFor.map((v) => (
+                            <div
+                              key={v.id}
+                              className="flex items-center justify-between rounded-lg border border-line bg-white/[0.02] px-3 py-2"
+                            >
+                              <span className="truncate text-sm text-fg">
+                                {v.navn}
+                              </span>
+                              <span className="ml-2 shrink-0 text-[11px] text-fg-faint">
+                                {statusTekst[v.status as OvelseStatus]}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-2 text-sm text-fg-faint">
+                          Ingen leker arrangert ennå.
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Resultater */}
+                    <div>
+                      <p className="text-[11px] tracking-widest text-fg-faint uppercase">
+                        Resultater
+                      </p>
+                      {info.resultater.length > 0 ? (
+                        <div className="mt-2 flex flex-col gap-1.5">
+                          {info.resultater.map((r, i) => (
+                            <div
+                              key={i}
+                              className="flex items-center justify-between rounded-lg border border-line bg-white/[0.02] px-3 py-2"
+                            >
+                              <span className="truncate text-sm text-fg">
+                                {r.ovelseNavn}
+                              </span>
+                              <span className="ml-2 shrink-0 text-xs text-fg-dim tabular-nums">
+                                {r.plassering != null
+                                  ? `#${r.plassering} · ${r.poeng}p`
+                                  : `${r.poeng}p`}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-2 text-sm text-fg-faint">
+                          Ingen resultater ennå.
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Kiviatdiagram */}
+                    <div>
+                      <p className="text-[11px] tracking-widest text-fg-faint uppercase">
+                        Ferdigheter (relativt til andre)
+                      </p>
+                      <div className="mt-2">
+                        <KiviatDiagram
+                          spillersPoeng={
+                            Object.fromEntries(
+                              info.kvaliteter.map((k) => [
+                                k.kvalitet,
+                                k.poeng,
+                              ]),
+                            ) as Record<string, number>
+                          }
+                          maksPoeng={info.kvalitetMaks}
+                        />
+                      </div>
+                      <p className="mt-1 text-center text-[10px] text-fg-faint">
+                        Hvor nærme toppen spilleren er i hver egenskap
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </>
           )}
         </div>
