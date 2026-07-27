@@ -109,6 +109,10 @@ model Ovelse {
   individuelleResultater ResultatIndividuell[]
   lagResultater          ResultatLag[]
   faser                  OvelseFase[]
+
+  @@index([sesongId])
+  @@index([vertId])
+  @@index([status])
 }
 
 /// En fase i en øvelse med flere deler. Hver fase kan ha eget bilde/kart
