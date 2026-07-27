@@ -556,7 +556,10 @@ export async function autoOpprettLag(ovelseId: string) {
 
   // ─── Hent deltakere (alle brukere, minus vert med mindre fellesLek) ───
   const brukere = await prisma.user.findMany({
-    where: ovelse.fellesLek ? {} : { id: { not: ovelse.vertId } },
+    where: {
+      gjesteDeltaker: false,
+      ...(ovelse.fellesLek ? {} : { id: { not: ovelse.vertId } }),
+    },
     select: { id: true, navn: true },
     orderBy: { navn: "asc" },
   });

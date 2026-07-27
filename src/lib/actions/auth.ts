@@ -52,6 +52,7 @@ export type OnboardingData = {
   navn: string;
   fornavn?: string;
   etternavn?: string;
+  gjesteDeltaker?: boolean;
   opprettType: "ovelse" | "turnering";
   lekNavn: string;
   // Øvelse-felter
@@ -81,6 +82,7 @@ export async function fullforOnboarding(data: OnboardingData) {
   const user = await finnEllerOpprettBruker(navn, {
     fornavn: data.fornavn,
     etternavn: data.etternavn,
+    gjesteDeltaker: data.gjesteDeltaker,
   });
   if (!user) return { feil: "Kunne ikke opprette bruker." };
 

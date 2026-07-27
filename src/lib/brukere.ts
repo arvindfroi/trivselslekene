@@ -27,7 +27,7 @@ export async function finnBrukerVedNavn(raaNavn: string) {
  */
 export async function finnEllerOpprettBruker(
   raaNavn: string,
-  ekstra?: { fornavn?: string | null; etternavn?: string | null },
+  ekstra?: { fornavn?: string | null; etternavn?: string | null; gjesteDeltaker?: boolean },
 ) {
   const navn = normaliserNavn(raaNavn);
 
@@ -53,6 +53,6 @@ export async function finnEllerOpprettBruker(
   }
 
   return prisma.user.create({
-    data: { navn: parsed.data, fornavn, etternavn, farge: await tildelFarge() },
+    data: { navn: parsed.data, fornavn, etternavn, gjesteDeltaker: ekstra?.gjesteDeltaker ?? false, farge: await tildelFarge() },
   });
 }

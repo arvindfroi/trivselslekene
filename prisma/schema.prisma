@@ -14,11 +14,12 @@ model User {
   navn         String   @unique  /// Kallenavn — det brukeren vil bli kalt. Vises overalt og er innloggingsnøkkel.
   fornavn      String?  /// Fornavn oppgitt i onboardingen
   etternavn    String?  /// Etternavn oppgitt i onboardingen
-  epost        String?  @unique
-  passordHash  String?
-  bildeUrl     String?
-  farge        String?  /// Hex-farge for brukeren (tildelt automatisk)
-  createdAt    DateTime @default(now())
+  epost          String?  @unique
+  passordHash    String?
+  bildeUrl       String?
+  farge          String?  /// Hex-farge for brukeren (tildelt automatisk)
+  gjesteDeltaker Boolean  @default(false) /// true = holdes utenfor poengsystemet
+  createdAt      DateTime @default(now())
 
   vertFor          Ovelse[]          @relation("Vert")
   individuelleResultater ResultatIndividuell[]

@@ -99,6 +99,7 @@ export type SesongData = {
 export const hentAlleSesongData = cache(async (sesongId: string): Promise<SesongData> => {
   const [brukere, vertPerOvelse] = await Promise.all([
     prisma.user.findMany({
+      where: { gjesteDeltaker: false },
       select: {
         id: true,
         navn: true,
@@ -207,6 +208,7 @@ export async function hentDashboardStilling(
       FROM "User" u
       LEFT JOIN individuelle ind ON ind."userId" = u.id
       LEFT JOIN lag ON lag."userId" = u.id
+      WHERE u."gjesteDeltaker" = false
     )
     SELECT * FROM med_poeng
     WHERE plassering <= 3 OR user_id = ${currentUserId}

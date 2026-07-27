@@ -123,6 +123,7 @@ export default function Onboarding({
   const [navn, setNavn] = useState(startNavn);
   const [fornavn, setFornavn] = useState(startFornavn);
   const [etternavn, setEtternavn] = useState(startEtternavn);
+  const [gjesteDeltaker, setGjesteDeltaker] = useState(false);
   // Kallenavnet foreslås fra fornavnet helt til brukeren redigerer det selv.
   const [kallenavnRort, setKallenavnRort] = useState(startNavn.length > 0);
   const [steg, setSteg] = useState(erNy ? 1 : 0);
@@ -251,6 +252,7 @@ export default function Onboarding({
         navn,
         fornavn: fornavn.trim() || undefined,
         etternavn: etternavn.trim() || undefined,
+        gjesteDeltaker,
         opprettType: data.opprettType,
         lekNavn: data.lekNavn,
         type: data.type,
@@ -367,6 +369,19 @@ export default function Onboarding({
                         Dette vises til de andre i lekene.
                       </p>
                     </div>
+                    {/* Gjestedeltaker-avkrysning */}
+                    <label className="flex items-start gap-3 rounded-2xl border border-line bg-white/[0.03] p-4 transition-colors hover:border-line-strong cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={gjesteDeltaker}
+                        onChange={(e) => setGjesteDeltaker(e.target.checked)}
+                        className="mt-0.5 h-4 w-4 shrink-0 accent-accent-2"
+                      />
+                      <span className="text-sm text-fg-dim">
+                        <span className="font-medium text-fg">Jeg er gjestedeltaker</span>{" "}
+                        — deltar for moro skyld og holdes utenfor poengsystemet.
+                      </span>
+                    </label>
                     <Button
                       onClick={neste}
                       disabled={!navnStegKlar}
@@ -991,6 +1006,9 @@ export default function Onboarding({
                       merke="Fullt navn"
                       verdi={`${fornavn.trim()} ${etternavn.trim()}`.trim()}
                     />
+                  )}
+                  {gjesteDeltaker && (
+                    <Rad merke="Deltakertype" verdi="Gjestedeltaker — utenfor poengsystemet" />
                   )}
                   <Rad merke="Lek" verdi={data.lekNavn} />
                   {data.opprettType === "turnering" ? (
