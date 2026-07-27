@@ -147,6 +147,93 @@ export const hentAlleSesongData = cache(async (sesongId: string): Promise<Sesong
   return { brukere: brukereMedLetteBilder, vertPerOvelse };
 });
 
+// ─── Dashboard-spørring (raw SQL — kun data dashboardet faktisk trenger) ────
+
+export type DashboardStilling = {
+  topp3: StillingRad[];
+  egenRad: StillingRad | null;
+  egenPlassering: number | null; // 1-indexert
+};
+
+type DashboardRawRow = {
+  user_id: string;
+  navn: string;
+  bildeUrl: string | null;
+  farge: string | null;
+  total_poeng: number;
+  plassering: number;
+};
+
+/**
+ * Henter topp 3 + innlogget brukers rad og plassering.
+ * Bruker raw SQL for å unngå å laste inn ALLE brukere med ALLE resultater
+ * — det er over 100× lettere enn hentAlleSesongData for dashboardet.
+ */
+export async function hentDashboardStilling(
+  sesongId: string,
+  currentUserId: string,
+): Promise<DashboardStilling> {
+  const rows = await prisma.$queryRaw<DashboardRawRow[]>`
+    WITH individuelle AS (
+      SELECT
+        ri."userId",
+        SUM(ri.poeng) AS poeng
+      FROM "ResultatIndividuell" ri
+      INNER JOIN "Ovelse" o ON o.id = ri."ovelseId"
+      WHERE o."sesongId" = ${sesongId}
+      GROUP BY ri."userId"
+    ),
+    lag AS (
+      SELECT
+        lm."userId",
+        SUM(rl.poeng) AS poeng
+      FROM "LagMedlem" lm
+      INNER JOIN "Lag" l ON l.id = lm."lagId"
+      INNER JOIN "ResultatLag" rl ON rl."lagId" = l.id
+      INNER JOIN "Ovelse" o ON o.id = l."ovelseId"
+      WHERE o."sesongId" = ${sesongId}
+      GROUP BY lm."userId"
+    ),
+    med_poeng AS (
+      SELECT
+        u.id AS user_id,
+        u.navn,
+        u."bildeUrl",
+        u.farge,
+        COALESCE(ind.poeng, 0) + COALESCE(lag.poeng, 0) AS total_poeng,
+        ROW_NUMBER() OVER (
+          ORDER BY COALESCE(ind.poeng, 0) + COALESCE(lag.poeng, 0) DESC
+        )::int AS plassering
+      FROM "User" u
+      LEFT JOIN individuelle ind ON ind."userId" = u.id
+      LEFT JOIN lag ON lag."userId" = u.id
+    )
+    SELECT * FROM med_poeng
+    WHERE plassering <= 3 OR user_id = ${currentUserId}
+    ORDER BY plassering
+  `;
+
+  const rader: StillingRad[] = rows.map((r) => ({
+    userId: r.user_id,
+    navn: r.navn,
+    bildeUrl: bildeUrlFor("bruker", { id: r.user_id, bildeUrl: r.bildeUrl }),
+    farge: r.farge,
+    totalPoeng: Number(r.total_poeng),
+    antallOvelser: 0, // dashboardet bruker ikke dette feltet
+  }));
+
+  const egenRad =
+    rader.find((r) => r.userId === currentUserId) ?? null;
+  const egenPlassering =
+    rows.find((r) => r.user_id === currentUserId)?.plassering ?? null;
+
+  return {
+    topp3: rader.filter((_, i) => rows[i].plassering <= 3),
+    egenRad,
+    egenPlassering,
+  };
+}
+
 // ─── Analysefunksjoner (rene transformasjoner, ingen DB-kall) ────
 
 /** Beregner sammenlagt stilling for en sesong, sortert med flest poeng øverst. */

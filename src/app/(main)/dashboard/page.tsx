@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
-import { hentAlleSesongData, hentStilling } from "@/lib/stilling";
+import { hentDashboardStilling } from "@/lib/stilling";
 import Card from "@/components/ui/Card";
 import { LinkButton } from "@/components/ui/Button";
 import StatCard from "@/components/ui/StatCard";
@@ -25,19 +25,15 @@ export default async function HjemSide() {
   if (!session?.user) redirect("/bli-med");
 
   const sesong = await sikreAktivSesong();
-  const [alleData, dineOvelser, antallOvelser, antallFullfort] = await Promise.all([
-    hentAlleSesongData(sesong.id),
-    prisma.ovelse.count({
-      where: { sesongId: sesong.id, vertId: session.user.id },
-    }),
-    prisma.ovelse.count({ where: { sesongId: sesong.id } }),
-    prisma.ovelse.count({ where: { sesongId: sesong.id, status: "FULLFORT" } }),
-  ]);
-  const stilling = hentStilling(alleData);
-
-  const minIndex = stilling.findIndex((s) => s.userId === session.user!.id);
-  const min = minIndex >= 0 ? stilling[minIndex] : null;
-  const topp = stilling.slice(0, 3);
+  const [{ topp3: topp, egenRad: min, egenPlassering }, dineOvelser, antallOvelser, antallFullfort] =
+    await Promise.all([
+      hentDashboardStilling(sesong.id, session.user.id),
+      prisma.ovelse.count({
+        where: { sesongId: sesong.id, vertId: session.user.id },
+      }),
+      prisma.ovelse.count({ where: { sesongId: sesong.id } }),
+      prisma.ovelse.count({ where: { sesongId: sesong.id, status: "FULLFORT" } }),
+    ]);
   const avslort = erAvslort();
 
   return (
@@ -79,7 +75,7 @@ export default async function HjemSide() {
       <div className="mt-6 grid grid-cols-3 gap-3 sm:gap-4">
         <StatCard
           label="Plassering"
-          verdi={min && min.totalPoeng > 0 ? `#${minIndex + 1}` : "–"}
+          verdi={min && min.totalPoeng > 0 ? `#${egenPlassering}` : "–"}
         />
         <StatCard label="Dine poeng" verdi={String(min?.totalPoeng ?? 0)} />
         <StatCard label="Dine leker" verdi={String(dineOvelser)} />

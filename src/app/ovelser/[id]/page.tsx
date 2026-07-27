@@ -27,6 +27,7 @@ import Badge from "@/components/ui/Badge";
 import { MapPin, Users, X, Trash2, Monitor, Plus, UserRoundX } from "lucide-react";
 import { Input, Label, Select } from "@/components/ui/Field";
 import { opprettTestdeltakere, slettTestdeltakere } from "@/lib/actions/testdeltakere";
+import AutoLagKnapp from "@/components/AutoLagKnapp";
 
 export default async function OvelseSide({
   params,
@@ -341,6 +342,12 @@ export default async function OvelseSide({
                 <Input name="navn" required placeholder="Lagnavn" className="flex-1" />
                 <SubmitButton>Legg til lag</SubmitButton>
               </form>
+
+              {ovelse.lag.length === 0 && (
+                <div className="mt-4 border-t border-line pt-4">
+                  <AutoLagKnapp ovelseId={ovelseId} />
+                </div>
+              )}
             </Card>
           )}
 

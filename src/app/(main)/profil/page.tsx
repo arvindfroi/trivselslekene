@@ -4,7 +4,7 @@ import Link from "next/link";
 import { auth, signOut } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
-import { hentAlleSesongData, hentStilling } from "@/lib/stilling";
+
 import { bildeUrlFor } from "@/lib/bilde";
 import { slettOvelse } from "@/lib/actions/ovelser";
 import {
@@ -52,19 +52,13 @@ export default async function ProfilSide({
         fellesLek: true,
       },
     }),
-    hentAlleSesongData(sesong.id),
+    prisma.user.findMany({
+      select: { id: true, navn: true },
+      orderBy: { navn: "asc" },
+    }),
   ]);
-  const stilling = hentStilling(sesongData);
 
-  const stillingTopp = stilling.slice(0, 16).map((r) => ({
-    userId: r.userId,
-    navn: r.navn,
-  }));
-
-  const alleDeltagere = sesongData.brukere.map((b) => ({
-    userId: b.id,
-    navn: b.navn,
-  }));
+  const alleDeltagere = sesongData.map((u) => ({ userId: u.id, navn: u.navn }));
 
   async function loggUt() {
     "use server";
@@ -105,7 +99,7 @@ export default async function ProfilSide({
 
       <Card id="ny-ovelse" className="mt-6" padding="p-5 sm:p-6">
         <KollapsSeksjon tittel="Ny lek" startApen={ny === "1"}>
-          <NyOvelseForm stillingTopp={stillingTopp} alleDeltagere={alleDeltagere} />
+          <NyOvelseForm stillingTopp={alleDeltagere.slice(0, 16)} alleDeltagere={alleDeltagere} />
         </KollapsSeksjon>
       </Card>
 

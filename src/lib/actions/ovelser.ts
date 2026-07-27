@@ -9,6 +9,13 @@ import { sikreAktivSesong } from "@/lib/sesong";
 import type { Kvalitet, LagFormat, OvelseStatus, OvelseType } from "@prisma/client";
 import { ALLE_KVALITETER } from "@/lib/ovelseLabels";
 import { opprettTurnering } from "@/lib/actions/turnering";
+import {
+  analyserLagFormat,
+  fordelSpillere,
+  validerLagFormat,
+  type RankedSpiller,
+} from "@/lib/lagSeeding";
+import { hentStilling, type SesongData } from "@/lib/stilling";
 
 // ─── Zod-skjemaer ──────────────────────────────────────────────────────────
 
@@ -525,4 +532,124 @@ export async function beregnAutoPlassering(ovelseId: string) {
   revalidatePath(`/ovelser/${ovelseId}`);
   revalidatePath("/dashboard");
   revalidatePath("/stilling");
+}
+
+// ─── Auto-opprett lag ────────────────────────────────────────────────────
+
+export async function autoOpprettLag(ovelseId: string) {
+  const bruker = await krevVert(ovelseId);
+
+  // ─── Hent øvelsen med nødvendig info ─────────────────────────
+  const ovelse = await prisma.ovelse.findUnique({
+    where: { id: ovelseId },
+    select: {
+      id: true,
+      type: true,
+      lagFormat: true,
+      fellesLek: true,
+      sesongId: true,
+      vertId: true,
+    },
+  });
+
+  if (!ovelse || ovelse.type !== "LAG" || !ovelse.lagFormat) {
+    return { error: "Denne leken har ikke lagoppsett." };
+  }
+
+  // ─── Hent deltakere (alle brukere, minus vert med mindre fellesLek) ───
+  const brukere = await prisma.user.findMany({
+    where: ovelse.fellesLek ? {} : { id: { not: ovelse.vertId } },
+    select: { id: true, navn: true },
+    orderBy: { navn: "asc" },
+  });
+
+  const deltakerIder = brukere.map((b) => b.id);
+
+  // ─── Valider lagformatet ─────────────────────────────────────
+  const validering = validerLagFormat(ovelse.lagFormat, brukere.length);
+  if (!validering.ok) {
+    return { error: validering.feilmelding };
+  }
+
+  const { struktur } = validering;
+
+  // ─── Hent stilling for seeding ──────────────────────────────
+  const stilling = await hentStillingForSeeding(ovelse.sesongId, deltakerIder);
+
+  // Slå sammen stilling med alle deltakere (nye deltakere uten poeng får 0)
+  const ranked: RankedSpiller[] = brukere.map((b) => {
+    const s = stilling.find((s) => s.userId === b.id);
+    return { id: b.id, navn: b.navn, poeng: s?.poeng ?? 0 };
+  });
+
+  // ─── Fordel spillere på lag via snake draft ──────────────────
+  const lagene = fordelSpillere(ranked, struktur);
+
+  // ─── Opprett lag og legg til medlemmer i én transaksjon ─────
+  await prisma.$transaction(
+    lagene.map((lag) =>
+      prisma.lag.create({
+        data: {
+          navn: lag.navn,
+          ovelseId: ovelse.id,
+          medlemmer: {
+            create: lag.medlemmer.map((userId) => ({ userId })),
+          },
+        },
+      }),
+    ),
+  );
+
+  revalidatePath(`/ovelser/${ovelseId}`);
+  revalidatePath("/dashboard");
+  revalidatePath("/stilling");
+
+  return { ok: true, antallLag: lagene.length };
+}
+
+// ─── Lettvekts stilling-henting for seeding ───────────────────────────────
+
+type StillingForSeeding = { userId: string; navn: string; poeng: number };
+
+async function hentStillingForSeeding(
+  sesongId: string,
+  deltakerIder: string[],
+): Promise<StillingForSeeding[]> {
+  const brukere = await prisma.user.findMany({
+    where: { id: { in: deltakerIder } },
+    select: {
+      id: true,
+      navn: true,
+      individuelleResultater: {
+        where: { ovelse: { sesongId } },
+        select: { poeng: true },
+      },
+      lagmedlemskap: {
+        where: { lag: { ovelse: { sesongId } } },
+        select: {
+          lag: {
+            select: {
+              resultat: { select: { poeng: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  return brukere.map((b) => {
+    const individuellePoeng = b.individuelleResultater.reduce(
+      (sum, r) => sum + r.poeng,
+      0,
+    );
+    const lagPoeng = b.lagmedlemskap.reduce((sum, m) => {
+      return sum + (m.lag.resultat?.poeng ?? 0);
+    }, 0);
+
+    return {
+      userId: b.id,
+      navn: b.navn,
+      poeng: individuellePoeng + lagPoeng,
+    };
+  });
 }

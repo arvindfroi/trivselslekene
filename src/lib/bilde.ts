@@ -10,6 +10,8 @@
 
 export type MedBilde = { id: string; bildeUrl: string | null };
 
+const bildeUrlCache = new Map<string, string | null>();
+
 function fingeravtrykk(s: string): string {
   // djb2-variant som sampler strengen — rask nok for 500 kB base64,
   // og kollisjoner er uansett bare et cache-spørsmål.
@@ -25,8 +27,16 @@ export function bildeUrlFor(
   type: "bruker" | "ovelse" | "fase",
   rad: MedBilde,
 ): string | null {
-  if (!rad.bildeUrl) return null;
+  const cacheKey = `${type}:${rad.id}`;
+  const cached = bildeUrlCache.get(cacheKey);
+  if (cached !== undefined) return cached;
+
+  let result: string | null = null;
+  if (!rad.bildeUrl) result = null;
   // Allerede en ekte URL (f.eks. etter migrering til Vercel Blob)? Bruk den.
-  if (!rad.bildeUrl.startsWith("data:")) return rad.bildeUrl;
-  return `/api/bilde/${type}/${rad.id}?v=${fingeravtrykk(rad.bildeUrl)}`;
+  else if (!rad.bildeUrl.startsWith("data:")) result = rad.bildeUrl;
+  else result = `/api/bilde/${type}/${rad.id}?v=${fingeravtrykk(rad.bildeUrl)}`;
+
+  bildeUrlCache.set(cacheKey, result);
+  return result;
 }

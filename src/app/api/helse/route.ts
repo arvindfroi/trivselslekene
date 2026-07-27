@@ -5,6 +5,10 @@ import { prisma } from "@/lib/prisma";
  * kjører i, hvilken region Neon-databasen bor i (lest fra hostnavnet —
  * aldri credentials), om tilkoblingen er pooled, og målt DB-latens.
  *
+ * Returnerer også `lastModified` — siste endringstidspunkt i aktiv sesong
+ * (MAX av fullfortTid og createdAt fra Ovelse). Brukes av LiveRefresh for
+ * å unngå unødvendige RSC-re-renders når data ikke har endret seg.
+ *
  * Bruk: åpne /api/helse på den deployede appen. Hvis `vercelRegion` og
  * `neonRegion` ikke matcher, commit en vercel.json med riktig region:
  *   { "regions": ["fra1"] }   // fra1 = Frankfurt ↔ Neon aws-eu-central-1
@@ -30,12 +34,29 @@ export async function GET() {
   const t0 = Date.now();
   let kaldMs: number | null = null;
   let varmMs: number | null = null;
+  let lastModified: number | null = null;
   try {
     await prisma.$queryRaw`SELECT 1`;
     kaldMs = Date.now() - t0;
     const t1 = Date.now();
     await prisma.$queryRaw`SELECT 1`;
     varmMs = Date.now() - t1;
+
+    // Hent siste endringstidspunkt fra aktiv sesong — brukes av
+    // LiveRefresh for å unngå unødvendige RSC-re-renders.
+    const aar = new Date().getFullYear();
+    const sesong = await prisma.sesong.findUnique({ where: { aar } });
+    if (sesong) {
+      const ovelseMax = await prisma.ovelse.aggregate({
+        where: { sesongId: sesong.id },
+        _max: { fullfortTid: true, createdAt: true },
+      });
+      const fullfort = ovelseMax._max.fullfortTid?.getTime();
+      const opprettet = ovelseMax._max.createdAt?.getTime();
+      if (fullfort || opprettet) {
+        lastModified = Math.max(fullfort ?? 0, opprettet ?? 0);
+      }
+    }
   } catch {
     // databasen svarer ikke — feltene forblir null
   }
@@ -48,6 +69,7 @@ export async function GET() {
       dbFoersteSpoerring_ms: kaldMs,
       dbVarmSpoerring_ms: varmMs,
       tidspunkt: new Date().toISOString(),
+      lastModified,
     },
     { headers: { "Cache-Control": "no-store" } },
   );
