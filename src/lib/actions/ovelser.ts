@@ -535,7 +535,7 @@ export async function beregnAutoPlassering(ovelseId: string) {
 // ─── Auto-opprett lag ────────────────────────────────────────────────────
 
 export async function autoOpprettLag(ovelseId: string) {
-  const bruker = await krevVert(ovelseId);
+  await krevVert(ovelseId);
 
   // ─── Hent øvelsen med nødvendig info ─────────────────────────
   const ovelse = await prisma.ovelse.findUnique({

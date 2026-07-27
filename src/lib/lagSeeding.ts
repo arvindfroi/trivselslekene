@@ -103,7 +103,7 @@ export function analyserLagFormat(
 
     default: {
       // Type-sikkerhet: skal ikke skje, men håndterer ukjente formater
-      const _exhaustive: never = format;
+      void (format as never);
       return null;
     }
   }

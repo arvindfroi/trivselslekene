@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from "react";
 import { autoOpprettLag } from "@/lib/actions/ovelser";
-import SubmitButton from "@/components/ui/SubmitButton";
 
 type Props = {
   ovelseId: string;
