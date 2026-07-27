@@ -13,7 +13,6 @@ import {
 import { sikreAktivSesong } from "@/lib/sesong";
 import { opprettOvelseIDb } from "@/lib/actions/ovelser";
 import { opprettTurneringData } from "@/lib/actions/turnering";
-import { opprettLagkampData } from "@/lib/actions/fotballkamp";
 
 const NAVN_COOKIE = "onboarding_navn";
 const NAVNEDATA_COOKIE = "onboarding_navnedata";
@@ -53,7 +52,7 @@ export type OnboardingData = {
   navn: string;
   fornavn?: string;
   etternavn?: string;
-  opprettType: "ovelse" | "lagkamp" | "turnering";
+  opprettType: "ovelse" | "turnering";
   lekNavn: string;
   // Øvelse-felter
   type?: OvelseType;
@@ -66,9 +65,6 @@ export type OnboardingData = {
   // Felles
   lokasjon: string;
   beskrivelse: string;
-  // Lagkamp
-  antallLagkampDeltakere?: number;
-  antallLag?: number;
   // Turnering
   antallTurneringDeltagere?: number;
   turneringSeeds?: { seed: number; userId: string }[];
@@ -110,21 +106,6 @@ export async function fullforOnboarding(data: OnboardingData) {
       deltagerIder,
     });
     redirectTo = "/turnering";
-  } else if (data.opprettType === "lagkamp") {
-    const antallDeltakere = data.antallLagkampDeltakere ?? 4;
-    const antallLag = data.antallLag ?? 2;
-
-    const resultat = await opprettLagkampData({
-      navn: lekNavn,
-      lokasjon: data.lokasjon.trim() || null,
-      antallDeltakere,
-      antallLag,
-      sesongId: sesong.id,
-      vertId: user.id,
-    });
-
-    if ("error" in resultat) return { feil: resultat.error };
-    redirectTo = `/ovelser/${resultat.ovelseId}`;
   } else {
     // Vanlig øvelse
     await opprettOvelseIDb({

@@ -55,7 +55,7 @@ type Props = {
   alleDeltagere: Deltager[];
 };
 
-type OpprettType = "ovelse" | "lagkamp" | "turnering";
+type OpprettType = "ovelse" | "turnering";
 
 type LokalFase = {
   id: number; // lokal ID for React keys
@@ -194,9 +194,7 @@ export default function NyOvelseForm({ stillingTopp, alleDeltagere }: Props) {
           placeholder={
             opprettType === "turnering"
               ? "F.eks. Trivselslekene Cup 2026"
-              : opprettType === "lagkamp"
-                ? "F.eks. Lagkamp runde 1"
-                : "F.eks. Stikkball, Bridge-turnering, Sekkeløp"
+              : "F.eks. Stikkball, Bridge-turnering, Sekkeløp"
           }
         />
       </div>
@@ -207,11 +205,7 @@ export default function NyOvelseForm({ stillingTopp, alleDeltagere }: Props) {
         <Input
           id="lokasjon"
           name="lokasjon"
-          placeholder={
-            opprettType === "lagkamp"
-              ? "F.eks. kunstgressbanen"
-              : "F.eks. i hagen"
-          }
+          placeholder="F.eks. i hagen"
         />
       </div>
 
@@ -224,7 +218,6 @@ export default function NyOvelseForm({ stillingTopp, alleDeltagere }: Props) {
           {(
             [
               { value: "ovelse", label: "Øvelse" },
-              { value: "lagkamp", label: "Lagkamp" },
               { value: "turnering", label: "Turnering" },
             ] as const
           ).map(({ value, label }) => (
@@ -517,35 +510,6 @@ export default function NyOvelseForm({ stillingTopp, alleDeltagere }: Props) {
         </>
       )}
 
-      {/* ─── Lagkamp-spesifikke felter ─── */}
-      {opprettType === "lagkamp" && (
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="antallDeltakere">Antall deltakere</Label>
-            <Input
-              id="antallDeltakere"
-              name="antallDeltakere"
-              type="number"
-              min={2}
-              required
-              placeholder="F.eks. 9"
-            />
-          </div>
-          <div>
-            <Label htmlFor="antallLag">Antall lag</Label>
-            <Input
-              id="antallLag"
-              name="antallLag"
-              type="number"
-              min={2}
-              max={10}
-              required
-              placeholder="F.eks. 2"
-            />
-          </div>
-        </div>
-      )}
-
       {/* ─── Turnering-spesifikke felter ─── */}
       {opprettType === "turnering" && (
         <div>
@@ -620,9 +584,7 @@ export default function NyOvelseForm({ stillingTopp, alleDeltagere }: Props) {
           ? "Oppretter…"
           : opprettType === "turnering"
             ? "Opprett turnering"
-            : opprettType === "lagkamp"
-              ? "Opprett lagkamp"
-              : "Opprett lek"}
+            : "Opprett lek"}
       </Button>
     </form>
   );

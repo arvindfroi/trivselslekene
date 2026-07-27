@@ -65,7 +65,7 @@ export default async function FotballKampSide() {
 
           {kamper.length === 0 ? (
             <p className="text-sm text-fg-dim">
-              Ingen lagkamper er opprettet ennå. Gå til{" "}
+              Ingen lagleker er opprettet ennå. Gå til{" "}
               <a href="/profil?ny=1#ny-ovelse" className="text-accent-2 underline">Profil</a> for
               å opprette en.
             </p>

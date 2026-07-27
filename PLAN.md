@@ -154,7 +154,7 @@ prosjektet — ikke bytt den. Tre prinsipper å holde fast ved:
    Resultatregistrering er neste kandidat hvis den fortsatt føles treg
    etter infra-fiksene.
 
-Småting: `opprettTurnering` og `opprettLagkamp` bør pakke flerstegsskriving
+Småting: `opprettTurnering` bør pakke flerstegsskriving
 i `prisma.$transaction` så en halvferdig turnering ikke kan oppstå ved feil
 midtveis. Og legg til `@@index([sesongId])` på `Ovelse` — listespørringene
 filtrerer alltid på den.

@@ -60,7 +60,7 @@ type Deltager = {
   navn: string;
 };
 
-type OpprettType = "ovelse" | "lagkamp" | "turnering";
+type OpprettType = "ovelse" | "turnering";
 
 type Data = {
   opprettType: OpprettType;
@@ -74,9 +74,6 @@ type Data = {
   bildeUrl: string | null;
   faser: LokalFase[];
   deltagere: string[];
-  // Lagkamp
-  antallLagkampDeltakere: number;
-  antallLag: number;
   // Turnering
   antallTurneringDeltagere: number;
   turneringSeeds: { seed: number; userId: string }[];
@@ -94,8 +91,6 @@ const start: Data = {
   bildeUrl: null,
   faser: [],
   deltagere: [],
-  antallLagkampDeltakere: 4,
-  antallLag: 2,
   antallTurneringDeltagere: 8,
   turneringSeeds: [],
 };
@@ -104,7 +99,6 @@ const start: Data = {
 function stegForType(type: OpprettType): readonly string[] {
   const felles = ["lekNavn", "typevelger"];
   if (type === "turnering") return [...felles, "turneringOppsett", "lokasjon", "beskrivelse", "oppsummering"];
-  if (type === "lagkamp") return [...felles, "lagkampOppsett", "lokasjon", "beskrivelse", "oppsummering"];
   return [...felles, "spillemaate", "kvaliteter", "lokasjon", "beskrivelse", "bilde", "faser", "deltagere", "oppsummering"];
 }
 
@@ -268,8 +262,6 @@ export default function Onboarding({
         bildeUrl: data.bildeUrl,
         faser: data.faser.map((f) => ({ tittel: f.tittel, bildeUrl: f.bildeUrl })),
         deltagere: data.deltagere,
-        antallLagkampDeltakere: data.antallLagkampDeltakere,
-        antallLag: data.antallLag,
         antallTurneringDeltagere: data.antallTurneringDeltagere,
         turneringSeeds: data.turneringSeeds,
       });
@@ -467,7 +459,7 @@ export default function Onboarding({
                 steg={filledSegments}
                 total={total}
                 tittel="Hva vil du opprette?"
-                tekst="Du kan lage en vanlig øvelse, en lagkamp eller en turnering."
+                tekst="Du kan lage en vanlig øvelse eller en turnering."
               >
                 <div className="grid grid-cols-1 gap-3">
                   <ChoiceCard
@@ -475,12 +467,6 @@ export default function Onboarding({
                     onClick={() => oppdater({ opprettType: "ovelse" })}
                     tittel="Øvelse"
                     tekst="En enkelt lek — individuell eller lag"
-                  />
-                  <ChoiceCard
-                    valgt={data.opprettType === "lagkamp"}
-                    onClick={() => oppdater({ opprettType: "lagkamp" })}
-                    tittel="Lagkamp"
-                    tekst="Automatisk lagoppsett fra stillingen"
                   />
                   <ChoiceCard
                     valgt={data.opprettType === "turnering"}
@@ -990,48 +976,6 @@ export default function Onboarding({
               </StepShell>
             )}
 
-            {/* ─── Lagkamp-oppsett ────────────────────────────────────── */}
-            {key === "lagkampOppsett" && (
-              <StepShell
-                steg={filledSegments}
-                total={total}
-                tittel="Sett opp lagkampen"
-                tekst="Velg antall deltakere og lag. Spillerne fordeles automatisk fra stillingen."
-              >
-                <div>
-                  <Label>Antall deltakere</Label>
-                  <Input
-                    type="number"
-                    min={2}
-                    value={String(data.antallLagkampDeltakere)}
-                    onChange={(e) => {
-                      const v = parseInt(e.target.value, 10);
-                      if (!isNaN(v) && v >= 2) oppdater({ antallLagkampDeltakere: v });
-                    }}
-                    className="w-24"
-                  />
-                </div>
-                <div>
-                  <Label>Antall lag</Label>
-                  <Input
-                    type="number"
-                    min={2}
-                    max={10}
-                    value={String(data.antallLag)}
-                    onChange={(e) => {
-                      const v = parseInt(e.target.value, 10);
-                      if (!isNaN(v) && v >= 2 && v <= 10) oppdater({ antallLag: v });
-                    }}
-                    className="w-24"
-                  />
-                </div>
-                <p className="text-xs text-fg-faint">
-                  Topp {data.antallLagkampDeltakere} fra stillingen fordeles på {data.antallLag} lag.
-                </p>
-                <NavRad tilbake={tilbake} neste={neste} nesteAktiv />
-              </StepShell>
-            )}
-
             {key === "oppsummering" && (
               <div>
                 <p className="text-xs tracking-[0.3em] text-fg-faint uppercase">
@@ -1055,14 +999,6 @@ export default function Onboarding({
                       <Rad
                         merke="Deltagere"
                         verdi={`${data.antallTurneringDeltagere} seeds`}
-                      />
-                    </>
-                  ) : data.opprettType === "lagkamp" ? (
-                    <>
-                      <Rad merke="Type" verdi="Lagkamp" />
-                      <Rad
-                        merke="Oppsett"
-                        verdi={`${data.antallLagkampDeltakere} deltakere, ${data.antallLag} lag`}
                       />
                     </>
                   ) : (

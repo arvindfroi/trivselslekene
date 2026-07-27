@@ -8,7 +8,6 @@ import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
 import type { Kvalitet, LagFormat, OvelseStatus, OvelseType } from "@prisma/client";
 import { ALLE_KVALITETER } from "@/lib/ovelseLabels";
-import { opprettLagkamp } from "@/lib/actions/fotballkamp";
 import { opprettTurnering } from "@/lib/actions/turnering";
 
 // ─── Zod-skjemaer ──────────────────────────────────────────────────────────
@@ -116,18 +115,6 @@ export async function opprettOvelse(
   if (opprettType === "turnering") {
     // Delegér til turnering.ts — den håndterer auth og redirect
     return opprettTurnering(formData);
-  }
-
-  // ─── Lagkamp ──────────────────────────────────────────────────
-  if (opprettType === "lagkamp") {
-    const resultat = await opprettLagkamp(prev, formData);
-    if ("error" in resultat && resultat.error) {
-      return resultat;
-    }
-    if ("ovelseId" in resultat && resultat.ovelseId) {
-      redirect(`/ovelser/${resultat.ovelseId}`);
-    }
-    return { error: "Ukjent feil ved opprettelse av lagkamp" };
   }
 
   const bruker = await krevInnloggetBruker();
