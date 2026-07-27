@@ -116,7 +116,7 @@ export default function DeltakerProfilModal({
 
   return (
     <div
-      className="animate-fade-up fixed inset-0 z-[100] flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4"
+      className="animate-fade-up fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 pb-[calc(4rem+env(safe-area-inset-bottom,0px))] sm:pb-4"
       onClick={onClose}
     >
       <div
@@ -133,7 +133,7 @@ export default function DeltakerProfilModal({
               navn={navn}
               bildeUrl={bildeUrl}
               farge={farge}
-              size={56}
+              size={96}
             />
             <div>
               <p className="font-display text-lg text-fg">{navn}</p>
