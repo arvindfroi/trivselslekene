@@ -35,6 +35,7 @@ export async function GET() {
   let kaldMs: number | null = null;
   let varmMs: number | null = null;
   let lastModified: number | null = null;
+  let eksisterende: string[] = [];
   try {
     // Bruk DIREKTE tilkobling for DDL — PgBouncer støtter ikke ALTER TABLE
     const { PrismaClient } = await import("@prisma/client");
@@ -46,6 +47,12 @@ export async function GET() {
       `ALTER TABLE "Turnering" ADD COLUMN IF NOT EXISTS "girPoeng" BOOLEAN NOT NULL DEFAULT true`
     );
     await direkte.$disconnect();
+
+    // Verifiser at kolonnene faktisk eksisterer
+    const kolonneSjekk = await prisma.$queryRawUnsafe<{ column_name: string }[]>(
+      `SELECT column_name FROM information_schema.columns WHERE table_name = 'User' AND column_name = 'gjesteDeltaker' UNION ALL SELECT column_name FROM information_schema.columns WHERE table_name = 'Turnering' AND column_name = 'girPoeng'`
+    );
+    eksisterende = kolonneSjekk.map((r: { column_name: string }) => r.column_name);
 
     await prisma.$queryRaw`SELECT 1`;
     kaldMs = Date.now() - t0;
@@ -81,6 +88,7 @@ export async function GET() {
       dbVarmSpoerring_ms: varmMs,
       tidspunkt: new Date().toISOString(),
       lastModified,
+      kolonner: eksisterende,
     },
     { headers: { "Cache-Control": "no-store" } },
   );
