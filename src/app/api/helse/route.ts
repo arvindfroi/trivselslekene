@@ -36,13 +36,16 @@ export async function GET() {
   let varmMs: number | null = null;
   let lastModified: number | null = null;
   try {
-    // Midlertidig: sikre at manglende kolonner eksisterer
-    await prisma.$executeRawUnsafe(
+    // Bruk DIREKTE tilkobling for DDL — PgBouncer støtter ikke ALTER TABLE
+    const { PrismaClient } = await import("@prisma/client");
+    const direkte = new PrismaClient();
+    await direkte.$executeRawUnsafe(
       `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "gjesteDeltaker" BOOLEAN NOT NULL DEFAULT false`
     );
-    await prisma.$executeRawUnsafe(
+    await direkte.$executeRawUnsafe(
       `ALTER TABLE "Turnering" ADD COLUMN IF NOT EXISTS "girPoeng" BOOLEAN NOT NULL DEFAULT true`
     );
+    await direkte.$disconnect();
 
     await prisma.$queryRaw`SELECT 1`;
     kaldMs = Date.now() - t0;
