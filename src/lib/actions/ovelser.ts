@@ -508,9 +508,11 @@ export async function beregnAutoPlassering(ovelseId: string) {
     }
   });
 
-  // Utslåtte får bunnplasseringer (totalt, totalt-1, totalt-2, ...)
+  // Utslåtte får bunnplasseringer: først utslått = dårligst plass,
+  // sist utslått = best plass blant de utslåtte.
+  // utslaatte er sortert synkende på fase (sist utslått først).
   utslaatte.forEach((r, i) => {
-    const plass = totalt - i;
+    const plass = overlevende.length + i + 1;
     if (r.plassering !== plass) {
       oppdateringer.push({ id: r.id, plassering: plass });
     }
