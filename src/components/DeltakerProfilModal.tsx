@@ -91,7 +91,6 @@ export default function DeltakerProfilModal({
 
   const lastInfo = useCallback(async () => {
     try {
-      setFeil(null);
       const { hentDeltakerInfo } = await import("@/lib/actions/deltaker");
       const data = await hentDeltakerInfo(userId);
       setInfo(data);
@@ -101,6 +100,7 @@ export default function DeltakerProfilModal({
   }, [userId]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-effekt med async data
     lastInfo();
   }, [lastInfo]);
 

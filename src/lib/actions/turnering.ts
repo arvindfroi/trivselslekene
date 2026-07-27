@@ -470,51 +470,9 @@ export async function velgVinner(kampId: string, vinnerDeltagerId: string) {
   revalidatePath("/ovelser");
 }
 
-async function plasserDeltager(
-  turneringId: string,
-  target: AdvanceTarget,
-  deltagerId: string,
-) {
-  const kamp = await prisma.turneringsKamp.findFirst({
-    where: {
-      turneringId,
-      bracket: target.bracket,
-      runde: target.runde,
-      posisjon: target.posisjon,
-    },
-    select: { id: true, deltager1Id: true, deltager2Id: true },
-  });
-
-  if (!kamp) return;
-
-  const erDeltager1 = target.somDeltager === 1;
-  const eksisterende = erDeltager1 ? kamp.deltager1Id : kamp.deltager2Id;
-
-  // Aldri overskriv en annen deltager — beskytt mot race conditions og logiske feil
-  if (eksisterende && eksisterende !== deltagerId) {
-    console.error(
-      `[plasserDeltager] KONFLIKT: Prøvde å plassere ${deltagerId} i ${target.bracket}-${target.runde}-${target.posisjon} som D${target.somDeltager}, men ${eksisterende} er allerede der. Hopper over.`,
-    );
-    return;
-  }
-
-  // Idempotent: hvis samme deltager allerede er plassert, ikke gjør noe
-  if (eksisterende === deltagerId) return;
-
-  const annenErSatt = erDeltager1 ? !!kamp.deltager2Id : !!kamp.deltager1Id;
-
-  await prisma.turneringsKamp.update({
-    where: { id: kamp.id },
-    data: {
-      [erDeltager1 ? "deltager1Id" : "deltager2Id"]: deltagerId,
-      status: annenErSatt ? "KLAR" : "VENTER",
-    },
-  });
-}
-
 /**
- * Batch-versjon av plasserDeltager — henter alle mål-kamper i én query,
- * sjekker konflikter i minnet, og utfører alle oppdateringer i én transaksjon.
+ * Utfører alle plasseringer i én transaksjon: henter alle mål-kamper i én query,
+ * sjekker konflikter i minnet, og utfører alle oppdateringer samlet.
  */
 async function batchPlasserDeltagere(
   turneringId: string,

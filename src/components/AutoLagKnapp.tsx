@@ -4,7 +4,7 @@ import { useState, useEffect, useTransition } from "react";
 import { autoOpprettLag, forhandsvisLag } from "@/lib/actions/ovelser";
 import type { ForhandsvisLagResultat } from "@/lib/actions/ovelser";
 import { KlikkbarDeltaker } from "@/components/DeltakerProfilModal";
-import { Users, AlertTriangle, Check, Wand2 } from "lucide-react";
+import { Users, AlertTriangle, Wand2 } from "lucide-react";
 
 type Props = {
   ovelseId: string;
@@ -15,16 +15,14 @@ export default function AutoLagKnapp({ ovelseId }: Props) {
   const [feilmelding, setFeilmelding] = useState<string | null>(null);
   const [suksess, setSuksess] = useState<string | null>(null);
   const [forhandsvisning, setForhandsvisning] = useState<ForhandsvisLagResultat | null>(null);
-  const [lasterForhandsvisning, setLasterForhandsvisning] = useState(false);
+  const [lasterForhandsvisning, setLasterForhandsvisning] = useState(true);
   const [opprettet, setOpprettet] = useState(false);
 
-  // Hent forhåndsvisning automatisk (debounced)
+  // Hent forhåndsvisning automatisk
   useEffect(() => {
     if (opprettet) return;
 
     let avbrutt = false;
-    setLasterForhandsvisning(true);
-    setFeilmelding(null);
 
     forhandsvisLag(ovelseId).then((resultat) => {
       if (avbrutt) return;
