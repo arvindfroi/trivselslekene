@@ -137,26 +137,30 @@ export function fordelSpillere(
   // Beregn faktiske lagstørrelser (løs opp null-verdier for variable formater)
   const lagStorrelser = losLagStorrelser(struktur.spillerePerLag, sorterte.length);
 
-  // Sjekk at vi har nok spillere
   const totaltBehov = lagStorrelser.reduce((sum, s) => sum + s, 0);
+
+  // For få spillere: fordel alle så godt det lar seg gjøre
   if (sorterte.length < totaltBehov) {
-    // Ikke nok spillere — fordel alle så godt det lar seg gjøre
-    // Bruk en enkel round-robin i stedet
     return fordelEnkel(sorterte, antallLag, lagnavn);
   }
+
+  // For faste formater med for mange spillere: kap til totaltBehov så loopen
+  // ikke spinner evig på fulle lag. Variable formater (der lagStorrelser
+  // allerede fordeler alle) påvirkes ikke av cappingen.
+  const spillereTilFordeling = sorterte.slice(0, totaltBehov);
 
   // Snake-draft algoritme
   let spillerIndeks = 0;
   let retning = 1; // 1 = fremover (0→N-1), -1 = bakover (N-1→0)
   let lagIndeks = 0;
 
-  while (spillerIndeks < sorterte.length) {
+  while (spillerIndeks < spillereTilFordeling.length) {
     const laget = lag[lagIndeks];
     const maxStorrelse = lagStorrelser[lagIndeks];
 
     // Hopp over lag som allerede er fulle
     if (laget.medlemmer.length < maxStorrelse) {
-      laget.medlemmer.push(sorterte[spillerIndeks].id);
+      laget.medlemmer.push(spillereTilFordeling[spillerIndeks].id);
       spillerIndeks++;
     }
 
@@ -246,7 +250,7 @@ function fordelEnkel(
 // ─── Validering ────────────────────────────────────────────────
 
 export type ValideringsResultat =
-  | { ok: true; struktur: LagStruktur; minDeltakere: number }
+  | { ok: true; struktur: LagStruktur; minDeltakere: number; advarsel?: string }
   | { ok: false; feilmelding: string };
 
 /**
@@ -290,5 +294,13 @@ export function validerLagFormat(
     };
   }
 
-  return { ok: true, struktur, minDeltakere };
+  // Sjekk om det er faste formater med overskytende spillere
+  const harFasteStorrelser = struktur.spillerePerLag.every((s) => s !== null);
+  const overskytende = antallDeltakere - minDeltakere;
+  const advarsel =
+    harFasteStorrelser && overskytende > 0
+      ? `${overskytende} deltaker${overskytende === 1 ? "" : "e"} blir ikke plassert (${antallDeltakere} tilgjengelige, ${minDeltakere} plasser).`
+      : undefined;
+
+  return { ok: true, struktur, minDeltakere, advarsel };
 }

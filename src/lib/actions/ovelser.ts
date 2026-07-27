@@ -572,7 +572,7 @@ export async function autoOpprettLag(ovelseId: string) {
     return { error: validering.feilmelding };
   }
 
-  const { struktur } = validering;
+  const { struktur, advarsel } = validering;
 
   // ─── Hent stilling for seeding ──────────────────────────────
   const stilling = await hentStillingForSeeding(ovelse.sesongId, deltakerIder);
@@ -605,7 +605,91 @@ export async function autoOpprettLag(ovelseId: string) {
   revalidatePath("/dashboard");
   revalidatePath("/stilling");
 
-  return { ok: true, antallLag: lagene.length };
+  return { ok: true, antallLag: lagene.length, advarsel };
+}
+
+// ─── Forhåndsvis lag ─────────────────────────────────────────────────────
+
+export type ForhandsvisLagResultat =
+  | {
+      ok: true;
+      lag: { navn: string; medlemmer: { id: string; navn: string; poeng: number }[] }[];
+      overskytende: { id: string; navn: string; poeng: number }[];
+      advarsel?: string;
+    }
+  | { ok: false; error: string };
+
+/**
+ * Viser hvordan lagene blir satt sammen før man oppretter dem.
+ * Samme seeding-logikk som autoOpprettLag, men uten å skrive til databasen.
+ */
+export async function forhandsvisLag(
+  ovelseId: string,
+): Promise<ForhandsvisLagResultat> {
+  await krevVert(ovelseId);
+
+  const ovelse = await prisma.ovelse.findUnique({
+    where: { id: ovelseId },
+    select: {
+      id: true,
+      type: true,
+      lagFormat: true,
+      fellesLek: true,
+      sesongId: true,
+      vertId: true,
+    },
+  });
+
+  if (!ovelse || ovelse.type !== "LAG" || !ovelse.lagFormat) {
+    return { ok: false, error: "Denne leken har ikke lagoppsett." };
+  }
+
+  const brukere = await prisma.user.findMany({
+    where: {
+      gjesteDeltaker: false,
+      ...(ovelse.fellesLek ? {} : { id: { not: ovelse.vertId } }),
+    },
+    select: { id: true, navn: true },
+    orderBy: { navn: "asc" },
+  });
+
+  const validering = validerLagFormat(ovelse.lagFormat, brukere.length);
+  if (!validering.ok) {
+    return { ok: false, error: validering.feilmelding };
+  }
+
+  const { struktur, advarsel } = validering;
+
+  const stilling = await hentStillingForSeeding(
+    ovelse.sesongId,
+    brukere.map((b) => b.id),
+  );
+
+  const ranked: RankedSpiller[] = brukere.map((b) => {
+    const s = stilling.find((st) => st.userId === b.id);
+    return { id: b.id, navn: b.navn, poeng: s?.poeng ?? 0 };
+  });
+
+  const lagene = fordelSpillere(ranked, struktur);
+
+  // Finn hvilke spillere som ble plassert
+  const plasserteIder = new Set(lagene.flatMap((l) => l.medlemmer));
+  const overskytende = ranked
+    .filter((s) => !plasserteIder.has(s.id))
+    .map((s) => ({ id: s.id, navn: s.navn, poeng: s.poeng }));
+
+  return {
+    ok: true,
+    lag: lagene.map((l) => ({
+      navn: l.navn,
+      medlemmer: l.medlemmer.map((userId) => {
+        const spiller = ranked.find((s) => s.id === userId)!;
+        return { id: spiller.id, navn: spiller.navn, poeng: spiller.poeng };
+      }),
+    })),
+    overskytende,
+    advarsel,
+  };
 }
 
 // ─── Lettvekts stilling-henting for seeding ───────────────────────────────
