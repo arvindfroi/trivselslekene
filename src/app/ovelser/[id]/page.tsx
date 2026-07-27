@@ -20,6 +20,7 @@ import ElimineringsPanel from "@/components/ElimineringsPanel";
 import LiveRefresh from "@/components/LiveRefresh";
 import RankingRedigering from "@/components/RankingRedigering";
 import LagResultatAutoLagre from "@/components/LagResultatAutoLagre";
+import { KlikkbarDeltaker } from "@/components/DeltakerProfilModal";
 import Card from "@/components/ui/Card";
 import { LinkButton } from "@/components/ui/Button";
 import SubmitButton from "@/components/ui/SubmitButton";
@@ -301,17 +302,22 @@ export default async function OvelseSide({
                         : ""
                     }`}
                   >
-                    <span className={`text-sm ${r.utgattFase ? "text-fg-faint line-through" : "text-fg"}`}>
-                      <span className="mr-2 tabular-nums text-fg-faint">
-                        {r.plassering ? `${r.plassering}.` : "–"}
-                      </span>
-                      {r.user.navn}
-                      {r.utgattFase && (
-                        <span className="ml-1.5 text-xs text-fg-faint">
-                          (ut i fase {r.utgattFase})
+                    <KlikkbarDeltaker
+                      userId={r.user.id}
+                      navn={r.user.navn}
+                    >
+                      <span className={`text-sm ${r.utgattFase ? "text-fg-faint line-through" : "text-fg"}`}>
+                        <span className="mr-2 tabular-nums text-fg-faint">
+                          {r.plassering ? `${r.plassering}.` : "–"}
                         </span>
-                      )}
-                    </span>
+                        {r.user.navn}
+                        {r.utgattFase && (
+                          <span className="ml-1.5 text-xs text-fg-faint">
+                            (ut i fase {r.utgattFase})
+                          </span>
+                        )}
+                      </span>
+                    </KlikkbarDeltaker>
                     <span className="flex items-center gap-2 text-sm tabular-nums">
                       <span className="text-fg">{r.poeng} p</span>
                       {r.bonusPoeng > 0 && (
@@ -389,7 +395,12 @@ export default async function OvelseSide({
                       key={m.id}
                       className="flex items-center gap-1.5 rounded-full border border-line bg-white/[0.05] px-3 py-1 text-sm text-fg"
                     >
-                      {m.user.navn}
+                      <KlikkbarDeltaker
+                        userId={m.user.id}
+                        navn={m.user.navn}
+                      >
+                        {m.user.navn}
+                      </KlikkbarDeltaker>
                       {erVert && !laast && (
                         <form action={fjernMedlemAction}>
                           <input type="hidden" name="lagmedlemId" value={m.id} />

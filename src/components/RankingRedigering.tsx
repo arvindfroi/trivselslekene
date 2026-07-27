@@ -8,6 +8,7 @@ import { lagreResultaterIndividuellMasse } from "@/lib/actions/ovelser";
 import type { OvelseStatus } from "@prisma/client";
 import { autoLagreTekst, useAutoLagre } from "@/lib/useAutoLagre";
 import { STANDARD_POENG, beregnPlasseringer, standardPoengFor } from "@/lib/rangering";
+import { KlikkbarDeltaker } from "@/components/DeltakerProfilModal";
 
 interface DeltakerRad {
   key: string;
@@ -246,9 +247,15 @@ export default function RankingRedigering({
                 </span>
 
                 {/* Navn */}
-                <span className="flex-1 min-w-0 text-sm text-fg truncate">
-                  {rad.navn}
-                </span>
+                <KlikkbarDeltaker
+                  userId={rad.userId}
+                  navn={rad.navn}
+                  className="flex-1 min-w-0"
+                >
+                  <span className="text-sm text-fg truncate">
+                    {rad.navn}
+                  </span>
+                </KlikkbarDeltaker>
 
                 {/* Standard poeng (auto) */}
                 <div className="shrink-0 w-12 text-right">

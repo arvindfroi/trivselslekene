@@ -3,6 +3,7 @@
 import { useTransition } from "react";
 import { X, Undo2 } from "lucide-react";
 import { eliminerDeltaker, angreEliminering } from "@/lib/actions/ovelser";
+import { KlikkbarDeltaker } from "@/components/DeltakerProfilModal";
 
 interface DeltakerMedStatus {
   userId: string;
@@ -73,7 +74,12 @@ export default function ElimineringsPanel({
               key={d.userId}
               className="flex items-center justify-between gap-3 border-b border-line py-2.5 last:border-b-0"
             >
-              <span className="text-sm text-fg">{d.navn}</span>
+              <KlikkbarDeltaker
+                userId={d.userId}
+                navn={d.navn}
+              >
+                <span className="text-sm text-fg">{d.navn}</span>
+              </KlikkbarDeltaker>
               <button
                 type="button"
                 onClick={() => handleEliminer(d.userId)}
@@ -108,7 +114,12 @@ export default function ElimineringsPanel({
                 className="flex items-center justify-between gap-3 py-2"
               >
                 <span className="flex items-center gap-2 text-sm">
-                  <span className="text-fg-faint line-through">{d.navn}</span>
+                  <KlikkbarDeltaker
+                    userId={d.userId}
+                    navn={d.navn}
+                  >
+                    <span className="text-fg-faint line-through">{d.navn}</span>
+                  </KlikkbarDeltaker>
                   <span className="text-xs text-fg-faint">
                     (fase {d.utgattFase})
                   </span>

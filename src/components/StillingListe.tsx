@@ -6,6 +6,7 @@ import type { SpillerDetalj, StillingRad } from "@/lib/stilling";
 import { kvalitetIkon, kvalitetTekst } from "@/lib/ovelseLabels";
 import RankBadge from "@/components/ui/RankBadge";
 import Avatar from "@/components/Avatar";
+import { KlikkbarDeltaker } from "@/components/DeltakerProfilModal";
 import { cn } from "@/lib/utils";
 
 function MiniStat({ label, verdi }: { label: string; verdi: string }) {
@@ -57,7 +58,14 @@ export default function StillingListe({
               className="flex w-full items-center gap-3 px-4 py-3.5 text-left sm:px-5"
             >
               <RankBadge rank={i + 1} />
-              <Avatar navn={rad.navn} bildeUrl={rad.bildeUrl} farge={rad.farge} size={34} />
+              <KlikkbarDeltaker
+                userId={rad.userId}
+                navn={rad.navn}
+                bildeUrl={rad.bildeUrl}
+                farge={rad.farge}
+              >
+                <Avatar navn={rad.navn} bildeUrl={rad.bildeUrl} farge={rad.farge} size={34} />
+              </KlikkbarDeltaker>
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline justify-between gap-2">
                   <span className="truncate font-medium text-fg">

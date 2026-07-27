@@ -10,6 +10,7 @@ import { antallFyllCeller, BENTO_GRID, bentoSpenn } from "@/lib/bento";
 import { slettOvelse, nesteOvelseStatus } from "@/lib/actions/ovelser";
 import { slettTurnering } from "@/lib/actions/turnering";
 import Avatar from "@/components/Avatar";
+import { KlikkbarDeltaker } from "@/components/DeltakerProfilModal";
 import Badge from "@/components/ui/Badge";
 import SubmitButton from "@/components/ui/SubmitButton";
 import KvalitetChip from "@/components/KvalitetChip";
@@ -264,13 +265,16 @@ export default function OvelseGrid({
                   {s.deltakere.length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-2">
                       {s.deltakere.map((d) => (
-                        <span
+                        <KlikkbarDeltaker
                           key={d.id}
-                          className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white/[0.03] py-0.5 pr-2.5 pl-0.5 text-xs text-fg-dim"
+                          userId={d.id}
+                          navn={d.navn}
                         >
-                          <Avatar navn={d.navn} size={20} />
-                          {d.navn}
-                        </span>
+                          <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white/[0.03] py-0.5 pr-2.5 pl-0.5 text-xs text-fg-dim">
+                            <Avatar navn={d.navn} size={20} />
+                            {d.navn}
+                          </span>
+                        </KlikkbarDeltaker>
                       ))}
                     </div>
                   )}

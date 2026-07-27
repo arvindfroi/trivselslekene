@@ -9,6 +9,7 @@ import SubmitButton from "@/components/ui/SubmitButton";
 import Badge from "@/components/ui/Badge";
 import TurneringsBracket, { type TurneringMedData } from "@/components/TurneringsBracket";
 import Avatar from "@/components/Avatar";
+import { KlikkbarDeltaker } from "@/components/DeltakerProfilModal";
 import { Trophy, Trash2 } from "lucide-react";
 import LiveRefresh from "@/components/LiveRefresh";
 import { erAvslort, visLekNavn } from "@/lib/avsloring";
@@ -171,13 +172,17 @@ export default async function TurneringSide() {
                   {/* Deltagerliste */}
                   <div className="mb-4 flex flex-wrap gap-1.5">
                     {t.deltagere.map((d) => (
-                      <span
+                      <KlikkbarDeltaker
                         key={d.id}
-                        className="inline-flex items-center gap-1 rounded-full bg-white/[0.06] border border-line px-2.5 py-1 text-xs text-fg-dim"
+                        userId={d.user.id}
+                        navn={d.user.navn}
+                        bildeUrl={d.user.bildeUrl}
                       >
-                        <span className="font-mono text-fg-faint">#{d.seed}</span>
-                        <span>{d.user.navn}</span>
-                      </span>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-white/[0.06] border border-line px-2.5 py-1 text-xs text-fg-dim">
+                          <span className="font-mono text-fg-faint">#{d.seed}</span>
+                          <span>{d.user.navn}</span>
+                        </span>
+                      </KlikkbarDeltaker>
                     ))}
                   </div>
 
@@ -253,11 +258,17 @@ export default async function TurneringSide() {
                                       </td>
                                       <td className="py-2">
                                         <div className="flex items-center gap-2">
-                                          <Avatar
+                                          <KlikkbarDeltaker
+                                            userId={r.user.id}
                                             navn={r.user.navn}
                                             bildeUrl={r.user.bildeUrl}
-                                            size={22}
-                                          />
+                                          >
+                                            <Avatar
+                                              navn={r.user.navn}
+                                              bildeUrl={r.user.bildeUrl}
+                                              size={22}
+                                            />
+                                          </KlikkbarDeltaker>
                                           <span className="text-fg">{r.user.navn}</span>
                                         </div>
                                       </td>
@@ -278,11 +289,17 @@ export default async function TurneringSide() {
                                       </td>
                                       <td className="py-2">
                                         <div className="flex items-center gap-2">
-                                          <Avatar
+                                          <KlikkbarDeltaker
+                                            userId={ds.user.id}
                                             navn={ds.user.navn}
                                             bildeUrl={ds.user.bildeUrl}
-                                            size={22}
-                                          />
+                                          >
+                                            <Avatar
+                                              navn={ds.user.navn}
+                                              bildeUrl={ds.user.bildeUrl}
+                                              size={22}
+                                            />
+                                          </KlikkbarDeltaker>
                                           <span className={`text-fg ${ds.statusColor}`}>
                                             {ds.user.navn}
                                           </span>

@@ -9,6 +9,7 @@ import { LinkButton } from "@/components/ui/Button";
 import SubmitButton from "@/components/ui/SubmitButton";
 import Badge from "@/components/ui/Badge";
 import Avatar from "@/components/Avatar";
+import { KlikkbarDeltaker } from "@/components/DeltakerProfilModal";
 import { statusTekst, statusVariant } from "@/lib/ovelseLabels";
 import { MapPin, Swords, Trash2, Trophy } from "lucide-react";
 import LiveRefresh from "@/components/LiveRefresh";
@@ -161,7 +162,13 @@ export default async function FotballKampSide() {
                               <ul className="flex flex-col gap-1.5">
                                 {lag.medlemmer.map((m) => (
                                   <li key={m.id} className="flex items-center gap-2 text-sm text-fg">
-                                    <Avatar navn={m.user.navn} bildeUrl={bildeUrlFor("bruker", m.user)} size={24} />
+                                    <KlikkbarDeltaker
+                                      userId={m.user.id}
+                                      navn={m.user.navn}
+                                      bildeUrl={bildeUrlFor("bruker", m.user)}
+                                    >
+                                      <Avatar navn={m.user.navn} bildeUrl={bildeUrlFor("bruker", m.user)} size={24} />
+                                    </KlikkbarDeltaker>
                                     <span>{m.user.navn}</span>
                                     {erFerdig && lag.resultat && (
                                       <span className="ml-auto text-xs tabular-nums text-accent-2">
