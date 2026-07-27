@@ -381,17 +381,19 @@ export async function velgVinner(kampId: string, vinnerDeltagerId: string) {
   const taperId =
     vinnerDeltagerId === kamp.deltager1Id ? kamp.deltager2Id : kamp.deltager1Id;
 
-  await prisma.turneringsKamp.update({
-    where: { id: kampId },
-    data: { vinnerId: vinnerDeltagerId, status: "FULLFORT" },
-  });
-
-  if (kamp.turnering.status === "PLANLAGT") {
-    await prisma.turnering.update({
-      where: { id: kamp.turnering.id },
-      data: { status: "PAAGAAR" },
-    });
-  }
+  // Kjør kamp-oppdatering og status-endring parallelt
+  await Promise.all([
+    prisma.turneringsKamp.update({
+      where: { id: kampId },
+      data: { vinnerId: vinnerDeltagerId, status: "FULLFORT" },
+    }),
+    kamp.turnering.status === "PLANLAGT"
+      ? prisma.turnering.update({
+          where: { id: kamp.turnering.id },
+          data: { status: "PAAGAAR" },
+        })
+      : Promise.resolve(),
+  ]);
 
   const detteSlot: KampSlot = {
     bracket: kamp.bracket as "W" | "L" | "G",
@@ -435,16 +437,21 @@ export async function velgVinner(kampId: string, vinnerDeltagerId: string) {
     return;
   }
 
-  // Flytt vinner videre
+  // Bygg plasseringsliste: vinner + taper i én batch
+  const plasseringer: { target: AdvanceTarget; deltagerId: string }[] = [];
+
   const vinnerMål = nesteKampForVinner(detteSlot, P);
   if (vinnerMål) {
-    await plasserDeltager(kamp.turneringId, vinnerMål, vinnerDeltagerId);
+    plasseringer.push({ target: vinnerMål, deltagerId: vinnerDeltagerId });
   }
 
-  // Flytt taper til losers bracket
   const taperMål = nesteKampForTaper(detteSlot, P);
   if (taperMål) {
-    await plasserDeltager(kamp.turneringId, taperMål, taperId!);
+    plasseringer.push({ target: taperMål, deltagerId: taperId! });
+  }
+
+  if (plasseringer.length > 0) {
+    await batchPlasserDeltagere(kamp.turneringId, plasseringer);
   }
 
   // Cascade fixup: WR-taper kan etterlate LR-slots med kun én deltager
