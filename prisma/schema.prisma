@@ -188,6 +188,7 @@ model Turnering {
   sesongId  String
   sesong    Sesong   @relation(fields: [sesongId], references: [id], onDelete: Cascade)
   status    String   @default("PLANLAGT") // PLANLAGT | PAAGAAR | FULLFORT
+  girPoeng  Boolean  @default(true)       // false = teller ikke i stillingen
   createdAt DateTime @default(now())
 
   deltagere TurneringsDeltager[]

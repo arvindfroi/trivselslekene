@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
 import { bildeUrlFor } from "@/lib/bilde";
-import { slettTurnering } from "@/lib/actions/turnering";
+import { slettTurnering, toggleGirPoeng } from "@/lib/actions/turnering";
 import Card from "@/components/ui/Card";
 import SubmitButton from "@/components/ui/SubmitButton";
 import Badge from "@/components/ui/Badge";
@@ -135,19 +135,37 @@ export default async function TurneringSide() {
                         >
                           {statusTekst[t.status] ?? t.status}
                         </Badge>
+                        {!t.girPoeng && (
+                          <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-400">
+                            Uten poeng
+                          </span>
+                        )}
                       </div>
                       <p className="mt-1 text-xs text-fg-faint">
                         {t.deltagere.length} deltagere — dobbel-eliminering
                       </p>
                     </div>
 
-                    {t.status !== "FULLFORT" && (
-                      <form action={slettTurnering.bind(null, t.id)}>
-                        <SubmitButton variant="danger" className="px-3 py-2 text-xs" pendingText="Sletter…">
-                          <Trash2 size={14} /> Slett
-                        </SubmitButton>
-                      </form>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {t.status !== "FULLFORT" && (
+                        <form action={toggleGirPoeng.bind(null, t.id)}>
+                          <SubmitButton
+                            variant={t.girPoeng ? "outline" : "secondary"}
+                            className="px-3 py-2 text-xs"
+                            pendingText="…"
+                          >
+                            {t.girPoeng ? "Uten poeng" : "Med poeng"}
+                          </SubmitButton>
+                        </form>
+                      )}
+                      {t.status !== "FULLFORT" && (
+                        <form action={slettTurnering.bind(null, t.id)}>
+                          <SubmitButton variant="danger" className="px-3 py-2 text-xs" pendingText="Sletter…">
+                            <Trash2 size={14} /> Slett
+                          </SubmitButton>
+                        </form>
+                      )}
+                    </div>
                   </div>
 
                   {/* Deltagerliste */}

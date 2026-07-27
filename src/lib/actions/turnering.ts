@@ -14,6 +14,7 @@ import {
   losersRunder,
   wr1Par,
 } from "@/lib/bracket";
+import { standardPoengFor } from "@/lib/rangering";
 
 type AdvanceTarget = {
   bracket: "W" | "L" | "G";
@@ -184,12 +185,13 @@ export type OpprettTurneringInput = {
   vertId: string;
   /** Deltager-IDer i seed-rekkefølge (seed 1 først, seed N sist) */
   deltagerIder: string[];
+  girPoeng?: boolean;
 };
 
 /** Oppretter turnering med alle bracket-slots og byes. Brukes både av
  *  server-action og av fullforOnboarding. */
 export async function opprettTurneringData(input: OpprettTurneringInput) {
-  const { navn, sesongId, vertId, deltagerIder } = input;
+  const { navn, sesongId, vertId, deltagerIder, girPoeng = true } = input;
   const N = deltagerIder.length;
   const P = bracketSize(N);
   const slots = bracketSlots(P);
@@ -200,6 +202,7 @@ export async function opprettTurneringData(input: OpprettTurneringInput) {
       navn,
       sesongId,
       status: "PLANLAGT",
+      girPoeng,
       deltagere: {
         create: deltagerIder.map((userId, i) => ({
           userId,
@@ -335,6 +338,8 @@ export async function opprettTurnering(formData: FormData) {
   const N = parseInt(antallStr, 10);
   if (isNaN(N) || N < 3 || N > 64) return;
 
+  const girPoeng = formData.get("girPoeng") !== "false";
+
   // Hent deltager-IDer i seed-rekkefølge (1..N)
   const deltagerIder: string[] = [];
   for (let i = 1; i <= N; i++) {
@@ -350,6 +355,7 @@ export async function opprettTurnering(formData: FormData) {
     sesongId: sesong.id,
     vertId: bruker.id,
     deltagerIder,
+    girPoeng,
   });
   if (!turneringId) return;
 
@@ -587,7 +593,8 @@ async function batchPlasserDeltagere(
 async function fullforTurnering(turneringId: string) {
   const turnering = await prisma.turnering.findUnique({
     where: { id: turneringId },
-    include: {
+    select: {
+      girPoeng: true,
       deltagere: { include: { user: true } },
       kamper: { where: { status: "FULLFORT" } },
       ovelse: { select: { id: true } },
@@ -698,31 +705,74 @@ async function fullforTurnering(turneringId: string) {
 
   const ovelseId = ovelse.id;
 
-  await prisma.$transaction([
-    // Slett eksisterende resultater (idempotent)
-    prisma.resultatIndividuell.deleteMany({ where: { ovelseId } }),
-    // Opprett nye
-    ...resultater.map((r, i) => {
-      const plassering = i + 1;
-      const poeng = N - plassering + 1;
-      return prisma.resultatIndividuell.create({
-        data: {
-          ovelseId,
-          userId: r.userId,
-          plassering,
-          poeng,
-        },
-      });
-    }),
-    // Marker øvelsen som FULLFORT
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const transaksjon: any[] = [];
+
+  // Hvis turneringen gir poeng: slett gamle og opprett nye ResultatIndividuell
+  if (turnering.girPoeng) {
+    transaksjon.push(
+      prisma.resultatIndividuell.deleteMany({ where: { ovelseId } }),
+      ...resultater.map((r, i) => {
+        const plassering = i + 1;
+        const poeng = standardPoengFor(plassering);
+        return prisma.resultatIndividuell.create({
+          data: {
+            ovelseId,
+            userId: r.userId,
+            plassering,
+            poeng,
+          },
+        });
+      }),
+    );
+  }
+
+  // Marker øvelsen som FULLFORT uansett
+  transaksjon.push(
     prisma.ovelse.update({
       where: { id: ovelseId },
       data: { status: "FULLFORT" },
     }),
-  ]);
+  );
+
+  await prisma.$transaction(transaksjon);
 
   revalidatePath("/turnering");
   revalidatePath("/ovelser");
+  revalidatePath("/stilling");
+  revalidatePath("/dashboard");
+}
+
+/** Sletter ResultatIndividuell for en turnerings tilknyttede øvelse, og
+ *  toggler girPoeng-flagget. Kalles når en turnering settes til «gir ikke poeng».
+ */
+export async function toggleGirPoeng(turneringId: string) {
+  await krevInnlogget();
+  const t = await prisma.turnering.findUnique({
+    where: { id: turneringId },
+    select: { girPoeng: true, ovelse: { select: { id: true } } },
+  });
+  if (!t) return;
+
+  const ny = !t.girPoeng;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const operasjoner: any[] = [
+    prisma.turnering.update({ where: { id: turneringId }, data: { girPoeng: ny } }),
+  ];
+
+  // Hvis vi skrur AV poeng: slett eventuelle ResultatIndividuell-rader
+  if (!ny && t.ovelse) {
+    operasjoner.push(
+      prisma.resultatIndividuell.deleteMany({
+        where: { ovelseId: t.ovelse.id },
+      }),
+    );
+  }
+
+  await prisma.$transaction(operasjoner);
+
+  revalidatePath("/turnering");
   revalidatePath("/stilling");
   revalidatePath("/dashboard");
 }

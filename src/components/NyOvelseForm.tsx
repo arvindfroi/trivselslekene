@@ -550,6 +550,19 @@ export default function NyOvelseForm({ stillingTopp, alleDeltagere }: Props) {
             </span>
           </div>
 
+          <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-line bg-white/[0.03] px-3.5 py-3 text-sm text-fg">
+            <input
+              type="checkbox"
+              name="girPoeng"
+              value="false"
+              className="h-4 w-4 accent-red-400"
+            />
+            <span>
+              <span className="font-medium">Gir ikke poeng</span> — turneringen
+              teller ikke i stillingen
+            </span>
+          </label>
+
           <Label>Deltagere (seed 1–{antallTurneringDeltagere})</Label>
           <p className="mb-2 text-xs text-fg-faint">
             Forhåndsutfylt fra stillingen. Bytt ut ved å velge andre deltagere.
