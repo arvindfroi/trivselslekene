@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { hentInnloggetBruker } from "@/lib/auth";
 import MainShell from "@/components/MainShell";
 import HjemSide from "./dashboard/page";
 import OvelserSide from "./ovelser/page";
@@ -7,8 +7,8 @@ import StillingSide from "./stilling/page";
 import ProfilSide from "./profil/page";
 
 export default async function MainLayout() {
-  const session = await auth();
-  if (!session?.user) redirect("/bli-med");
+  const bruker = await hentInnloggetBruker();
+  if (!bruker) redirect("/bli-med");
 
   return (
     <MainShell

@@ -1,15 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import { auth, signIn } from "@/lib/auth";
+import { krevInnloggetBruker, signIn } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { finnBrukerVedNavn, normaliserNavn } from "@/lib/brukere";
 
 async function krevBrukerId() {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/bli-med");
-  return session.user.id;
+  const bruker = await krevInnloggetBruker();
+  return bruker.id;
 }
 
 /**

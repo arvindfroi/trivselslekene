@@ -1,11 +1,11 @@
-import { auth } from "@/lib/auth";
+import { hentInnloggetBruker } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import SesongAdmin from "./SesongAdmin";
 import BrukerAdmin from "./BrukerAdmin";
 
 export default async function AdminSide() {
-  const session = await auth();
-  if (!session?.user) redirect("/bli-med");
+  const bruker = await hentInnloggetBruker();
+  if (!bruker) redirect("/bli-med");
 
   return (
     <main className="pt-6 pb-28 px-4 max-w-2xl mx-auto">

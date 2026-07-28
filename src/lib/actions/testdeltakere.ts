@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { krevInnloggetBruker } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
 import { tildelFarge } from "@/lib/farger";
@@ -41,8 +41,7 @@ async function cleanupDUsers() {
 }
 
 export async function opprettTestdeltakere() {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/bli-med");
+  const bruker = await krevInnloggetBruker();
 
   const sesong = await sikreAktivSesong();
 
@@ -64,7 +63,7 @@ export async function opprettTestdeltakere() {
       type: "INDIVIDUELL",
       kvaliteter: [],
       sesongId: sesong.id,
-      vertId: session.user.id,
+      vertId: bruker.id,
       status: "FULLFORT",
     },
   });
@@ -89,8 +88,7 @@ export async function opprettTestdeltakere() {
 }
 
 export async function slettTestdeltakere() {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/bli-med");
+  await krevInnloggetBruker();
 
   await cleanupDUsers();
 

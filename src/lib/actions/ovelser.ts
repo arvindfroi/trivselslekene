@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { auth } from "@/lib/auth";
+import { krevInnloggetBruker } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sikreAktivSesong } from "@/lib/sesong";
 import type { Kvalitet, LagFormat, OvelseStatus, OvelseType } from "@prisma/client";
@@ -31,14 +31,6 @@ const faseSchema = z.object({
 const faserSchema = z.array(faseSchema).max(20, "Maks 20 faser");
 
 // ─── Auth-hjelpere ────────────────────────────────────────────────────────
-
-async function krevInnloggetBruker() {
-  const session = await auth();
-  if (!session?.user?.id) {
-    redirect("/bli-med");
-  }
-  return session.user;
-}
 
 /** Sjekker at innlogget bruker er vert for øvelsen. Redirecter ellers. */
 async function krevVert(ovelseId: string) {

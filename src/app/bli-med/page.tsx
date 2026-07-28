@@ -1,12 +1,15 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import { auth } from "@/lib/auth";
+import { hentInnloggetBruker } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import Onboarding from "@/components/Onboarding";
 
 export default async function BliMedSide() {
-  const session = await auth();
-  if (session?.user) redirect("/dashboard");
+  // Bare en bruker som fortsatt finnes i databasen sendes videre — ellers
+  // ville en cookie fra en slettet konto sende deg i ring mellom /bli-med
+  // og /dashboard i stedet for å la deg registrere deg på nytt.
+  const innlogget = await hentInnloggetBruker();
+  if (innlogget) redirect("/dashboard");
 
   const jar = await cookies();
   const navn = jar.get("onboarding_navn")?.value ?? "";
