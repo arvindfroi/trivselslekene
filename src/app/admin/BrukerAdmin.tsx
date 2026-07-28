@@ -1,8 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { bildeUrlFor } from "@/lib/bilde";
+import { hentInnloggetBruker } from "@/lib/auth";
 import Avatar from "@/components/Avatar";
+import SlettBrukerKnapp from "./SlettBrukerKnapp";
 
 export default async function BrukerAdmin() {
+  const innlogget = await hentInnloggetBruker();
   const brukere = await prisma.user.findMany({
     select: {
       id: true,
@@ -36,6 +39,7 @@ export default async function BrukerAdmin() {
               <th className="px-4 py-3 font-medium hidden sm:table-cell">
                 Opprettet
               </th>
+              <th className="px-4 py-3 font-medium">Handling</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
@@ -63,6 +67,14 @@ export default async function BrukerAdmin() {
                 </td>
                 <td className="px-4 py-3 hidden sm:table-cell text-fg-dim">
                   {b.createdAt.toLocaleDateString("nb-NO")}
+                </td>
+                <td className="px-4 py-3">
+                  <SlettBrukerKnapp
+                    userId={b.id}
+                    navn={b.navn}
+                    antallLeker={b._count.vertFor}
+                    erDegSelv={b.id === innlogget?.id}
+                  />
                 </td>
               </tr>
             ))}
